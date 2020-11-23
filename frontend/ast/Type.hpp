@@ -6,14 +6,14 @@
 
 class Type {
 public:
-  enum VariantKind { Double, Int, Void };
+  enum VariantKind { Invalid, Double, Int, Void };
 
-  VariantKind GetTypeVariant() { return Ty; }
+  VariantKind GetTypeVariant() const { return Ty; }
   void SetTypeVariant(VariantKind t) { Ty = t; }
 
-  virtual std::string ToString() { return ToString(Ty); }
+  virtual std::string ToString() const { return ToString(Ty); }
 
-  static std::string ToString(VariantKind vk) {
+  static std::string ToString(const VariantKind vk) {
     switch (vk) {
     case Double:
       return "double";
@@ -21,18 +21,24 @@ public:
       return "int";
     case Void:
       return "void";
+    case Invalid:
+      return "invalid";
     default:
       assert(false && "Unknown type.");
       break;
     }
   }
 
-  Type() = default;
+  Type() : Ty(Invalid) {}
   Type(VariantKind vk) : Ty(vk) {}
-  Type(Type&&) = default;
-  Type &operator=(Type&&) = default;
-  Type(const Type&) = default;
-  Type &operator=(const Type&) = default;
+
+  Type(Type &&) = default;
+  Type &operator=(Type &&) = default;
+
+  Type(const Type &) = default;
+  Type &operator=(const Type &) = default;
+
+  virtual ~Type() = default;
 
 protected:
   VariantKind Ty;
@@ -44,10 +50,16 @@ public:
   ArrayType(Type t) : Type(t) {}
   ArrayType(Type t, std::vector<unsigned> d) : Type(t), Dimensions(d) {}
 
+  ArrayType(ArrayType &&) = default;
+  ArrayType &operator=(ArrayType &&) = default;
+
+  ArrayType(const ArrayType &) = default;
+  ArrayType &operator=(const ArrayType &) = default;
+
   std::vector<unsigned> &GetDimensions() { return Dimensions; }
   void SetDimensions(std::vector<unsigned> d) { Dimensions = std::move(d); }
 
-  std::string ToString() override {
+  std::string ToString() const override {
     auto TyStr = Type::ToString(Ty);
 
     for (int i = 0; i < Dimensions.size(); i++)
@@ -63,13 +75,23 @@ class FunctionType : public Type {
 public:
   FunctionType() = default;
   FunctionType(Type t) : Type(t) {}
+  FunctionType(Type t, std::vector<VariantKind> a)
+      : Type(t), ArgumentTypes(a) {}
+
+  FunctionType(FunctionType &&) = delete;
+  FunctionType &operator=(FunctionType &&) = delete;
+
+  FunctionType(const FunctionType &) = default;
+  FunctionType &operator=(const FunctionType &) = default;
+
   std::vector<VariantKind> &GetArgumentTypes() { return ArgumentTypes; }
   void SetArgumentTypes(std::vector<VariantKind> &v) { ArgumentTypes = v; }
   void AddArgumentType(VariantKind v) { ArgumentTypes.push_back(v); }
-  VariantKind GetReturnType() { return GetTypeVariant(); }
+
+  VariantKind GetReturnType() const { return GetTypeVariant(); }
   void SetReturnType(VariantKind v) { SetTypeVariant(v); }
 
-  std::string ToString() override {
+  std::string ToString() const override {
     auto TyStr = Type::ToString(GetReturnType());
     auto ArgSize = ArgumentTypes.size();
     if (ArgSize > 0)
@@ -86,6 +108,148 @@ public:
 
 private:
   std::vector<VariantKind> ArgumentTypes;
+};
+
+// For now make this a separate type but it should be the only type
+class ComplexType : public Type {
+public:
+  ComplexType() {}
+  ComplexType(Type t) : Kind(Simple), Type(t) {}
+  ComplexType(Type t, const std::vector<unsigned>& d) {
+    if (d.size() == 0)
+      ComplexType(t);
+    else {
+      Kind = Array;
+      Dimensions = d;
+    }
+  }
+  ComplexType(ArrayType t)
+      : Type(t.GetTypeVariant()), Kind(Array), Dimensions(t.GetDimensions()) {}
+  ComplexType(FunctionType t)
+      : Type(t.GetReturnType()), Kind(Function),
+        ArgumentTypes(t.GetArgumentTypes()) {}
+
+  ComplexType(ComplexType &&ct) = default;
+
+  ComplexType &operator=(ComplexType &&ct) = default;
+
+  ComplexType(const ComplexType &ct) = default;
+
+  ComplexType &operator=(const ComplexType &ct) = default;
+
+  bool IsSimpleType() { return Kind == Simple; }
+  bool IsArrayType() { return Kind == Array; }
+  bool IsFunctionType() { return Kind == Function; }
+
+  Type GetType() { return Type(Ty); }
+  ArrayType GetArrayType() { return ArrayType(Ty, Dimensions); }
+  FunctionType GetFunctionType() { return FunctionType(Ty, ArgumentTypes); }
+
+  friend bool operator==(const ComplexType &lhs, const ComplexType &rhs) {
+    bool result = lhs.Kind == rhs.Kind && lhs.Ty == rhs.Ty;
+
+    if (!result)
+      return false;
+
+    switch (lhs.Kind) {
+    case Function:
+      result = result && (lhs.ArgumentTypes == rhs.ArgumentTypes);
+      break;
+    case Array:
+      result = result && (lhs.Dimensions == rhs.Dimensions);
+      break;
+    default:
+      break;
+    }
+    return result;
+  }
+
+  std::string ToString() const override {
+    if (Kind == Function) {
+      auto TyStr = Type::ToString(Ty);
+      auto ArgSize = ArgumentTypes.size();
+      if (ArgSize > 0)
+        TyStr += " (";
+      for (int i = 0; i < ArgSize; i++) {
+        TyStr += Type::ToString(ArgumentTypes[i]);
+        if (i + 1 < ArgSize)
+          TyStr += ",";
+        else
+          TyStr += ")";
+      }
+      return TyStr;
+    } else if (Kind == Array) {
+      auto TyStr = Type::ToString(Ty);
+
+      for (int i = 0; i < Dimensions.size(); i++)
+        TyStr += "[" + std::to_string(Dimensions[i]) + "]";
+      return TyStr;
+    } else {
+      return Type::ToString(Ty);
+    }
+  }
+
+private:
+  enum TypeKind { Simple, Array, Function };
+  TypeKind Kind;
+  // TODO: revisit the use of union, deleted from here since
+  // it just made things complicated
+  std::vector<VariantKind> ArgumentTypes;
+  std::vector<unsigned> Dimensions;
+};
+
+// Hold an integer or a float value
+class ValueType {
+public:
+  ValueType() : Kind(Empty) {}
+  ValueType(unsigned v) : Kind(Integer), IntVal(v) {}
+  ValueType(double v) : Kind(Float), FloatVal(v) {}
+
+  ValueType(ValueType &&) = default;
+  ValueType &operator=(ValueType &&) = delete;
+
+  ValueType(const ValueType &) = default;
+  ValueType &operator=(const ValueType &) = delete;
+
+  bool IsInt() { return Kind == Integer; }
+  bool IsFloat() { return Kind == Float; }
+  bool IsEmpty() { return Kind == Empty; }
+
+  unsigned GetIntVal() {
+    assert(IsInt() && "Must be an integer type.");
+    return IntVal;
+  }
+  double GetFloatVal() {
+    assert(IsFloat() && "Must be a float type.");
+    return FloatVal;
+  }
+
+  friend bool operator==(const ValueType &lhs, const ValueType &rhs) {
+    bool result = lhs.Kind == rhs.Kind;
+
+    if (!result)
+      return false;
+
+    switch (lhs.Kind) {
+    case Integer:
+      result = result && (lhs.IntVal == rhs.IntVal);
+      break;
+    case Float:
+      result = result && (lhs.FloatVal == rhs.FloatVal);
+      break;
+    default:
+      break;
+    }
+    return result;
+  }
+
+private:
+  enum ValueKind { Empty, Integer, Float };
+  ValueKind Kind;
+  union {
+    unsigned IntVal;
+    double FloatVal;
+  };
 };
 
 #endif

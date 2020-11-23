@@ -390,8 +390,10 @@ class IntegerLiteralExpression : public Expression {
 public:
   unsigned GetValue() { return Value; }
   void SetValue(unsigned v) { Value = v; }
+
   IntegerLiteralExpression(unsigned v) : Value(v) { SetType(Type(Type::Int)); }
-  IntegerLiteralExpression() = default;
+  IntegerLiteralExpression() = delete;
+
   void ASTDump(unsigned tab = 0) override {
     Print("IntegerLiteralExpression ", tab);
     auto TyStr = "'" + Ty.ToString() + "' ";
@@ -408,8 +410,10 @@ class FloatLiteralExpression : public Expression {
 public:
   double GetValue() { return Value; }
   void SetValue(double v) { Value = v; }
+
   FloatLiteralExpression(double v) : Value(v) { SetType(Type(Type::Double)); }
-  FloatLiteralExpression() = default;
+  FloatLiteralExpression() = delete;
+
   void ASTDump(unsigned tab = 0) override {
     Print("FloatLiteralExpression ", tab);
     auto TyStr = "'" + Ty.ToString() + "' ";

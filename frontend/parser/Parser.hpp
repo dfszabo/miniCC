@@ -4,6 +4,7 @@
 #include "../ast/AST.hpp"
 #include "../lexer/Lexer.hpp"
 #include "../lexer/Token.hpp"
+#include "SymbolTable.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -23,6 +24,11 @@ public:
   }
 
   Token Expect(Token::TokenKind Token);
+
+  /// Helper function to make insertion to the symbol table stack more compact
+  /// and readable
+  void InsertToSymTable(const std::string &SymName, ComplexType SymType,
+                        ValueType SymValue);
 
   std::unique_ptr<Node> ParseTranslationUnit();
   std::unique_ptr<Node> ParseExternalDeclaration();
@@ -51,6 +57,7 @@ public:
 
 private:
   Lexer lexer;
+  SymbolTableStack SymTabStack;
 };
 
 #endif

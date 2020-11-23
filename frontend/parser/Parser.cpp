@@ -15,6 +15,24 @@ std::unique_ptr<Node> Parser::Parse() {
   return std::move(ParseExternalDeclaration());
 }
 
+// TODO: To report the location of error we would need the token holding the
+// symbol name. It would be wise anyway to save it in AST nodes rather than
+// just a string.
+void Parser::InsertToSymTable(const std::string &SymName, ComplexType SymType,
+                              ValueType SymValue = ValueType()) {
+
+  std::tuple<std::string, ComplexType, ValueType> SymEntry(SymName, SymType,
+                                                           SymValue);
+  // Check if it is already defined in the current scope
+  if (SymTabStack.ContainsInCurrentScope(SymEntry))
+    std::cout << "Error: Symbol '" + SymName + "' with type '" +
+                     SymType.ToString() + "' is already defined."
+              << std::endl
+              << std::endl;
+  else
+    SymTabStack.InsertEntry(SymEntry);
+}
+
 static bool IsTypeSpecifier(Token::TokenKind tk) {
   return tk == Token::Int || tk == Token::Double;
 }
@@ -63,6 +81,10 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
     // if a function declaration then a left parenthesis '(' expected
     if (lexer.Is(Token::LeftParen)) {
       Lex(); // consume '('
+
+      // Creating new scope by pushing a new symbol table to the stack
+      SymTabStack.PushSymTable();
+
       auto PL = ParseParameterList();
 
       Expect(Token::RightParen);
@@ -73,6 +95,15 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
 
       auto Function =
           std::make_unique<FunctionDeclaration>(Type, NameStr, PL, Body);
+
+      // Removing the function's scope since we done with its parsing
+      SymTabStack.PopSymTable();
+
+      // FIXME: If we add the function to the symbol table here then its mean we
+      // cannot call it from within this function (recursive call) since it get
+      // only defined after parsing the function
+      InsertToSymTable(NameStr, ComplexType(Function->GetType()));
+
       TU->AddDeclaration(std::move(Function));
 
     } else { // Variable declaration
@@ -90,6 +121,8 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
 
       Expect(Token::SemiColon);
 
+      InsertToSymTable(NameStr, ComplexType(Type, Dimensions));
+
       TU->AddDeclaration(
           std::make_unique<VariableDeclaration>(NameStr, Type, Dimensions));
     }
@@ -97,10 +130,10 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
     TokenKind = GetCurrentTokenKind();
   }
 
-  return std::move(TU);
+  return TU;
 }
 
-// <ParameterList> ::= <ParameterDeclaration> {',' <ParameterDeclaration>}*
+// <ParameterList> ::= <ParameterDeclaration>? {',' <ParameterDeclaration>}*
 std::vector<std::unique_ptr<FunctionParameterDeclaration>>
 Parser::ParseParameterList() {
   std::vector<std::unique_ptr<FunctionParameterDeclaration>> Params;
@@ -116,7 +149,7 @@ Parser::ParseParameterList() {
   return Params;
 }
 
-// <ParameterDeclaration> ::= <TypeSpecifier> <Identifier>?
+// <ParameterDeclaration> ::= { <TypeSpecifier> <Identifier>? }?
 std::unique_ptr<FunctionParameterDeclaration>
 Parser::ParseParameterDeclaration() {
   std::unique_ptr<FunctionParameterDeclaration> FPD =
@@ -130,9 +163,11 @@ Parser::ParseParameterDeclaration() {
     if (lexer.Is(Token::Identifier)) {
       auto Name = Lex().GetString();
       FPD->SetName(Name);
+      InsertToSymTable(Name, ComplexType(Type));
     }
   }
-  return std::move(FPD);
+
+  return FPD;
 }
 
 // <TypeSpecifier> ::= int
@@ -182,6 +217,8 @@ std::unique_ptr<VariableDeclaration> Parser::ParseVaraibleDeclaration() {
 
   Expect(Token::SemiColon);
 
+  InsertToSymTable(Name, ComplexType(Type, Dimensions));
+
   return std::make_unique<VariableDeclaration>(Name, Type, Dimensions);
 }
 
@@ -229,14 +266,14 @@ double Parser::ParseRealConstant() {
 //               | <ReturnStatement>
 std::unique_ptr<Statement> Parser::ParseStatement() {
   if (lexer.Is(Token::If))
-    return std::move(ParseIfStatement());
+    return ParseIfStatement();
   if (lexer.Is(Token::While))
-    return std::move(ParseWhileStatement());
+    return ParseWhileStatement();
   if (lexer.Is(Token::LeftCurly))
-    return std::move(ParseCompoundStatement());
+    return ParseCompoundStatement();
   if (lexer.Is(Token::Return))
     return ParseReturnStatement();
-  return std::move(ParseExpressionStatement());
+  return ParseExpressionStatement();
 }
 
 // <IfStatement> ::= if '(' <Expression> ')' <Statement> {else <Statement>}?
@@ -253,7 +290,7 @@ std::unique_ptr<IfStatement> Parser::ParseIfStatement() {
     Lex();
     IS->SetElseBody(std::move(ParseStatement()));
   }
-  return std::move(IS);
+  return IS;
 }
 
 // <WhileStatement> ::= while '(' <Expression> ')' <Statement>
@@ -266,7 +303,7 @@ std::unique_ptr<WhileStatement> Parser::ParseWhileStatement() {
   Expect(Token::RightParen);
   WS->SetBody(std::move(ParseStatement()));
 
-  return std::move(WS);
+  return WS;
 }
 
 // <ExpressionStatement> ::= <Expression>? ';'
@@ -278,7 +315,7 @@ std::unique_ptr<ExpressionStatement> Parser::ParseExpressionStatement() {
     ES->SetExpression(std::move(ParseExpression()));
   Expect(Token::SemiColon);
 
-  return std::move(ES);
+  return ES;
 }
 
 // <ReturnStatement> ::= return <Expression>? ';'
@@ -286,12 +323,12 @@ std::unique_ptr<ReturnStatement> Parser::ParseReturnStatement() {
   Expect(Token::Return);
   auto RS = std::make_unique<ReturnStatement>(ParseExpression());
   Expect(Token::SemiColon);
-  return std::move(RS);
+  return RS;
 }
 
 // <Expression> ::= <AssignmentExpression>
 std::unique_ptr<Expression> Parser::ParseExpression() {
-  return std::move(ParseBinaryExpression());
+  return ParseBinaryExpression();
 }
 
 static int GetBinOpPrecedence(Token::TokenKind TK) {
@@ -343,8 +380,8 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
 
     int NextTokenPrec = GetBinOpPrecedence(GetCurrentTokenKind());
     if (TokenPrecedence < NextTokenPrec) {
-      RightExpression =
-          ParseBinaryExpressionRHS(TokenPrecedence + 1, std::move(RightExpression));
+      RightExpression = ParseBinaryExpressionRHS(TokenPrecedence + 1,
+                                                 std::move(RightExpression));
     }
 
     LeftExpression = std::make_unique<BinaryExpression>(
@@ -360,14 +397,13 @@ std::unique_ptr<Expression> Parser::ParsePrimaryExpression() {
     Lex();
     auto Expression = ParseExpression();
     Expect(Token::RightParen);
-    return std::move(Expression);
+    return Expression;
   } else if (lexer.Is(Token::Identifier)) {
     return ParseIdentifierExpression();
   } else {
     return ParseConstantExpression();
   }
 }
-
 
 // <ConstantExpression> ::= [1-9][0-9]*
 //                        | [0-9]+.[0-9]+

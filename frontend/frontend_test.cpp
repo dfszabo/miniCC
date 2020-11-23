@@ -1,5 +1,6 @@
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
+#include "parser/SymbolTable.hpp"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -21,7 +22,7 @@ bool getFileContent(std::string fileName, std::vector<std::string> &vecOfStrs) {
   // Read the next line from File untill it reaches the end.
   while (std::getline(in, str)) {
     // Line contains string of length > 0 then save it in vector
-      vecOfStrs.push_back(str);
+    vecOfStrs.push_back(str);
   }
   // Close The File
   in.close();
@@ -60,13 +61,13 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (DumpAST) {
-    std::vector<std::string> src2;
-    getFileContent(FilePath.c_str(), src2);
+  std::vector<std::string> src;
+  getFileContent(FilePath.c_str(), src);
 
-    Parser parser(src2);
-    auto AST = parser.Parse();
+  Parser parser(src);
+  auto AST = parser.Parse();
+  if (DumpAST)
     AST->ASTDump();
-  }
+
   return 0;
 }
