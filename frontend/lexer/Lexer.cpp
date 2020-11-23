@@ -14,6 +14,8 @@ Lexer::Lexer(std::vector<std::string> &s) {
   TokenBuffer = std::vector<Token>();
   LineIndex = 0;
   ColumnIndex = 0;
+
+  LookAhead(1);
 }
 
 void Lexer::ConsumeCurrentToken() {
@@ -131,7 +133,7 @@ std::optional<Token> Lexer::LexSymbol() {
 
   switch (GetNextChar()) {
   case ',':
-    TokenKind = Token::Colon;
+    TokenKind = Token::Comma;
     break;
   case '+':
     TokenKind = Token::Plus;

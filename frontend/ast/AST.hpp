@@ -36,12 +36,12 @@ public:
 
 class Expression : public Node {
 public:
-  Type GetType() { return Ty; }
-  void SetType(Type t) { Ty = t; }
+  ComplexType GetType() { return Ty; }
+  void SetType(ComplexType t) { Ty = t; }
   void ASTDump(unsigned tab = 0) override { PrintLn("Expression", tab); }
 
 protected:
-  Type Ty;
+  ComplexType Ty;
 };
 
 class VariableDeclaration : public Statement {
@@ -324,8 +324,13 @@ public:
 
   bool IsConditional() { return GetOperationKind() >= Equal; }
 
-  BinaryExpression(ExprPtr Left, Token Op, ExprPtr Right)
-      : Left(std::move(Left)), Operation(Op), Right(std::move(Right)) {}
+  BinaryExpression(ExprPtr L, Token Op, ExprPtr R) {
+    Left = std::move(L);
+    Operation = Op;
+    Right = std::move(R);
+    Ty = ComplexType(Type::GetStrongestType(Left->GetType().GetTypeVariant(),
+                                           Right->GetType().GetTypeVariant()));
+  }
 
   BinaryExpression() = default;
 
@@ -351,10 +356,12 @@ public:
   void SetName(std::string &n) { Name = n; }
 
   ExprVec &GetArguments() { return Arguments; }
-  void SetName(ExprVec &a) { Arguments = std::move(a); }
+  void SetArguments(ExprVec &a) { Arguments = std::move(a); }
 
-  CallExpression(const std::string &Name, ExprVec &Args)
-      : Name(Name), Arguments(std::move(Args)) {}
+  CallExpression(const std::string &Name, ExprVec &Args, Type T)
+      : Name(Name), Arguments(std::move(Args)) {
+    Ty = ComplexType(T.GetTypeVariant());
+  }
 
   void ASTDump(unsigned tab = 0) override {
     Print("CallExpression ", tab);
@@ -391,7 +398,9 @@ public:
   unsigned GetValue() { return Value; }
   void SetValue(unsigned v) { Value = v; }
 
-  IntegerLiteralExpression(unsigned v) : Value(v) { SetType(Type(Type::Int)); }
+  IntegerLiteralExpression(unsigned v) : Value(v) {
+    SetType(ComplexType(Type::Int));
+  }
   IntegerLiteralExpression() = delete;
 
   void ASTDump(unsigned tab = 0) override {
@@ -411,7 +420,9 @@ public:
   double GetValue() { return Value; }
   void SetValue(double v) { Value = v; }
 
-  FloatLiteralExpression(double v) : Value(v) { SetType(Type(Type::Double)); }
+  FloatLiteralExpression(double v) : Value(v) {
+    SetType(ComplexType(Type::Double));
+  }
   FloatLiteralExpression() = delete;
 
   void ASTDump(unsigned tab = 0) override {
@@ -436,8 +447,10 @@ public:
   ExprVec &GetIndexExpression() { return IndexExpressions; }
   void SetIndexExpression(ExprVec &e) { IndexExpressions = std::move(e); }
 
-  ArrayExpression(const Token &Id, ExprVec &IEs)
-      : Identifier(Id), IndexExpressions(std::move(IEs)) {}
+  ArrayExpression(const Token &Id, ExprVec &IEs, ComplexType Ct = ComplexType())
+      : Identifier(Id), IndexExpressions(std::move(IEs)) {
+    Ty = Ct;
+  }
 
   void ASTDump(unsigned tab = 0) override {
     Print("ArrayExpression ", tab);

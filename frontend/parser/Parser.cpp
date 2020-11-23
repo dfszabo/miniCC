@@ -3,12 +3,17 @@
 #include <iostream>
 #include <memory>
 
-Token Parser::Expect(Token::TokenKind Token) {
-  if (lexer.IsNot(Token))
-    std::cout << "Error: Expected other thing here, not this '"
-              << lexer.GetCurrentToken().GetString() << "'." << std::endl;
-  else
-    return Lex(); // consume Tokens
+Token Parser::Expect(Token::TokenKind TKind) {
+  auto t = Lex();
+  if (t.GetKind() != TKind) {
+    std::cout << ":" << t.GetLineNum() + 1 << ":" << t.GetColNum() + 1
+              << ": error: Unexpected symbol `" << t.GetString()
+              << "`. Expected is `" << Token::ToString(TKind) << "`."
+              << std::endl
+              << "\t\t" << lexer.GetSource()[t.GetLineNum()] << std::endl
+              << std::endl;
+  }
+  return t; // consume Tokens
 }
 
 std::unique_ptr<Node> Parser::Parse() {
@@ -25,12 +30,27 @@ void Parser::InsertToSymTable(const std::string &SymName, ComplexType SymType,
                                                            SymValue);
   // Check if it is already defined in the current scope
   if (SymTabStack.ContainsInCurrentScope(SymEntry))
-    std::cout << "Error: Symbol '" + SymName + "' with type '" +
+    std::cout << "error: Symbol '" + SymName + "' with type '" +
                      SymType.ToString() + "' is already defined."
               << std::endl
               << std::endl;
   else
     SymTabStack.InsertEntry(SymEntry);
+}
+
+void static UndefinedSymbolError(Token sym, Lexer &L) {
+  std::cout << ":" << sym.GetLineNum() + 1 << ":" << sym.GetColNum() + 1
+            << ": error: "
+            << "Undefined symbol '" << sym.GetString() << "'." << std::endl
+            << "\t\t" << L.GetSource()[sym.GetLineNum()].substr(sym.GetColNum())
+            << std::endl
+            << std::endl;
+}
+
+void static ArrayTypeMismatchError(Token sym, ComplexType actual) {
+  std::cout << sym.GetLineNum() + 1 << ":" << sym.GetColNum() + 1 << " error:"
+            << ": Type mismatch'" << sym.GetString() << "' type is '"
+            << actual.ToString() << "', it is not an array type.'" << std::endl;
 }
 
 static bool IsTypeSpecifier(Token::TokenKind tk) {
@@ -114,7 +134,7 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
         Lex(); // consume '['
         Dimensions.push_back(ParseIntegerConstant());
         Expect(Token::RightBracet);
-        if (lexer.IsNot(Token::Colon))
+        if (lexer.IsNot(Token::Comma))
           break;
         Lex(); // consume ','
       }
@@ -142,7 +162,7 @@ Parser::ParseParameterList() {
     return Params;
 
   Params.push_back(ParseParameterDeclaration());
-  while (lexer.Is(Token::Colon)) {
+  while (lexer.Is(Token::Comma)) {
     Lex(); // consume ','
     Params.push_back(ParseParameterDeclaration());
   }
@@ -372,7 +392,7 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
     int TokenPrecedence = GetBinOpPrecedence(GetCurrentTokenKind());
 
     if (TokenPrecedence < Precedence)
-      return std::move(LeftExpression);
+      return LeftExpression;
 
     Token BinaryOperator = Lex();
 
@@ -420,26 +440,43 @@ std::unique_ptr<Expression> Parser::ParseConstantExpression() {
 std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
   auto Id = Expect(Token::Identifier);
 
-  if (lexer.IsNot(Token::LeftParen) && lexer.IsNot(Token::LeftBracet))
-    return std::make_unique<ReferenceExpression>(Id);
+  if (lexer.IsNot(Token::LeftParen) && lexer.IsNot(Token::LeftBracet)) {
+    auto RE = std::make_unique<ReferenceExpression>(Id);
+    auto SymEntry = SymTabStack.Contains(Id.GetString());
+    if (SymEntry) {
+      auto Type = std::get<1>(SymEntry.value());
+      RE->SetType(Type);
+    } else
+      UndefinedSymbolError(Id, lexer);
+
+    return RE;
+  }
 
   // Parse a CallExpression here
   if (lexer.Is(Token::LeftParen)) {
     Lex();
+
+    Type ReturnType;
+
+    auto SymEntry = SymTabStack.Contains(Id.GetString());
+    if (SymEntry) {
+      ReturnType = std::get<1>(SymEntry.value()).GetType();
+    } else
+      UndefinedSymbolError(Id, lexer);
 
     std::vector<std::unique_ptr<Expression>> Args;
 
     if (lexer.IsNot(Token::RightParen))
       Args.push_back(ParseExpression());
 
-    while (lexer.Is(Token::Colon)) {
+    while (lexer.Is(Token::Comma)) {
       Lex();
       Args.push_back(ParseExpression());
     }
 
     Expect(Token::RightParen);
 
-    return std::make_unique<CallExpression>(Id.GetString(), Args);
+    return std::make_unique<CallExpression>(Id.GetString(), Args, ReturnType);
   }
   // parse ArrayExpression
   if (lexer.Is(Token::LeftBracet)) {
@@ -454,6 +491,30 @@ std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
       Expect(Token::RightBracet);
     }
 
-    return std::make_unique<ArrayExpression>(Id, IndexExpressions);
+    ComplexType Type;
+    auto SymEntry = SymTabStack.Contains(Id.GetString());
+    if (SymEntry) {
+      ComplexType ActualType = std::get<1>(SymEntry.value());
+      if (!ActualType.IsArrayType())
+        ArrayTypeMismatchError(Id, ActualType);
+      /// in this case we try to access to much dimensions. Example:
+      /// 'int arr[10]' referenced like 'arr[1][2]'
+      else if (IndexExpressions.size() > ActualType.GetDimensions().size())
+        ArrayTypeMismatchError(Id, ActualType);
+
+      Type = std::move(ActualType);
+
+      /// Remove the first N dimensions from the actual type. Example:
+      /// ActualType is 'int arr[5][10]' and our reference is 'arr[0]'
+      /// then the result type of 'arr[0]' is 'int[10]'. N is the
+      /// amount of index expressions used when refferencing the array here
+      /// 'arr'. In the example its 1.
+      Type.GetDimensions().erase(Type.GetDimensions().begin(),
+                                 Type.GetDimensions().begin() +
+                                     IndexExpressions.size());
+    } else
+      UndefinedSymbolError(Id, lexer);
+
+    return std::make_unique<ArrayExpression>(Id, IndexExpressions, Type);
   }
 }

@@ -6,7 +6,8 @@
 
 class Type {
 public:
-  enum VariantKind { Invalid, Double, Int, Void };
+  /// Basic type variants. Numerical ones are ordered by conversion rank.
+  enum VariantKind { Invalid, Void, Int, Double };
 
   VariantKind GetTypeVariant() const { return Ty; }
   void SetTypeVariant(VariantKind t) { Ty = t; }
@@ -38,7 +39,19 @@ public:
   Type(const Type &) = default;
   Type &operator=(const Type &) = default;
 
+  // FIXME: This can be deleted I believe.
   virtual ~Type() = default;
+
+  /// Given two type variants it return the stronger one.
+  /// Type variants must be numerical ones.
+  /// Example Int and Double -> result Double.
+  static Type GetStrongestType(const Type::VariantKind type1,
+                              const Type::VariantKind type2) {
+    if (type1 > type2)
+      return type1;
+    else
+      return type2;
+  }
 
 protected:
   VariantKind Ty;
@@ -113,15 +126,19 @@ private:
 // For now make this a separate type but it should be the only type
 class ComplexType : public Type {
 public:
-  ComplexType() {}
-  ComplexType(Type t) : Kind(Simple), Type(t) {}
-  ComplexType(Type t, const std::vector<unsigned>& d) {
+  ComplexType() : Kind(Simple), Type(Invalid) {}
+  ComplexType(Type t) {
+    Kind = Simple;
+    Ty = t.GetTypeVariant();
+  }
+  ComplexType(Type t, const std::vector<unsigned> &d) {
     if (d.size() == 0)
       ComplexType(t);
     else {
       Kind = Array;
       Dimensions = d;
     }
+    Ty = t.GetTypeVariant();
   }
   ComplexType(ArrayType t)
       : Type(t.GetTypeVariant()), Kind(Array), Dimensions(t.GetDimensions()) {}
@@ -129,13 +146,41 @@ public:
       : Type(t.GetReturnType()), Kind(Function),
         ArgumentTypes(t.GetArgumentTypes()) {}
 
-  ComplexType(ComplexType &&ct) = default;
+  ComplexType(ComplexType &&ct) {
+    Ty = ct.Ty;
+    Kind = ct.Kind;
+    if (ct.Kind == Array)
+      Dimensions = std::move(ct.Dimensions);
+    else if (ct.Kind == Function)
+      ArgumentTypes = std::move(ct.ArgumentTypes);
+  }
 
-  ComplexType &operator=(ComplexType &&ct) = default;
+  ComplexType &operator=(ComplexType &&ct) {
+    Ty = ct.Ty;
+    Kind = ct.Kind;
+    if (ct.Kind == Array)
+      Dimensions = std::move(ct.Dimensions);
+    else if (ct.Kind == Function)
+      ArgumentTypes = std::move(ct.ArgumentTypes);
+  }
 
-  ComplexType(const ComplexType &ct) = default;
+  ComplexType(const ComplexType &ct) {
+    Ty = ct.Ty;
+    Kind = ct.Kind;
+    if (ct.Kind == Array)
+      Dimensions = ct.Dimensions;
+    else if (ct.Kind == Function)
+      ArgumentTypes = ct.ArgumentTypes;
+  }
 
-  ComplexType &operator=(const ComplexType &ct) = default;
+  ComplexType &operator=(const ComplexType &ct) {
+    Ty = ct.Ty;
+    Kind = ct.Kind;
+    if (ct.Kind == Array)
+      Dimensions = ct.Dimensions;
+    else if (ct.Kind == Function)
+      ArgumentTypes = ct.ArgumentTypes;
+  }
 
   bool IsSimpleType() { return Kind == Simple; }
   bool IsArrayType() { return Kind == Array; }
@@ -144,6 +189,11 @@ public:
   Type GetType() { return Type(Ty); }
   ArrayType GetArrayType() { return ArrayType(Ty, Dimensions); }
   FunctionType GetFunctionType() { return FunctionType(Ty, ArgumentTypes); }
+
+  std::vector<unsigned> &GetDimensions() {
+    assert(IsArrayType() && "Must be an Array type to acces Dimensions.");
+    return Dimensions;
+  }
 
   friend bool operator==(const ComplexType &lhs, const ComplexType &rhs) {
     bool result = lhs.Kind == rhs.Kind && lhs.Ty == rhs.Ty;

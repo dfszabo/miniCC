@@ -3,6 +3,7 @@
 
 #include "../ast/Type.hpp"
 #include <cassert>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -44,6 +45,16 @@ public:
           return true;
     }
     return false;
+  }
+
+  std::optional<Entry> Contains(const std::string &sym) {
+    for (int i = Size() - 1; i >= 0; i--) {
+      auto table = SymTabStack[i];
+      for (int j = table.size() - 1; j >= 0; j--)
+        if (sym == std::get<0>(table[j]))
+          return table[j];
+    }
+    return std::nullopt;
   }
 
   bool ContainsInCurrentScope(Entry e) {
