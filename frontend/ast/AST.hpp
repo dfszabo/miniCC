@@ -36,12 +36,15 @@ public:
 
 class Expression : public Node {
 public:
-  ComplexType GetType() { return Ty; }
-  void SetType(ComplexType t) { Ty = t; }
+  Expression() = default;
+  Expression(ComplexType t) : ResultType(std::move(t)) {}
+  Expression(Type::VariantKind vk) : ResultType(vk) {}
+  ComplexType GetResultType() { return ResultType; }
+  void SetType(ComplexType t) { ResultType = t; }
   void ASTDump(unsigned tab = 0) override { PrintLn("Expression", tab); }
 
 protected:
-  ComplexType Ty;
+  ComplexType ResultType;
 };
 
 class VariableDeclaration : public Statement {
@@ -328,16 +331,18 @@ public:
     Left = std::move(L);
     Operation = Op;
     Right = std::move(R);
-    Ty = ComplexType(Type::GetStrongestType(Left->GetType().GetTypeVariant(),
-                                           Right->GetType().GetTypeVariant()));
+    ResultType = ComplexType(
+        Type::GetStrongestType(Left->GetResultType().GetTypeVariant(),
+                               Right->GetResultType().GetTypeVariant()));
   }
 
   BinaryExpression() = default;
 
   void ASTDump(unsigned tab = 0) override {
     Print("BinaryExpression ", tab);
-    auto OpStr = "'" + Operation.GetString() + "'";
-    PrintLn(OpStr.c_str());
+    auto Str = "'" + ResultType.ToString() + "' ";
+    Str += "'" + Operation.GetString() + "'";
+    PrintLn(Str.c_str());
     Left->ASTDump(tab + 2);
     Right->ASTDump(tab + 2);
   }
@@ -358,15 +363,14 @@ public:
   ExprVec &GetArguments() { return Arguments; }
   void SetArguments(ExprVec &a) { Arguments = std::move(a); }
 
-  CallExpression(const std::string &Name, ExprVec &Args, Type T)
-      : Name(Name), Arguments(std::move(Args)) {
-    Ty = ComplexType(T.GetTypeVariant());
-  }
+  CallExpression(const std::string &Name, ExprVec &Args, ComplexType T)
+      : Name(Name), Arguments(std::move(Args)), Expression(std::move(T)) {}
 
   void ASTDump(unsigned tab = 0) override {
     Print("CallExpression ", tab);
-    auto NameStr = "'" + Name + "'";
-    PrintLn(NameStr.c_str());
+    auto Str = "'" + ResultType.ToString() + "' ";
+    Str += "'" + Name + "'";
+    PrintLn(Str.c_str());
     for (int i = 0; i < Arguments.size(); i++)
       Arguments[i]->ASTDump(tab + 2);
   }
@@ -385,8 +389,9 @@ public:
 
   void ASTDump(unsigned tab = 0) override {
     Print("ReferenceExpression ", tab);
-    auto IdStr = "'" + Identifier + "'";
-    PrintLn(IdStr.c_str());
+    auto Str = "'" + ResultType.ToString() + "' ";
+    Str += "'" + Identifier + "'";
+    PrintLn(Str.c_str());
   }
 
 private:
@@ -405,7 +410,7 @@ public:
 
   void ASTDump(unsigned tab = 0) override {
     Print("IntegerLiteralExpression ", tab);
-    auto TyStr = "'" + Ty.ToString() + "' ";
+    auto TyStr = "'" + ResultType.ToString() + "' ";
     Print(TyStr.c_str());
     auto ValStr = "'" + std::to_string(Value) + "'";
     PrintLn(ValStr.c_str());
@@ -427,7 +432,7 @@ public:
 
   void ASTDump(unsigned tab = 0) override {
     Print("FloatLiteralExpression ", tab);
-    auto TyStr = "'" + Ty.ToString() + "' ";
+    auto TyStr = "'" + ResultType.ToString() + "' ";
     Print(TyStr.c_str());
     auto ValStr = "'" + std::to_string(Value) + "'";
     PrintLn(ValStr.c_str());
@@ -449,13 +454,14 @@ public:
 
   ArrayExpression(const Token &Id, ExprVec &IEs, ComplexType Ct = ComplexType())
       : Identifier(Id), IndexExpressions(std::move(IEs)) {
-    Ty = Ct;
+    ResultType = Ct;
   }
 
   void ASTDump(unsigned tab = 0) override {
     Print("ArrayExpression ", tab);
-    auto IdStr = "'" + Identifier.GetString() + "'";
-    PrintLn(IdStr.c_str());
+    auto Str = "'" + ResultType.ToString() + "' ";
+    Str += "'" + Identifier.GetString() + "'";
+    PrintLn(Str.c_str());
     for (int i = 0; i < IndexExpressions.size(); i++)
       IndexExpressions[i]->ASTDump(tab + 2);
   }
@@ -463,6 +469,27 @@ public:
 private:
   Token Identifier;
   ExprVec IndexExpressions;
+};
+
+class ImplicitCastExpression : public Expression {
+public:
+  ImplicitCastExpression(std::unique_ptr<Expression> e, Type::VariantKind rt)
+      : CastableExpression(std::move(e)), Expression(rt) {}
+
+  Type GetSourceType() { return CastableExpression->GetResultType(); }
+  std::unique_ptr<Expression> &GetCastableExpression() {
+    return CastableExpression;
+  }
+
+  void ASTDump(unsigned tab = 0) override {
+    Print("ImplicitCastExpression ", tab);
+    auto Str = "'" + ResultType.ToString() + "'";
+    PrintLn(Str.c_str());
+    CastableExpression->ASTDump(tab + 2);
+  }
+
+private:
+  std::unique_ptr<Expression> CastableExpression;
 };
 
 class TranslationUnit : public Statement {

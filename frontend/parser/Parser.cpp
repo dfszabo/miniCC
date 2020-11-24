@@ -2,6 +2,7 @@
 #include <cassert>
 #include <iostream>
 #include <memory>
+#include <typeinfo>
 
 Token Parser::Expect(Token::TokenKind TKind) {
   auto t = Lex();
@@ -51,6 +52,13 @@ void static ArrayTypeMismatchError(Token sym, ComplexType actual) {
   std::cout << sym.GetLineNum() + 1 << ":" << sym.GetColNum() + 1 << " error:"
             << ": Type mismatch'" << sym.GetString() << "' type is '"
             << actual.ToString() << "', it is not an array type.'" << std::endl;
+}
+
+void static EmitErrorWithLineInfoAndAffectedLine(const std::string &msg,
+                                                 Lexer &L) {
+  std::cout << ":" << L.GetLineNum() << ": error: " << msg << std::endl
+            << "\t\t" << L.GetSource()[L.GetLineNum() - 1] << std::endl
+            << std::endl;
 }
 
 static bool IsTypeSpecifier(Token::TokenKind tk) {
@@ -398,6 +406,14 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
 
     auto RightExpression = ParsePrimaryExpression();
 
+    // In case of an assignment check if the left operand since it should be an
+    // lvalue. Which is either an identifier reference or an array expression.
+    if (BinaryOperator.GetKind() == Token::Equal &&
+        !dynamic_cast<ReferenceExpression *>(LeftExpression.get()) &&
+        !dynamic_cast<ArrayExpression *>(LeftExpression.get()))
+      EmitErrorWithLineInfoAndAffectedLine(
+          "lvalue required as left operand of assignment", lexer);
+
     int NextTokenPrec = GetBinOpPrecedence(GetCurrentTokenKind());
     if (TokenPrecedence < NextTokenPrec) {
       RightExpression = ParseBinaryExpressionRHS(TokenPrecedence + 1,
@@ -456,11 +472,11 @@ std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
   if (lexer.Is(Token::LeftParen)) {
     Lex();
 
-    Type ReturnType;
+    ComplexType ReturnType;
 
     auto SymEntry = SymTabStack.Contains(Id.GetString());
     if (SymEntry) {
-      ReturnType = std::get<1>(SymEntry.value()).GetType();
+      ReturnType = std::get<1>(SymEntry.value()).GetFunctionType();
     } else
       UndefinedSymbolError(Id, lexer);
 
@@ -473,6 +489,23 @@ std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
       Lex();
       Args.push_back(ParseExpression());
     }
+
+    auto RetArgTpes = ReturnType.GetArgTypes();
+    if (RetArgTpes.size() != Args.size())
+      EmitErrorWithLineInfoAndAffectedLine("arguments number mismatch", lexer);
+
+    // Checking if the given arguments has the expected types for the function.
+    // If not and implicit cast  not allowed then emit error. If allowed then
+    // insert ImplicitCastExpression node with a child of the problematic
+    // expression into the AST.
+    for (int i = 0; i < RetArgTpes.size(); i++)
+      if (Args[i]->GetResultType().GetTypeVariant() != RetArgTpes[i])
+        if (Type::IsImplicitlyCastable(
+                Args[i]->GetResultType().GetTypeVariant(), RetArgTpes[i]))
+          Args[i] = std::make_unique<ImplicitCastExpression>(std::move(Args[i]),
+                                                             RetArgTpes[i]);
+        else
+          EmitErrorWithLineInfoAndAffectedLine("argument type mismatch", lexer);
 
     Expect(Token::RightParen);
 

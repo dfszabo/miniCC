@@ -30,6 +30,8 @@ public:
 
   std::vector<std::string> &GetSource() { return Source; }
 
+  unsigned GetLineNum() { return LineIndex + 1; }
+
   Token Lex();
 
   Lexer(std::vector<std::string> &s);

@@ -11,7 +11,7 @@ int bar () {
 
 	real = 0.0;
 	if (g == 0)
-		real = foo(1,2);
+		real = foo(1,2.0);
 	else
 		g = 0;
 	

@@ -28,11 +28,12 @@ public:
     LessThan,
     GreaterThan,
     Bang,
-    BangEqual,
+
     And,
-    DoubleAnd,
 
     // Multichar operators
+    BangEqual,
+    DoubleAnd,
     DoubleEqual,
 
     // Symbols

@@ -46,11 +46,16 @@ public:
   /// Type variants must be numerical ones.
   /// Example Int and Double -> result Double.
   static Type GetStrongestType(const Type::VariantKind type1,
-                              const Type::VariantKind type2) {
+                               const Type::VariantKind type2) {
     if (type1 > type2)
       return type1;
     else
       return type2;
+  }
+
+  static bool IsImplicitlyCastable(const Type::VariantKind from,
+                                   const Type::VariantKind to) {
+    return (from == Int && to == Double) || (from == Double && to == Int);
   }
 
 protected:
@@ -131,13 +136,22 @@ public:
     Kind = Simple;
     Ty = t.GetTypeVariant();
   }
-  ComplexType(Type t, const std::vector<unsigned> &d) {
+  ComplexType(Type::VariantKind vk) {
+    Kind = Simple;
+    Ty = vk;
+  }
+  ComplexType(Type t, std::vector<unsigned> d) {
     if (d.size() == 0)
       ComplexType(t);
     else {
       Kind = Array;
-      Dimensions = d;
+      Dimensions = std::move(d);
     }
+    Ty = t.GetTypeVariant();
+  }
+  ComplexType(Type t, std::vector<Type::VariantKind> a) {
+    Kind = Function;
+    ArgumentTypes = std::move(a);
     Ty = t.GetTypeVariant();
   }
   ComplexType(ArrayType t)
@@ -191,8 +205,14 @@ public:
   FunctionType GetFunctionType() { return FunctionType(Ty, ArgumentTypes); }
 
   std::vector<unsigned> &GetDimensions() {
-    assert(IsArrayType() && "Must be an Array type to acces Dimensions.");
+    assert(IsArrayType() && "Must be an Array type to access Dimensions.");
     return Dimensions;
+  }
+
+  std::vector<Type::VariantKind> &GetArgTypes() {
+    assert(IsFunctionType() &&
+           "Must be a Function type to access ArgumentTypes.");
+    return ArgumentTypes;
   }
 
   friend bool operator==(const ComplexType &lhs, const ComplexType &rhs) {
