@@ -4,7 +4,6 @@
 #include <memory>
 #include <typeinfo>
 
-
 Token Parser::Expect(Token::TokenKind TKind) {
   auto t = Lex();
   if (t.GetKind() != TKind) {
@@ -59,6 +58,14 @@ void static EmitErrorWithLineInfoAndAffectedLine(const std::string &msg,
                                                  Lexer &L) {
   std::cout << ":" << L.GetLineNum() << ": error: " << msg << std::endl
             << "\t\t" << L.GetSource()[L.GetLineNum() - 1] << std::endl
+            << std::endl;
+}
+
+void static EmitErrorWithLineInfoAndAffectedLine(const std::string &msg,
+                                                 Lexer &L, Token &T) {
+  std::cout << ":" << T.GetLineNum() + 1 << ":" << T.GetColNum() + 1
+            << ": error: " << msg << std::endl
+            << "\t\t" << L.GetSource()[T.GetLineNum()] << std::endl
             << std::endl;
 }
 
@@ -415,7 +422,8 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
       // TODO: Since now we have ImplicitCast nodes we have to either check if
       // the castable object is an lv....
       EmitErrorWithLineInfoAndAffectedLine(
-          "lvalue required as left operand of assignment", lexer);
+          "lvalue required as left operand of assignment", lexer,
+          BinaryOperator);
 
     int NextTokenPrec = GetBinOpPrecedence(GetCurrentTokenKind());
 
@@ -432,23 +440,26 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
     auto LeftType = LeftExpression->GetResultType().GetTypeVariant();
     auto RightType = RightExpression->GetResultType().GetTypeVariant();
 
-    // If there is a type mismatch
-    if (LeftType != RightType) {
+    // if its a modulo operation
+    if (BinaryOperator.GetKind() == Token::Percent) {
+      // then both side should be an integer type without a casting
+      if (LeftType != Type::Int || RightType != Type::Int)
+        EmitErrorWithLineInfoAndAffectedLine(
+            "Modulo operator can only operate on integers", lexer,
+            BinaryOperator);
+    }
+    // Having different types.
+    else if (LeftType != RightType) {
       // if an assingment, then try to cast the right hand side to type of the
       // left hand side
       if (BinaryOperator.GetKind() == Token::Equal) {
         if (!Type::IsImplicitlyCastable(RightType, LeftType))
-          EmitErrorWithLineInfoAndAffectedLine("Type mismatch", lexer);
+          EmitErrorWithLineInfoAndAffectedLine("Type mismatch", lexer,
+                                               BinaryOperator);
         else {
           RightExpression = std::make_unique<ImplicitCastExpression>(
               std::move(RightExpression), LeftType);
         }
-      }
-      // if its a modulo operation
-      else if (BinaryOperator.GetKind() == Token::Percent) {
-        // TODO: not exactly sure what should be done here, should be
-        // casted to int I belive, but seems like its a straight error
-        // if not both operand are integers
       }
       // Otherwise cast the one with lower conversion rank to the higher one
       else {
