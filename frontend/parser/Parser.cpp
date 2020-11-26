@@ -4,8 +4,6 @@
 #include <memory>
 #include <typeinfo>
 
-// TODO: Somewhy if the source has at least 2 empty lines, then the
-// parser stops there.
 
 Token Parser::Expect(Token::TokenKind TKind) {
   auto t = Lex();

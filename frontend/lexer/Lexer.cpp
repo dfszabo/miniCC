@@ -244,7 +244,8 @@ Token Lexer::Lex() {
   std::string WhiteSpaceChars("\t\n\v\f\r ");
 
   // consume white space characters
-  while (WhiteSpaceChars.find(CurrentCharacter) != std::string::npos) {
+  while (WhiteSpaceChars.find(CurrentCharacter) != std::string::npos ||
+         CurrentCharacter == '\0') {
     EatNextChar();
     CurrentCharacter = GetNextChar();
   }
