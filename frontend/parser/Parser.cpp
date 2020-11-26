@@ -4,6 +4,9 @@
 #include <memory>
 #include <typeinfo>
 
+// TODO: Somewhy if the source has at least 2 empty lines, then the
+// parser stops there.
+
 Token Parser::Expect(Token::TokenKind TKind) {
   auto t = Lex();
   if (t.GetKind() != TKind) {
@@ -411,13 +414,57 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
     if (BinaryOperator.GetKind() == Token::Equal &&
         !dynamic_cast<ReferenceExpression *>(LeftExpression.get()) &&
         !dynamic_cast<ArrayExpression *>(LeftExpression.get()))
+      // TODO: Since now we have ImplicitCast nodes we have to either check if
+      // the castable object is an lv....
       EmitErrorWithLineInfoAndAffectedLine(
           "lvalue required as left operand of assignment", lexer);
 
     int NextTokenPrec = GetBinOpPrecedence(GetCurrentTokenKind());
-    if (TokenPrecedence < NextTokenPrec) {
-      RightExpression = ParseBinaryExpressionRHS(TokenPrecedence + 1,
+
+    int Associviaty = 1; // left
+    if (BinaryOperator.GetKind() == Token::Equal) {
+      Associviaty = 0; // right
+      NextTokenPrec++;
+    }
+    if (TokenPrecedence < NextTokenPrec)
+      RightExpression = ParseBinaryExpressionRHS(TokenPrecedence + Associviaty,
                                                  std::move(RightExpression));
+
+    // Implicit cast insertion if needed.
+    auto LeftType = LeftExpression->GetResultType().GetTypeVariant();
+    auto RightType = RightExpression->GetResultType().GetTypeVariant();
+
+    // If there is a type mismatch
+    if (LeftType != RightType) {
+      // if an assingment, then try to cast the right hand side to type of the
+      // left hand side
+      if (BinaryOperator.GetKind() == Token::Equal) {
+        if (!Type::IsImplicitlyCastable(RightType, LeftType))
+          EmitErrorWithLineInfoAndAffectedLine("Type mismatch", lexer);
+        else {
+          RightExpression = std::make_unique<ImplicitCastExpression>(
+              std::move(RightExpression), LeftType);
+        }
+      }
+      // if its a modulo operation
+      else if (BinaryOperator.GetKind() == Token::Percent) {
+        // TODO: not exactly sure what should be done here, should be
+        // casted to int I belive, but seems like its a straight error
+        // if not both operand are integers
+      }
+      // Otherwise cast the one with lower conversion rank to the higher one
+      else {
+        auto DesiredType =
+            Type::GetStrongestType(LeftType, RightType).GetTypeVariant();
+
+        // If left hand side needs the conversion
+        if (LeftType != DesiredType)
+          LeftExpression = std::make_unique<ImplicitCastExpression>(
+              std::move(LeftExpression), DesiredType);
+        else // if the right one
+          RightExpression = std::make_unique<ImplicitCastExpression>(
+              std::move(RightExpression), DesiredType);
+      }
     }
 
     LeftExpression = std::make_unique<BinaryExpression>(
