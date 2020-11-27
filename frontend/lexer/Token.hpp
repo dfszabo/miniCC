@@ -63,13 +63,13 @@ public:
   Token(TokenKind tk, std::string_view sv, unsigned l, unsigned c)
       : Kind(tk), StringValue(sv), LineNumber(l), ColumnNumber(c) {}
 
-  std::string GetString() { return std::string(StringValue); }
-  TokenKind GetKind() { return Kind; }
+  std::string GetString() const { return std::string(StringValue); }
+  TokenKind GetKind() const { return Kind; }
 
-  unsigned GetLineNum() { return LineNumber; }
-  unsigned GetColNum() { return ColumnNumber; }
+  unsigned GetLineNum() const { return LineNumber; }
+  unsigned GetColNum() const { return ColumnNumber; }
 
-  std::string ToString() {
+  std::string ToString() const {
     std::string Result("");
     Result += "\"" + std::string(StringValue) + "\", ";
     Result += "Line: " + std::to_string(LineNumber + 1) + ", ";

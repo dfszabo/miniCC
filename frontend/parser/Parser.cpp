@@ -25,6 +25,7 @@ std::unique_ptr<Node> Parser::Parse() {
 // symbol name. It would be wise anyway to save it in AST nodes rather than
 // just a string.
 void Parser::InsertToSymTable(const std::string &SymName, ComplexType SymType,
+                              const bool ToGlobal = false,
                               ValueType SymValue = ValueType()) {
 
   std::tuple<std::string, ComplexType, ValueType> SymEntry(SymName, SymType,
@@ -35,6 +36,8 @@ void Parser::InsertToSymTable(const std::string &SymName, ComplexType SymType,
                      SymType.ToString() + "' is already defined."
               << std::endl
               << std::endl;
+  else if (ToGlobal)
+    SymTabStack.InsertGlobalEntry(SymEntry);
   else
     SymTabStack.InsertEntry(SymEntry);
 }
@@ -54,15 +57,13 @@ void static ArrayTypeMismatchError(Token sym, ComplexType actual) {
             << actual.ToString() << "', it is not an array type.'" << std::endl;
 }
 
-void static EmitErrorWithLineInfoAndAffectedLine(const std::string &msg,
-                                                 Lexer &L) {
+void static EmitError(const std::string &msg, Lexer &L) {
   std::cout << ":" << L.GetLineNum() << ": error: " << msg << std::endl
             << "\t\t" << L.GetSource()[L.GetLineNum() - 1] << std::endl
             << std::endl;
 }
 
-void static EmitErrorWithLineInfoAndAffectedLine(const std::string &msg,
-                                                 Lexer &L, Token &T) {
+void static EmitError(const std::string &msg, Lexer &L, Token &T) {
   std::cout << ":" << T.GetLineNum() + 1 << ":" << T.GetColNum() + 1
             << ": error: " << msg << std::endl
             << "\t\t" << L.GetSource()[T.GetLineNum()] << std::endl
@@ -116,32 +117,7 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
 
     // if a function declaration then a left parenthesis '(' expected
     if (lexer.Is(Token::LeftParen)) {
-      Lex(); // consume '('
-
-      // Creating new scope by pushing a new symbol table to the stack
-      SymTabStack.PushSymTable();
-
-      auto PL = ParseParameterList();
-
-      Expect(Token::RightParen);
-
-      // for now assume that a function is defined always not just declared
-      // TODO: was it planed to have function declaration?
-      auto Body = ParseCompoundStatement();
-
-      auto Function =
-          std::make_unique<FunctionDeclaration>(Type, NameStr, PL, Body);
-
-      // Removing the function's scope since we done with its parsing
-      SymTabStack.PopSymTable();
-
-      // FIXME: If we add the function to the symbol table here then its mean we
-      // cannot call it from within this function (recursive call) since it get
-      // only defined after parsing the function
-      InsertToSymTable(NameStr, ComplexType(Function->GetType()));
-
-      TU->AddDeclaration(std::move(Function));
-
+      TU->AddDeclaration(ParseFunctionDeclaration(Type, Name));
     } else { // Variable declaration
       std::vector<unsigned> Dimensions;
 
@@ -167,6 +143,36 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
   }
 
   return TU;
+}
+
+// <FunctionDeclaration> ::= <ReturnTypeSpecifier> <Identifier> '('
+//                             <ParameterList>? ')' ';'
+//						             |
+//<ReturnTypeSpecifier> <Identifier>
+//                             '(' <ParameterList>? ')' <CompoundStatement>
+std::unique_ptr<FunctionDeclaration>
+Parser::ParseFunctionDeclaration(const Type &ReturnType, const Token &Name) {
+  Expect(Token::LeftParen); // consume '('
+
+  // Creating new scope by pushing a new symbol table to the stack
+  SymTabStack.PushSymTable();
+
+  auto PL = ParseParameterList();
+
+  Expect(Token::RightParen);
+
+  auto FuncType = FunctionDeclaration::CreateType(ReturnType, PL);
+  auto NameStr = Name.GetString();
+  InsertToSymTable(NameStr, ComplexType(FuncType), true);
+
+  // For now assume that a function is defined always not just declared
+  // TODO: was it planed to have function declaration?
+  auto Body = ParseCompoundStatement();
+
+  // Removing the function's scope since we done with its parsing
+  SymTabStack.PopSymTable();
+
+  return std::make_unique<FunctionDeclaration>(FuncType, NameStr, PL, Body);
 }
 
 // <ParameterList> ::= <ParameterDeclaration>? {',' <ParameterDeclaration>}*
@@ -421,9 +427,8 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
         !dynamic_cast<ArrayExpression *>(LeftExpression.get()))
       // TODO: Since now we have ImplicitCast nodes we have to either check if
       // the castable object is an lv....
-      EmitErrorWithLineInfoAndAffectedLine(
-          "lvalue required as left operand of assignment", lexer,
-          BinaryOperator);
+      EmitError("lvalue required as left operand of assignment", lexer,
+                BinaryOperator);
 
     int NextTokenPrec = GetBinOpPrecedence(GetCurrentTokenKind());
 
@@ -444,9 +449,8 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
     if (BinaryOperator.GetKind() == Token::Percent) {
       // then both side should be an integer type without a casting
       if (LeftType != Type::Int || RightType != Type::Int)
-        EmitErrorWithLineInfoAndAffectedLine(
-            "Modulo operator can only operate on integers", lexer,
-            BinaryOperator);
+        EmitError("Modulo operator can only operate on integers", lexer,
+                  BinaryOperator);
     }
     // Having different types.
     else if (LeftType != RightType) {
@@ -454,8 +458,7 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
       // left hand side
       if (BinaryOperator.GetKind() == Token::Equal) {
         if (!Type::IsImplicitlyCastable(RightType, LeftType))
-          EmitErrorWithLineInfoAndAffectedLine("Type mismatch", lexer,
-                                               BinaryOperator);
+          EmitError("Type mismatch", lexer, BinaryOperator);
         else {
           RightExpression = std::make_unique<ImplicitCastExpression>(
               std::move(RightExpression), LeftType);
@@ -514,8 +517,8 @@ std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
 
   if (lexer.IsNot(Token::LeftParen) && lexer.IsNot(Token::LeftBracet)) {
     auto RE = std::make_unique<ReferenceExpression>(Id);
-    auto SymEntry = SymTabStack.Contains(Id.GetString());
-    if (SymEntry) {
+
+    if (auto SymEntry = SymTabStack.Contains(Id.GetString())) {
       auto Type = std::get<1>(SymEntry.value());
       RE->SetType(Type);
     } else
@@ -528,44 +531,49 @@ std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
   if (lexer.Is(Token::LeftParen)) {
     Lex();
 
-    ComplexType ReturnType;
+    ComplexType FuncType;
 
-    auto SymEntry = SymTabStack.Contains(Id.GetString());
-    if (SymEntry) {
-      ReturnType = std::get<1>(SymEntry.value()).GetFunctionType();
-    } else
+    if (auto SymEntry = SymTabStack.Contains(Id.GetString()))
+      FuncType = std::get<1>(SymEntry.value()).GetFunctionType();
+    else
       UndefinedSymbolError(Id, lexer);
 
-    std::vector<std::unique_ptr<Expression>> Args;
+    std::vector<std::unique_ptr<Expression>> CallArgs;
 
     if (lexer.IsNot(Token::RightParen))
-      Args.push_back(ParseExpression());
+      CallArgs.push_back(ParseExpression());
 
     while (lexer.Is(Token::Comma)) {
       Lex();
-      Args.push_back(ParseExpression());
+      CallArgs.push_back(ParseExpression());
     }
 
-    auto RetArgTpes = ReturnType.GetArgTypes();
-    if (RetArgTpes.size() != Args.size())
-      EmitErrorWithLineInfoAndAffectedLine("arguments number mismatch", lexer);
+    // Currently a function without argument is actually a function with
+    // a type of ...(void), which is a special case checked first.
+    auto FuncArgTypes = FuncType.GetArgTypes();
+    auto FuncArgNum = FuncArgTypes.size();
+    if (!(CallArgs.size() == 0 && FuncArgNum == 1 &&
+          FuncArgTypes[0] == Type::Void)) {
+      if (FuncArgNum != CallArgs.size())
+        EmitError("arguments number mismatch", lexer);
 
-    // Checking if the given arguments has the expected types for the function.
-    // If not and implicit cast  not allowed then emit error. If allowed then
-    // insert ImplicitCastExpression node with a child of the problematic
-    // expression into the AST.
-    for (int i = 0; i < RetArgTpes.size(); i++)
-      if (Args[i]->GetResultType().GetTypeVariant() != RetArgTpes[i])
-        if (Type::IsImplicitlyCastable(
-                Args[i]->GetResultType().GetTypeVariant(), RetArgTpes[i]))
-          Args[i] = std::make_unique<ImplicitCastExpression>(std::move(Args[i]),
-                                                             RetArgTpes[i]);
-        else
-          EmitErrorWithLineInfoAndAffectedLine("argument type mismatch", lexer);
+      for (int i = 0; i < FuncArgNum; i++) {
+        auto CallArgType = CallArgs[i]->GetResultType().GetTypeVariant();
+
+        // If the ith argument type is not matching the expeccted one
+        if (CallArgType != FuncArgTypes[i])
+          // Cast if allowed
+          if (Type::IsImplicitlyCastable(CallArgType, FuncArgTypes[i]))
+            CallArgs[i] = std::make_unique<ImplicitCastExpression>(
+                std::move(CallArgs[i]), FuncArgTypes[i]);
+          else // otherwise its an error
+            EmitError("argument type mismatch", lexer);
+      }
+    }
 
     Expect(Token::RightParen);
 
-    return std::make_unique<CallExpression>(Id.GetString(), Args, ReturnType);
+    return std::make_unique<CallExpression>(Id.GetString(), CallArgs, FuncType);
   }
   // parse ArrayExpression
   if (lexer.Is(Token::LeftBracet)) {

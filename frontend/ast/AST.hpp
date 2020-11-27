@@ -231,14 +231,18 @@ public:
   std::unique_ptr<CompoundStatement> &GetBody() { return Body; }
   void SetBody(std::unique_ptr<CompoundStatement> &cs) { Body = std::move(cs); }
 
-  void CalcArgumentTypes() {
-    for (int i = 0; i < Arguments.size(); i++) {
-      auto t = Arguments[i]->GetType().GetTypeVariant();
+  static FunctionType CreateType(const Type &t, const ParamVec &params) {
+    FunctionType Type(t);
+
+    for (int i = 0; i < params.size(); i++) {
+      auto t = params[i]->GetType().GetTypeVariant();
       Type.GetArgumentTypes().push_back(t);
     }
     // if there are no arguments then set it to void
-    if (Arguments.size() == 0)
+    if (params.size() == 0)
       Type.GetArgumentTypes().push_back(Type::Void);
+
+    return Type;
   }
 
   FunctionDeclaration() = delete;
@@ -246,9 +250,7 @@ public:
   FunctionDeclaration(FunctionType FT, std::string Name, ParamVec &Args,
                       std::unique_ptr<CompoundStatement> &Body)
       : Type(FT), Name(Name), Arguments(std::move(Args)),
-        Body(std::move(Body)) {
-    CalcArgumentTypes();
-  }
+        Body(std::move(Body)) {}
 
   void ASTDump(unsigned tab = 0) override {
     Print("FunctionDeclaration ", tab);

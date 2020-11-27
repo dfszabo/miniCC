@@ -10,6 +10,8 @@ int bar () {
 	int arr[10];
 
 
+	bar();
+
 	real = 0.0;
 	if (g == 0)
 		real = foo(1,2.0);
@@ -18,7 +20,7 @@ int bar () {
 	
 	i = 10;
 	while (i > 0 && real != 0.0) {
-		arr[i] = real = 3.0 * i % 20.0;
+		arr[i] = real = 3.0 * (i % 20);
 		i = i + 1;
 	}
 	

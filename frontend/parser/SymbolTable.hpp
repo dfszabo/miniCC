@@ -37,6 +37,8 @@ public:
     SymTabStack[idx].push_back(e);
   }
 
+  void InsertGlobalEntry(const Entry &e) { SymTabStack[0].push_back(e); }
+
   bool Contains(Entry e) {
     for (int i = Size() - 1; i >= 0; i--) {
       auto table = SymTabStack[i];

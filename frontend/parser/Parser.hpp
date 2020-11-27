@@ -28,11 +28,12 @@ public:
   /// Helper function to make insertion to the symbol table stack more compact
   /// and readable
   void InsertToSymTable(const std::string &SymName, ComplexType SymType,
-                        ValueType SymValue);
+                        const bool ToGlobal, ValueType SymValue);
 
   std::unique_ptr<Node> ParseTranslationUnit();
   std::unique_ptr<Node> ParseExternalDeclaration();
-  Node ParseFunctionDeclaration();
+  std::unique_ptr<FunctionDeclaration>
+  ParseFunctionDeclaration(const Type &ReturnType, const Token &Name);
   std::unique_ptr<VariableDeclaration> ParseVaraibleDeclaration();
   Node ParseReturnTypeSpecifier();
   std::vector<std::unique_ptr<FunctionParameterDeclaration>>
