@@ -281,6 +281,8 @@ public:
     Mul,
     Div,
     Mod,
+    And,
+    Not,
     Equal,
     Less,
     Greater,
@@ -302,6 +304,10 @@ public:
       return Div;
     case Token::Percent:
       return Mod;
+    case Token::And:
+      return And;
+    case Token::Bang:
+      return Not;
     case Token::DoubleEqual:
       return Equal;
     case Token::LessThan:
@@ -327,15 +333,18 @@ public:
   ExprPtr &GetRightExpr() { return Right; }
   void SetRightExpr(ExprPtr &e) { Right = std::move(e); }
 
-  bool IsConditional() { return GetOperationKind() >= Equal; }
+  bool IsConditional() { return GetOperationKind() >= Not; }
 
   BinaryExpression(ExprPtr L, Token Op, ExprPtr R) {
     Left = std::move(L);
     Operation = Op;
     Right = std::move(R);
-    ResultType = ComplexType(
-        Type::GetStrongestType(Left->GetResultType().GetTypeVariant(),
-                               Right->GetResultType().GetTypeVariant()));
+    if (IsConditional())
+      ResultType = ComplexType(Type::Int);
+    else
+      ResultType = ComplexType(
+          Type::GetStrongestType(Left->GetResultType().GetTypeVariant(),
+                                 Right->GetResultType().GetTypeVariant()));
   }
 
   BinaryExpression() = default;

@@ -28,7 +28,6 @@ public:
     LessThan,
     GreaterThan,
     Bang,
-
     And,
 
     // Multichar operators
