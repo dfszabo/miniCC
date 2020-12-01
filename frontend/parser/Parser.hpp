@@ -1,6 +1,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "../../middle_end/IR/IRFactory.hpp"
 #include "../ast/AST.hpp"
 #include "../lexer/Lexer.hpp"
 #include "../lexer/Token.hpp"
@@ -15,7 +16,7 @@ public:
 
   Parser() = delete;
 
-  Parser(std::vector<std::string> &s) : lexer(s) {}
+  Parser(std::vector<std::string> &s, IRFactory *IRF) : lexer(s), IRF(IRF) {}
 
   Token Lex() { return lexer.Lex(); }
 
@@ -59,6 +60,7 @@ public:
 private:
   Lexer lexer;
   SymbolTableStack SymTabStack;
+  IRFactory *IRF;
 };
 
 #endif

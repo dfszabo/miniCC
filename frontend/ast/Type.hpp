@@ -2,6 +2,7 @@
 #define TYPE_HPP
 
 #include <cassert>
+#include <string>
 #include <vector>
 
 class Type {
@@ -84,6 +85,8 @@ public:
       TyStr += "[" + std::to_string(Dimensions[i]) + "]";
     return TyStr;
   }
+
+  bool IsArray() { return Dimensions.size() > 0; }
 
 private:
   std::vector<unsigned> Dimensions;
