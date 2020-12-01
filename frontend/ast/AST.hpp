@@ -1,6 +1,8 @@
 #ifndef AST_HPP
 #define AST_HPP
 
+#include "../../middle_end/IR/IRFactory.hpp"
+#include "../../middle_end/IR/Value.hpp"
 #include "../lexer/Token.hpp"
 #include "Type.hpp"
 #include <cassert>
@@ -26,7 +28,12 @@ static void PrintLn(const char *str, unsigned tab = 0) {
 
 class Node {
 public:
+  virtual ~Node(){};
   virtual void ASTDump(unsigned tab = 0) { PrintLn("Node"); }
+  virtual Value *IRCodegen(IRFactory *IRF) {
+    assert(!"Must be a child node type");
+    return nullptr;
+  }
 };
 
 class Statement : public Node {
@@ -52,27 +59,30 @@ public:
   std::string &GetName() { return Name; }
   void SetName(std::string &s) { Name = s; }
 
-  ArrayType GetType() { return Ty; }
-  void SetType(ArrayType t) { Ty = t; }
+  ArrayType GetType() { return AType; }
+  void SetType(ArrayType t) { AType = t; }
 
   VariableDeclaration(std::string &Name, Type Ty, std::vector<unsigned> Dim)
-      : Name(Name), Ty(Ty, std::move(Dim)) {}
+      : Name(Name), AType(Ty, std::move(Dim)) {}
 
-  VariableDeclaration(std::string &Name, ArrayType Ty) : Name(Name), Ty(Ty) {}
+  VariableDeclaration(std::string &Name, ArrayType Ty)
+      : Name(Name), AType(Ty) {}
 
   VariableDeclaration() = default;
 
   void ASTDump(unsigned tab = 0) override {
     Print("VariableDeclaration ", tab);
-    auto TypeStr = "'" + Ty.ToString() + "' ";
+    auto TypeStr = "'" + AType.ToString() + "' ";
     Print(TypeStr.c_str());
     auto NameStr = "'" + Name + "'";
     PrintLn(NameStr.c_str());
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
   std::string Name;
-  ArrayType Ty;
+  ArrayType AType;
 };
 
 class CompoundStatement : public Statement {
@@ -110,6 +120,8 @@ public:
       Statements[i]->ASTDump(tab + 2);
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
   DeclVec Declarations;
   StmtVec Statements;
@@ -123,6 +135,8 @@ public:
     PrintLn("ExpressionStatement", tab);
     Expr->ASTDump(tab + 2);
   }
+
+  Value *IRCodegen(IRFactory *IRF) override;
 
 private:
   std::unique_ptr<Expression> Expr;
@@ -146,10 +160,12 @@ public:
     ElseBody->ASTDump(tab + 2);
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
   std::unique_ptr<Expression> Condition;
   std::unique_ptr<Statement> IfBody;
-  std::unique_ptr<Statement> ElseBody;
+  std::unique_ptr<Statement> ElseBody = nullptr;
 };
 
 class WhileStatement : public Statement {
@@ -166,6 +182,8 @@ public:
     Body->ASTDump(tab + 2);
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
   std::unique_ptr<Expression> Condition;
   std::unique_ptr<Statement> Body;
@@ -175,22 +193,26 @@ class ReturnStatement : public Statement {
 public:
   std::unique_ptr<Expression> &GetCondition() {
     assert(HasValue() && "Must have a value to return it.");
-    return Value.value();
+    return ReturnValue.value();
   }
-  void SetCondition(std::unique_ptr<Expression> v) { Value = std::move(v); }
-  bool HasValue() { return Value.has_value(); }
+  void SetCondition(std::unique_ptr<Expression> v) {
+    ReturnValue = std::move(v);
+  }
+  bool HasValue() { return ReturnValue.has_value(); }
 
   ReturnStatement() = default;
-  ReturnStatement(std::unique_ptr<Expression> e) : Value(std::move(e)) {}
+  ReturnStatement(std::unique_ptr<Expression> e) : ReturnValue(std::move(e)) {}
 
   void ASTDump(unsigned tab = 0) override {
     PrintLn("ReturnStatement", tab);
-    if (Value)
-      Value.value()->ASTDump(tab + 2);
+    if (ReturnValue)
+      ReturnValue.value()->ASTDump(tab + 2);
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
-  std::optional<std::unique_ptr<Expression>> Value;
+  std::optional<std::unique_ptr<Expression>> ReturnValue;
 };
 
 class FunctionParameterDeclaration : public Statement {
@@ -208,6 +230,8 @@ public:
     auto NameStr = "'" + Name + "'";
     PrintLn(NameStr.c_str());
   }
+
+  Value *IRCodegen(IRFactory *IRF) override;
 
 private:
   std::string Name;
@@ -263,6 +287,8 @@ public:
     Body->ASTDump(tab + 2);
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
   FunctionType Type;
   std::string Name;
@@ -275,49 +301,49 @@ class BinaryExpression : public Expression {
 
 public:
   enum BinaryOperation {
-    Assign,
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-    And,
+    ASSIGN,
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOD,
+    AND,
     Not,
-    Equal,
-    Less,
-    Greater,
-    NotEqual,
-    LogicalAnd
+    EQ,
+    LT,
+    GT,
+    NE,
+    ANDL
   };
 
   BinaryOperation GetOperationKind() {
     switch (Operation.GetKind()) {
     case Token::Equal:
-      return Assign;
+      return ASSIGN;
     case Token::Plus:
-      return Add;
+      return ADD;
     case Token::Minus:
-      return Sub;
+      return SUB;
     case Token::Astrix:
-      return Mul;
+      return MUL;
     case Token::ForwardSlash:
-      return Div;
+      return DIV;
     case Token::Percent:
-      return Mod;
+      return MOD;
     case Token::And:
-      return And;
+      return AND;
     case Token::Bang:
       return Not;
     case Token::DoubleEqual:
-      return Equal;
+      return EQ;
     case Token::LessThan:
-      return Less;
+      return LT;
     case Token::GreaterThan:
-      return Greater;
+      return GT;
     case Token::BangEqual:
-      return NotEqual;
+      return NE;
     case Token::DoubleAnd:
-      return LogicalAnd;
+      return ANDL;
     default:
       assert(false && "Invalid binary operator kind.");
       break;
@@ -358,6 +384,8 @@ public:
     Right->ASTDump(tab + 2);
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
   Token Operation;
   std::unique_ptr<Expression> Left;
@@ -386,6 +414,8 @@ public:
       Arguments[i]->ASTDump(tab + 2);
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
   std::string Name;
   ExprVec Arguments;
@@ -398,6 +428,9 @@ public:
 
   ReferenceExpression(Token t) { Identifier = t.GetString(); }
 
+  void SetLValueness(bool p) { IsLValue = p; }
+  bool GetLValueness() { return IsLValue; }
+
   void ASTDump(unsigned tab = 0) override {
     Print("ReferenceExpression ", tab);
     auto Str = "'" + ResultType.ToString() + "' ";
@@ -405,16 +438,19 @@ public:
     PrintLn(Str.c_str());
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
+  bool IsLValue = false;
   std::string Identifier;
 };
 
 class IntegerLiteralExpression : public Expression {
 public:
-  unsigned GetValue() { return Value; }
-  void SetValue(unsigned v) { Value = v; }
+  unsigned GetValue() { return IntValue; }
+  void SetValue(uint64_t v) { IntValue = v; }
 
-  IntegerLiteralExpression(unsigned v) : Value(v) {
+  IntegerLiteralExpression(uint64_t v) : IntValue(v) {
     SetType(ComplexType(Type::Int));
   }
   IntegerLiteralExpression() = delete;
@@ -423,20 +459,22 @@ public:
     Print("IntegerLiteralExpression ", tab);
     auto TyStr = "'" + ResultType.ToString() + "' ";
     Print(TyStr.c_str());
-    auto ValStr = "'" + std::to_string(Value) + "'";
+    auto ValStr = "'" + std::to_string(IntValue) + "'";
     PrintLn(ValStr.c_str());
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
-  unsigned Value;
+  uint64_t IntValue;
 };
 
 class FloatLiteralExpression : public Expression {
 public:
-  double GetValue() { return Value; }
-  void SetValue(double v) { Value = v; }
+  double GetValue() { return FPValue; }
+  void SetValue(double v) { FPValue = v; }
 
-  FloatLiteralExpression(double v) : Value(v) {
+  FloatLiteralExpression(double v) : FPValue(v) {
     SetType(ComplexType(Type::Double));
   }
   FloatLiteralExpression() = delete;
@@ -445,12 +483,14 @@ public:
     Print("FloatLiteralExpression ", tab);
     auto TyStr = "'" + ResultType.ToString() + "' ";
     Print(TyStr.c_str());
-    auto ValStr = "'" + std::to_string(Value) + "'";
+    auto ValStr = "'" + std::to_string(FPValue) + "'";
     PrintLn(ValStr.c_str());
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
-  double Value;
+  double FPValue;
 };
 
 class ArrayExpression : public Expression {
@@ -468,6 +508,9 @@ public:
     ResultType = Ct;
   }
 
+  void SetLValueness(bool p) { IsLValue = p; }
+  bool GetLValueness() { return IsLValue; }
+
   void ASTDump(unsigned tab = 0) override {
     Print("ArrayExpression ", tab);
     auto Str = "'" + ResultType.ToString() + "' ";
@@ -477,7 +520,10 @@ public:
       IndexExpressions[i]->ASTDump(tab + 2);
   }
 
+  Value *IRCodegen(IRFactory *IRF) override;
+
 private:
+  bool IsLValue = false;
   Token Identifier;
   ExprVec IndexExpressions;
 };
@@ -498,6 +544,8 @@ public:
     PrintLn(Str.c_str());
     CastableExpression->ASTDump(tab + 2);
   }
+
+  Value *IRCodegen(IRFactory *IRF) override;
 
 private:
   std::unique_ptr<Expression> CastableExpression;
@@ -525,6 +573,8 @@ public:
     for (int i = 0; i < Declarations.size(); i++)
       Declarations[i]->ASTDump(tab + 2);
   }
+
+  Value *IRCodegen(IRFactory *IRF) override;
 
 private:
   std::vector<std::unique_ptr<Statement>> Declarations;

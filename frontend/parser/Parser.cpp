@@ -361,6 +361,7 @@ std::unique_ptr<ExpressionStatement> Parser::ParseExpressionStatement() {
 }
 
 // <ReturnStatement> ::= return <Expression>? ';'
+// TODO: we need explicit type conversions here as well
 std::unique_ptr<ReturnStatement> Parser::ParseReturnStatement() {
   Expect(Token::Return);
   auto RS = std::make_unique<ReturnStatement>(ParseExpression());
@@ -429,6 +430,19 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
       // the castable object is an lv....
       EmitError("lvalue required as left operand of assignment", lexer,
                 BinaryOperator);
+
+    //  If it is an equal binop (assignment) and the left hand side is an array
+    // expression or reference expression, then it is an LValue.
+
+    // FIX-ME: Should be solved in a better way. Seems like LLVM using
+    // ImplicitCast for this purpose as well. Should investigate that solution.
+    if (BinaryOperator.GetKind() == Token::Equal) {
+      if (auto LE = dynamic_cast<ArrayExpression *>(LeftExpression.get()))
+        LE->SetLValueness(true);
+      else if (auto LE =
+                   dynamic_cast<ReferenceExpression *>(LeftExpression.get()))
+        LE->SetLValueness(true);
+    }
 
     int NextTokenPrec = GetBinOpPrecedence(GetCurrentTokenKind());
 

@@ -1,6 +1,7 @@
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
 #include "parser/SymbolTable.hpp"
+#include "../middle_end/IR/IRFactory.hpp"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -33,6 +34,7 @@ int main(int argc, char *argv[]) {
   std::string FilePath = "tests/test.txt";
   bool DumpTokens = false;
   bool DumpAST = false;
+  bool DumpIR = false;
 
   for (int i = 0; i < argc; i++)
     if (argv[i][0] != '-')
@@ -44,6 +46,10 @@ int main(int argc, char *argv[]) {
       }
       if (!std::string(&argv[i][1]).compare("dump-ast")) {
         DumpAST = true;
+        continue;
+      }
+      if (!std::string(&argv[i][1]).compare("dump-ir")) {
+        DumpIR = true;
         continue;
       }
     }
@@ -64,10 +70,14 @@ int main(int argc, char *argv[]) {
   std::vector<std::string> src;
   getFileContent(FilePath.c_str(), src);
 
-  Parser parser(src);
+  Module IRModule;
+  IRFactory IRF(IRModule); 
+  Parser parser(src, &IRF);
   auto AST = parser.Parse();
   if (DumpAST)
     AST->ASTDump();
+  if (DumpIR)
+    AST->IRCodegen(&IRF), IRModule.Print();
 
   return 0;
 }
