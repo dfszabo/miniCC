@@ -244,11 +244,12 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
 Value *ReferenceExpression::IRCodegen(IRFactory *IRF) {
   auto Local = IRF->GetSymbolValue(Identifier);
 
-  if (Local)
+  if (Local) {
     if (GetLValueness())
       return Local;
     else
       return IRF->CreateLD(Local->GetType(), Local);
+  }
 
   auto GV = IRF->GetGlobalVar(Identifier);
 

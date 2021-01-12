@@ -144,9 +144,10 @@ public:
     Ty = vk;
   }
   ComplexType(Type t, std::vector<unsigned> d) {
-    if (d.size() == 0)
-      ComplexType(t);
-    else {
+    if (d.size() == 0) {
+      Kind = Simple;
+      Ty = t.GetTypeVariant();
+    } else {
       Kind = Array;
       Dimensions = std::move(d);
     }
@@ -172,15 +173,6 @@ public:
       ArgumentTypes = std::move(ct.ArgumentTypes);
   }
 
-  ComplexType &operator=(ComplexType &&ct) {
-    Ty = ct.Ty;
-    Kind = ct.Kind;
-    if (ct.Kind == Array)
-      Dimensions = std::move(ct.Dimensions);
-    else if (ct.Kind == Function)
-      ArgumentTypes = std::move(ct.ArgumentTypes);
-  }
-
   ComplexType(const ComplexType &ct) {
     Ty = ct.Ty;
     Kind = ct.Kind;
@@ -197,6 +189,7 @@ public:
       Dimensions = ct.Dimensions;
     else if (ct.Kind == Function)
       ArgumentTypes = ct.ArgumentTypes;
+    return *this;
   }
 
   bool IsSimpleType() { return Kind == Simple; }

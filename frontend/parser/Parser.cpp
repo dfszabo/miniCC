@@ -575,13 +575,14 @@ std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
         auto CallArgType = CallArgs[i]->GetResultType().GetTypeVariant();
 
         // If the ith argument type is not matching the expeccted one
-        if (CallArgType != FuncArgTypes[i])
+        if (CallArgType != FuncArgTypes[i]) {
           // Cast if allowed
           if (Type::IsImplicitlyCastable(CallArgType, FuncArgTypes[i]))
             CallArgs[i] = std::make_unique<ImplicitCastExpression>(
                 std::move(CallArgs[i]), FuncArgTypes[i]);
           else // otherwise its an error
             EmitError("argument type mismatch", lexer);
+        }
       }
     }
 
@@ -628,4 +629,6 @@ std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
 
     return std::make_unique<ArrayExpression>(Id, IndexExpressions, Type);
   }
+
+  return nullptr;
 }
