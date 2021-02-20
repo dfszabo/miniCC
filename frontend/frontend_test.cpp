@@ -1,9 +1,18 @@
+#include "../backend/AssemblyEmitter.hpp"
+#include "../backend/IRtoLLIR.hpp"
+#include "../backend/InsturctionSelection.hpp"
+#include "../backend/MachineInstructionLegalizer.hpp"
+#include "../backend/PrologueEpilogInsertion.hpp"
+#include "../backend/RegisterAllocator.hpp"
+#include "../backend/TargetArchs/AArch64/AArch64TargetMachine.hpp"
+#include "../backend/TargetArchs/RISCV/RISCVTargetMachine.hpp"
+#include "../middle_end/IR/IRFactory.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
 #include "parser/SymbolTable.hpp"
-#include "../middle_end/IR/IRFactory.hpp"
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -20,7 +29,7 @@ bool getFileContent(std::string fileName, std::vector<std::string> &vecOfStrs) {
     return false;
   }
   std::string str;
-  // Read the next line from File untill it reaches the end.
+  // Read the next line from File until it reaches the end.
   while (std::getline(in, str)) {
     // Line contains string of length > 0 then save it in vector
     vecOfStrs.push_back(str);
@@ -30,11 +39,13 @@ bool getFileContent(std::string fileName, std::vector<std::string> &vecOfStrs) {
   return true;
 }
 
+/// TODO: Make a proper driver
 int main(int argc, char *argv[]) {
   std::string FilePath = "tests/test.txt";
   bool DumpTokens = false;
   bool DumpAST = false;
   bool DumpIR = false;
+  std::string TargetArch = "aarch64";
 
   for (int i = 0; i < argc; i++)
     if (argv[i][0] != '-')
@@ -43,14 +54,18 @@ int main(int argc, char *argv[]) {
       if (!std::string(&argv[i][1]).compare("dump-tokens")) {
         DumpTokens = true;
         continue;
-      }
-      if (!std::string(&argv[i][1]).compare("dump-ast")) {
+      } else if (!std::string(&argv[i][1]).compare("dump-ast")) {
         DumpAST = true;
         continue;
-      }
-      if (!std::string(&argv[i][1]).compare("dump-ir")) {
+      } else if (!std::string(&argv[i][1]).compare("dump-ir")) {
         DumpIR = true;
         continue;
+      } else if (!std::string(&argv[i][1]).compare(0, 5, "arch=")) {
+        TargetArch = std::string(&argv[i][6]);
+        continue;
+      } else {
+        std::cerr << "Error: Unknown argument '" << argv[i] << "'" << std::endl;
+        return -1;
       }
     }
 
@@ -71,13 +86,41 @@ int main(int argc, char *argv[]) {
   getFileContent(FilePath.c_str(), src);
 
   Module IRModule;
-  IRFactory IRF(IRModule); 
+  IRFactory IRF(IRModule);
   Parser parser(src, &IRF);
   auto AST = parser.Parse();
+  AST->IRCodegen(&IRF);
+
   if (DumpAST)
     AST->ASTDump();
   if (DumpIR)
-    AST->IRCodegen(&IRF), IRModule.Print();
+    IRModule.Print();
+
+  MachineIRModule LLIRModule;
+  IRtoLLIR I2LLIR(IRModule, &LLIRModule);
+  I2LLIR.GenerateLLIRFromIR();
+
+  std::unique_ptr<TargetMachine> TM;
+
+  if (TargetArch == "riscv")
+    TM = std::make_unique<RISCV::RISCVTargetMachine>();
+  else
+    TM = std::make_unique<AArch64::AArch64TargetMachine>();
+
+  MachineInstructionLegalizer Legalizer(&LLIRModule, TM.get());
+  Legalizer.Run();
+
+  InsturctionSelection IS(&LLIRModule, TM.get());
+  IS.InstrSelect();
+
+  RegisterAllocator RA(&LLIRModule, TM.get());
+  RA.RunRA();
+
+  PrologueEpilogInsertion PEI(&LLIRModule, TM.get());
+  PEI.Run();
+
+  AssemblyEmitter AE(&LLIRModule, TM.get());
+  AE.GenerateAssembly();
 
   return 0;
 }

@@ -209,6 +209,7 @@ public:
   }
 
   void Insert(std::unique_ptr<FunctionParameter> FP) {
+    FP->SetID(ID++);
     GetCurrentFunction()->Insert(std::move(FP));
   }
 

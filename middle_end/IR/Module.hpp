@@ -17,6 +17,8 @@ public:
 
   BasicBlock *GetBB(const size_t Index);
 
+  std::vector<Function>& GetFunctions() { return Functions; }
+
   Function *CurrentFunction();
 
   void AddFunction(Function F);
