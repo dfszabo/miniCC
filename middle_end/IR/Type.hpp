@@ -36,9 +36,11 @@ public:
   }
 
   bool IsFP() const { return Kind == FP; }
+  bool IsINT() const { return Kind == SINT || Kind == UINT; }
   bool IsVoid() const { return Kind == NONE; }
 
   void SetNumberOfElements(unsigned N) { NumberOfElements = N; }
+  size_t GetBitSize() const { return BitWidth; }
   size_t GetByteSize() const { return (BitWidth * NumberOfElements + 7) / 8; }
 
   IRType GetBaseType() const { return IRType(Kind, BitWidth); }

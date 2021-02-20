@@ -38,6 +38,8 @@ public:
     STACK_ALLOC,
   };
 
+  IKind GetInstructionKind() { return InstKind; }
+
   static std::string AsString(IKind IK);
 
   Instruction(IKind K, BasicBlock *P, IRType V)
@@ -59,6 +61,9 @@ class BinaryInstruction : public Instruction {
 public:
   BinaryInstruction(IKind BO, Value *L, Value *R, BasicBlock *P)
       : Instruction(BO, P, L->GetType()), LHS(L), RHS(R) {}
+
+  Value *GetLHS() { return LHS; }
+  Value *GetRHS() { return RHS; }
 
   void Print() const override;
 
@@ -83,7 +88,7 @@ private:
 
 class CompareInstruction : public Instruction {
 public:
-  enum CompRel { EQ, NE, LT, GT, LE, GE };
+  enum CompRel : unsigned { INVALID, EQ, NE, LT, GT, LE, GE };
 
   CompareInstruction(Value *L, Value *R, CompRel REL, BasicBlock *P)
       : Instruction(Instruction::CMP, P, IRType(IRType::SINT, 1)), LHS(L),
@@ -91,12 +96,16 @@ public:
 
   const char *GetRelString() const;
 
+  Value *GetLHS() { return LHS; }
+  Value *GetRHS() { return RHS; }
+  unsigned GetRelation() { return (unsigned)Relation; }
+
   void InvertRelation();
 
   void Print() const override;
 
 private:
-  CompRel Relation;
+  CompRel Relation = INVALID;
   Value *LHS;
   Value *RHS;
 };
@@ -127,6 +136,8 @@ public:
 
   void SetTargetBB(BasicBlock *Target) { Target = Target; }
 
+  std::string &GetTargetLabelName();
+
   void Print() const override;
 
 private:
@@ -139,6 +150,12 @@ public:
                     BasicBlock *P)
       : Instruction(Instruction::BRANCH, P, IRType(IRType::NONE)), Condition(C),
         TrueTarget(True), FalseTarget(False) {}
+
+  Value *GetCondition() { return Condition; }
+  std::string &GetTrueLabelName();
+  std::string &GetFalseLabelName();
+
+  bool HasFalseLabel() { return FalseTarget != nullptr; }
 
   void Print() const override;
 
@@ -154,6 +171,8 @@ public:
       : Instruction(Instruction::RET, P, RV->GetType()), RetVal(RV) {
     BasicBlockTerminator = true;
   }
+
+  Value *GetRetVal() const { return RetVal; }
 
   void Print() const override;
 
@@ -180,6 +199,9 @@ public:
 
   void Print() const override;
 
+  Value *GetMemoryLocation() { return Destination; }
+  Value *GetSavedValue() { return Source; }
+
 private:
   Value *Source;
   Value *Destination;
@@ -194,6 +216,8 @@ public:
       : Instruction(Instruction::LOAD, P, T), Source(S), Offset(nullptr) {}
 
   void Print() const override;
+
+  Value *GetMemoryLocation() { return Source; }
 
 private:
   Value *Source;

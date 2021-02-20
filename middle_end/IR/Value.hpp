@@ -23,7 +23,13 @@ public:
   unsigned GetID() const { return UniqeID; }
   void SetID(const unsigned i) { UniqeID = i; }
 
+  unsigned GetBitWidth() const { return ValueType.GetBitSize(); }
+
   bool IsConstant() const { return Kind == CONST; }
+  bool IsRegister() const { return Kind == REGISTER; }
+  bool IsParameter() const { return Kind == PARAM; }
+
+  bool IsIntType() const { return ValueType.IsINT(); }
 
   virtual std::string ValueString() const {
     return "$" + std::to_string(UniqeID);
@@ -31,7 +37,7 @@ public:
 
 protected:
   unsigned UniqeID;
-  VKind Kind;
+  VKind Kind = REGISTER;
   IRType ValueType;
 };
 
@@ -42,6 +48,8 @@ public:
   Constant(double V) : Value(Value::CONST, IRType(IRType::FP, 64)), Val(V) {}
 
   bool IsFPConst() const { return ValueType.IsFP(); }
+
+  uint64_t GetIntValue() { return std::get<uint64_t>(Val); }
 
   std::string ValueString() const override {
     if (IsFPConst())

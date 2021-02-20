@@ -123,9 +123,18 @@ void CallInstruction::Print() const {
   std::cout << ")" << std::endl;
 }
 
+std::string &JumpInstruction::GetTargetLabelName() { return Target->GetName(); }
+
 void JumpInstruction::Print() const {
   std::cout << "\t" << AsString(InstKind) << "\t";
   std::cout << "<" << Target->GetName() << ">" << std::endl;
+}
+
+std::string &BranchInstruction::GetTrueLabelName() {
+  return TrueTarget->GetName();
+}
+std::string &BranchInstruction::GetFalseLabelName() {
+  return FalseTarget->GetName();
 }
 
 void BranchInstruction::Print() const {
