@@ -45,7 +45,7 @@ TargetRegister *RISCVRegisterInfo::GetRegister(unsigned i) {
 }
 
 TargetRegister *RISCVRegisterInfo::GetRegisterByID(unsigned i) {
-  assert(i < 32 && "Out of bound access");
+  assert(i - 1 < 32 && i > 0 && "Out of bound access");
   return &Registers[i - 1];
 }
 
