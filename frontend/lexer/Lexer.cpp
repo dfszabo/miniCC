@@ -215,7 +215,7 @@ std::optional<Token> Lexer::LexSymbol() {
 
 Token Lexer::LookAhead(unsigned n) {
   // fill in the TokenBuffer to have at least n element
-  for (int i = TokenBuffer.size(); i < n; i++)
+  for (size_t i = TokenBuffer.size(); i < n; i++)
     TokenBuffer.push_back(Lex());
 
   return TokenBuffer[n - 1];

@@ -13,7 +13,7 @@
 #include <vector>
 
 static void PrintImpl(const char *str, unsigned tab = 0, bool newline = false) {
-  for (int i = 0; i < tab; i++)
+  for (size_t i = 0; i < tab; i++)
     std::cout << " ";
   std::cout << str;
   if (newline)
@@ -114,9 +114,9 @@ public:
 
   void ASTDump(unsigned tab = 0) override {
     PrintLn("CompoundStatement", tab);
-    for (int i = 0; i < Declarations.size(); i++)
+    for (size_t i = 0; i < Declarations.size(); i++)
       Declarations[i]->ASTDump(tab + 2);
-    for (int i = 0; i < Statements.size(); i++)
+    for (size_t i = 0; i < Statements.size(); i++)
       Statements[i]->ASTDump(tab + 2);
   }
 
@@ -258,7 +258,7 @@ public:
   static FunctionType CreateType(const Type &t, const ParamVec &params) {
     FunctionType Type(t);
 
-    for (int i = 0; i < params.size(); i++) {
+    for (size_t i = 0; i < params.size(); i++) {
       auto t = params[i]->GetType().GetTypeVariant();
       Type.GetArgumentTypes().push_back(t);
     }
@@ -282,7 +282,7 @@ public:
     Print(TypeStr.c_str());
     auto NameStr = "'" + Name + "'";
     PrintLn(NameStr.c_str());
-    for (int i = 0; i < Arguments.size(); i++)
+    for (size_t i = 0; i < Arguments.size(); i++)
       Arguments[i]->ASTDump(tab + 2);
     Body->ASTDump(tab + 2);
   }
@@ -410,7 +410,7 @@ public:
     auto Str = "'" + ResultType.ToString() + "' ";
     Str += "'" + Name + "'";
     PrintLn(Str.c_str());
-    for (int i = 0; i < Arguments.size(); i++)
+    for (size_t i = 0; i < Arguments.size(); i++)
       Arguments[i]->ASTDump(tab + 2);
   }
 
@@ -516,7 +516,7 @@ public:
     auto Str = "'" + ResultType.ToString() + "' ";
     Str += "'" + Identifier.GetString() + "'";
     PrintLn(Str.c_str());
-    for (int i = 0; i < IndexExpressions.size(); i++)
+    for (size_t i = 0; i < IndexExpressions.size(); i++)
       IndexExpressions[i]->ASTDump(tab + 2);
   }
 
@@ -570,7 +570,7 @@ public:
 
   void ASTDump(unsigned tab = 0) override {
     PrintLn("TranslationUnit", tab);
-    for (int i = 0; i < Declarations.size(); i++)
+    for (size_t i = 0; i < Declarations.size(); i++)
       Declarations[i]->ASTDump(tab + 2);
   }
 

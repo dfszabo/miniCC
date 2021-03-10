@@ -81,7 +81,7 @@ public:
   std::string ToString() const override {
     auto TyStr = Type::ToString(Ty);
 
-    for (int i = 0; i < Dimensions.size(); i++)
+    for (size_t i = 0; i < Dimensions.size(); i++)
       TyStr += "[" + std::to_string(Dimensions[i]) + "]";
     return TyStr;
   }
@@ -117,7 +117,7 @@ public:
     auto ArgSize = ArgumentTypes.size();
     if (ArgSize > 0)
       TyStr += " (";
-    for (int i = 0; i < ArgSize; i++) {
+    for (size_t i = 0; i < ArgSize; i++) {
       TyStr += Type::ToString(ArgumentTypes[i]);
       if (i + 1 < ArgSize)
         TyStr += ",";
@@ -236,7 +236,7 @@ public:
       auto ArgSize = ArgumentTypes.size();
       if (ArgSize > 0)
         TyStr += " (";
-      for (int i = 0; i < ArgSize; i++) {
+      for (size_t i = 0; i < ArgSize; i++) {
         TyStr += Type::ToString(ArgumentTypes[i]);
         if (i + 1 < ArgSize)
           TyStr += ",";
@@ -247,7 +247,7 @@ public:
     } else if (Kind == Array) {
       auto TyStr = Type::ToString(Ty);
 
-      for (int i = 0; i < Dimensions.size(); i++)
+      for (size_t i = 0; i < Dimensions.size(); i++)
         TyStr += "[" + std::to_string(Dimensions[i]) + "]";
       return TyStr;
     } else {

@@ -571,7 +571,7 @@ std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
       if (FuncArgNum != CallArgs.size())
         EmitError("arguments number mismatch", lexer);
 
-      for (int i = 0; i < FuncArgNum; i++) {
+      for (size_t i = 0; i < FuncArgNum; i++) {
         auto CallArgType = CallArgs[i]->GetResultType().GetTypeVariant();
 
         // If the ith argument type is not matching the expeccted one

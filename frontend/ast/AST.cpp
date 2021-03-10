@@ -185,7 +185,7 @@ Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {
   auto Param =
       std::make_unique<FunctionParameter>(FunctionParameter(Name, ParamType));
 
-  auto ST = IRF->CreateSTR(Param.get(), SA);
+  IRF->CreateSTR(Param.get(), SA);
   IRF->Insert(std::move(Param));
   return nullptr;
 }
