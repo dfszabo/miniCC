@@ -73,6 +73,26 @@ public:
         Operands.erase(Operands.begin() + i--);
   }
 
+  void AddRegister(uint64_t Reg) {
+    AddOperand(MachineOperand::CreateRegister(Reg));
+  }
+
+  void AddImmediate(uint64_t Num) {
+    AddOperand(MachineOperand::CreateImmediate(Num));
+  }
+
+  void AddMemory(uint64_t Id) {
+    AddOperand(MachineOperand::CreateMemory(Id));
+  }
+
+  void AddStackAccess(uint64_t Slot) {
+    AddOperand(MachineOperand::CreateStackAccess(Slot));
+  }
+
+  void AddLabel(const char* Label) {
+    AddOperand(MachineOperand::CreateLabel(Label));
+  }
+
   bool IsFallThroughBranch() const { return Operands.size() == 2; }
   bool IsLoad() const { return Opcode == LOAD; }
   bool IsStore() const { return Opcode == STORE; }

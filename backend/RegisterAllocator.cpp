@@ -110,21 +110,15 @@ void RegisterAllocator::RunRA() {
           if (!Operand.IsStackAccess())
             continue;
 
-          MachineOperand FrameRegister;
-          MachineOperand Offset;
-
           // Using SP as frame register for simplicity
           // TODO: Add FP register handling if target support it.
-          FrameRegister.SetToRegister();
-          FrameRegister.SetReg(TM->GetRegInfo()->GetStackRegister());
-
-          Offset.SetToIntImm();
-          Offset.SetValue(StackFrameSize - 4 -
-                          (int)Func.GetStackObjectPosition(Operand.GetSlot()));
+          auto FrameReg = TM->GetRegInfo()->GetStackRegister();
+          auto Offset = StackFrameSize - 4 -
+                          (int)Func.GetStackObjectPosition(Operand.GetSlot());
 
           Instr.RemoveMemOperand();
-          Instr.AddOperand(FrameRegister);
-          Instr.AddOperand(Offset);
+          Instr.AddRegister(FrameReg);
+          Instr.AddImmediate(Offset);
 
           break; // there should be only at most one stack access / instr
         }

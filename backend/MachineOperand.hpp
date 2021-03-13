@@ -68,6 +68,27 @@ public:
     return MO;
   }
 
+  static MachineOperand CreateMemory(uint64_t Id) {
+    MachineOperand MO;
+    MO.SetToMemAddr();
+    MO.SetValue(Id);
+    return MO;
+  }
+
+  static MachineOperand CreateStackAccess(uint64_t Slot) {
+    MachineOperand MO;
+    MO.SetToStackAccess();
+    MO.SetValue(Slot);
+    return MO;
+  }
+
+  static MachineOperand CreateLabel(const char* Label) {
+    MachineOperand MO;
+    MO.SetToLabel();
+    MO.SetLabel(Label);
+    return MO;
+  }
+
 private:
   unsigned Type = NONE;
   uint64_t Value = ~0;

@@ -9,27 +9,25 @@
 #include <cassert>
 
 MachineOperand GetMachineOperandFromValue(Value *Val) {
-  MachineOperand Result;
-
   if (Val->IsRegister()) {
-    Result.SetToVirtualRegister();
-    Result.SetValue(Val->GetID());
+    return MachineOperand::CreateVirtualRegister(Val->GetID());
   } else if (Val->IsParameter()) {
+    MachineOperand Result;
     Result.SetToParameter();
     // FIXME: Only handling int params now, handle others too
     // And add type to registers and others too
     Result.SetType(LowLevelType::CreateINT(32));
     Result.SetValue(Val->GetID());
+    return Result;
   } else if (Val->IsConstant()) {
     auto C = dynamic_cast<Constant *>(Val);
     assert(!C->IsFPConst() && "TODO");
-    Result.SetToIntImm();
-    Result.SetValue(C->GetIntValue());
+    return MachineOperand::CreateImmediate(C->GetIntValue());
   } else {
     assert(!"Unhandled MO case");
   }
 
-  return Result;
+  return MachineOperand();
 }
 
 MachineInstruction ConverToMachineInstr(Instruction *Instr,
@@ -56,19 +54,15 @@ MachineInstruction ConverToMachineInstr(Instruction *Instr,
     // an address, revisit this
     assert(I->GetMemoryLocation()->IsRegister() && "Must be a register");
 
-    MachineOperand MemLoc;
     auto AddressReg = I->GetMemoryLocation()->GetID();
 
     // Check if the instruction accessing the stack
     if (ParentFunction->IsStackSlot(AddressReg))
       // if it is then set the operand to a stack access
-      MemLoc.SetToStackAccess();
+      ResultMI.AddStackAccess(AddressReg);
     else // otherwise a normal memory access
-      MemLoc.SetToMemAddr();
+      ResultMI.AddMemory(AddressReg);
 
-    MemLoc.SetValue(AddressReg);
-
-    ResultMI.AddOperand(MemLoc);
     ResultMI.AddOperand(GetMachineOperandFromValue(I->GetSavedValue()));
   }
   // Load instruction: LD Dest, [address]
@@ -76,55 +70,42 @@ MachineInstruction ConverToMachineInstr(Instruction *Instr,
     // FIXME: same as with STORE
     assert(I->GetMemoryLocation()->IsRegister() && "Must be a register");
 
-    MachineOperand MemLoc;
+    ResultMI.AddOperand(GetMachineOperandFromValue((Value *)I));
     auto AddressReg = I->GetMemoryLocation()->GetID();
 
     // Check if the instruction accessing the stack
     if (ParentFunction->IsStackSlot(AddressReg))
       // if it is then set the operand to a stack access
-      MemLoc.SetToStackAccess();
+      ResultMI.AddStackAccess(AddressReg);
     else // otherwise a normal memory access
-      MemLoc.SetToMemAddr();
-
-    MemLoc.SetValue(AddressReg);
-
-    ResultMI.AddOperand(GetMachineOperandFromValue((Value *)I));
-    ResultMI.AddOperand(MemLoc);
+      ResultMI.AddMemory(AddressReg);
   }
   // Jump instruction: J label
   else if (auto I = dynamic_cast<JumpInstruction *>(Instr); I != nullptr) {
-    MachineOperand Label;
-
-    Label.SetToLabel();
-
     for (auto &BB : BBs)
       if (I->GetTargetLabelName() == BB.GetName()) {
-        Label.SetLabel(BB.GetName().c_str());
+        ResultMI.AddLabel(BB.GetName().c_str());
         break;
       }
-
-    ResultMI.AddOperand(Label);
   }
   // Branch instruction: Br op label label
   else if (auto I = dynamic_cast<BranchInstruction *>(Instr); I != nullptr) {
-    MachineOperand LabelTrue;
-    MachineOperand LabelFalse;
-
-    LabelTrue.SetToLabel();
+    const char *LabelTrue = nullptr;
+    const char *LabelFalse = nullptr;
 
     for (auto &BB : BBs) {
-      if (I->GetTrueLabelName() == BB.GetName()) {
-        LabelTrue.SetLabel(BB.GetName().c_str());
-      }
-      if (I->HasFalseLabel() && I->GetFalseLabelName() == BB.GetName()) {
-        LabelFalse.SetLabel(BB.GetName().c_str());
-      }
+      if (LabelTrue == nullptr && I->GetTrueLabelName() == BB.GetName())
+        LabelTrue = BB.GetName().c_str();
+
+      if (LabelFalse == nullptr && I->HasFalseLabel() &&
+          I->GetFalseLabelName() == BB.GetName())
+        LabelFalse = BB.GetName().c_str();
     }
 
     ResultMI.AddOperand(GetMachineOperandFromValue(I->GetCondition()));
-    ResultMI.AddOperand(LabelTrue);
+    ResultMI.AddLabel(LabelTrue);
     if (I->HasFalseLabel())
-      ResultMI.AddOperand(LabelTrue);
+      ResultMI.AddLabel(LabelTrue);
   }
   // Compare instruction: ret op
   else if (auto I = dynamic_cast<CompareInstruction *>(Instr); I != nullptr) {
