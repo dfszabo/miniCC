@@ -9,12 +9,10 @@ PrologueEpilogInsertion::CreateADDInstruction(int64_t StackAdjustmentSize) {
   MachineInstruction Add(MachineInstruction::ADD, nullptr);
 
   auto SPReg = TM->GetRegInfo()->GetStackRegister();
-  auto SPRegMO = MachineOperand::CreateRegister(SPReg);
-  auto AdjustmentMO = MachineOperand::CreateImmediate(StackAdjustmentSize);
 
-  Add.AddOperand(SPRegMO);
-  Add.AddOperand(SPRegMO);
-  Add.AddOperand(AdjustmentMO);
+  Add.AddRegister(SPReg);
+  Add.AddRegister(SPReg);
+  Add.AddImmediate(StackAdjustmentSize);
 
   if (!TM->SelectInstruction(&Add)) {
     assert(!"Unable to select instruction");
