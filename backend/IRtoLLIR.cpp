@@ -54,6 +54,8 @@ MachineInstruction ConverToMachineInstr(Instruction *Instr,
     // an address, revisit this
     assert(I->GetMemoryLocation()->IsRegister() && "Must be a register");
 
+    ResultMI.AddAttribute(MachineInstruction::IS_STORE);
+
     auto AddressReg = I->GetMemoryLocation()->GetID();
 
     // Check if the instruction accessing the stack
@@ -69,6 +71,8 @@ MachineInstruction ConverToMachineInstr(Instruction *Instr,
   else if (auto I = dynamic_cast<LoadInstruction *>(Instr); I != nullptr) {
     // FIXME: same as with STORE
     assert(I->GetMemoryLocation()->IsRegister() && "Must be a register");
+
+    ResultMI.AddAttribute(MachineInstruction::IS_LOAD);
 
     ResultMI.AddOperand(GetMachineOperandFromValue((Value *)I));
     auto AddressReg = I->GetMemoryLocation()->GetID();

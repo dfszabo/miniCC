@@ -39,6 +39,11 @@ public:
 
   enum CMPRelation { INVALID, EQ, NE, LT, GT, LE, GE };
 
+  enum Flags : unsigned {
+    IS_LOAD = 1,
+    IS_STORE = 1 << 1,
+  };
+
   MachineInstruction() {}
   MachineInstruction(unsigned Opcode, MachineBasicBlock *Parent)
       : Opcode(Opcode), Parent(Parent) {}
@@ -52,9 +57,9 @@ public:
   OperandList &GetOperands() { return Operands; }
 
   void AddOperand(MachineOperand MO) { Operands.push_back(MO); }
-  void SetAttributes(unsigned A) { OtherAttributes = A; }
+  void SetAttributes(unsigned A) { Attributes = A; }
 
-  unsigned GetRelation() const { return OtherAttributes; }
+  unsigned GetRelation() const { return Attributes; }
 
   MachineBasicBlock *GetParent() const { return Parent; }
   void SetParent(MachineBasicBlock *BB) { Parent = BB; }
@@ -93,15 +98,20 @@ public:
     AddOperand(MachineOperand::CreateLabel(Label));
   }
 
+  void AddAttribute(unsigned AttributeFlag) {
+    OtherAttributes |= AttributeFlag;
+  }
+
   bool IsFallThroughBranch() const { return Operands.size() == 2; }
-  bool IsLoad() const { return Opcode == LOAD; }
-  bool IsStore() const { return Opcode == STORE; }
-  bool IsLoadOrStore() const { return Opcode == LOAD || Opcode == STORE; }
+  bool IsLoad() const { return Opcode == LOAD || (OtherAttributes & IS_LOAD); }
+  bool IsStore() const { return Opcode == STORE || (OtherAttributes & IS_STORE); }
+  bool IsLoadOrStore() const { return IsLoad() || IsStore(); }
 
 private:
   unsigned Opcode = 0;
 
   // Capture things like the relation for compare instructions
+  unsigned Attributes = 0;
   unsigned OtherAttributes = 0;
   OperandList Operands;
 
