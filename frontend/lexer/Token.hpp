@@ -44,6 +44,9 @@ public:
     LeftCurly,
     RightCurly,
 
+    // Comment
+    DoubleForwardSlash,
+  
     // Keywords
     For,
     While,
@@ -130,6 +133,8 @@ public:
       return "{";
     case RightCurly:
       return "}";
+    case DoubleForwardSlash:
+      return "//";
     case For:
       return "for";
     case While:

@@ -145,7 +145,11 @@ std::optional<Token> Lexer::LexSymbol() {
     TokenKind = Token::Astrix;
     break;
   case '/':
-    TokenKind = Token::ForwardSlash;
+    if (GetNextNthCharOnSameLine(1) == '/') {
+      TokenKind = Token::DoubleForwardSlash;
+      Size = 2;
+    } else
+      TokenKind = Token::ForwardSlash;
     break;
   case '%':
     TokenKind = Token::Percent;
@@ -262,6 +266,14 @@ Token Lexer::Lex() {
     Result = LexIdentifier();
   if (!Result)
     Result = LexSymbol();
+
+  // Handle single line comment. If "//" detected, then advance to next line and
+  // lex again.
+  if (Result.has_value() && Result.value().GetKind() == Token::DoubleForwardSlash) {
+    LineIndex++;
+    ColumnIndex = 0;
+    return Lex();
+  }
 
   if (Result)
     return Result.value();
