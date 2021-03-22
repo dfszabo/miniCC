@@ -36,6 +36,8 @@ public:
   InstructionList::iterator ReplaceInstr(MachineInstruction MI,
                                          MachineInstruction *Replacable);
 
+  void Print() const;
+
 private:
   std::string Name;
   InstructionList Instructions;

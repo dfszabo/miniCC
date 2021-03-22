@@ -3,6 +3,7 @@
 #include <cassert>
 #include <string>
 #include <vector>
+#include <iostream>
 
 void MachineBasicBlock::InsertInstr(MachineInstruction MI) {
   if (MI.GetParent() == nullptr)
@@ -51,4 +52,12 @@ MachineBasicBlock::ReplaceInstr(MachineInstruction MI,
   }
   assert(!"Replacable instruction was not found");
   return Instructions.end();
+}
+
+void MachineBasicBlock::Print() const {
+  std::cout << "%BB:" << Name << ":" << std::endl;
+  for (auto &I : Instructions) {
+    std::cout << "\t";
+    I.Print();
+  }
 }
