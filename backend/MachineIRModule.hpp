@@ -17,7 +17,10 @@ public:
     return &Functions[Functions.size() - 1];
   }
 
-  void Print() const {}
+  void Print() const {
+    for (auto &F : Functions)
+      F.Print();
+  }
 
 private:
   std::vector<GlobalData> GlobalVars;

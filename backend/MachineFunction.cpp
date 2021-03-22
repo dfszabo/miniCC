@@ -1,5 +1,6 @@
 #include "MachineFunction.hpp"
 #include "MachineBasicBlock.hpp"
+#include <iostream>
 
 unsigned MachineFunction::GetNextAvailableVReg() {
   // If the next virtual register was computed already once, then just
@@ -17,4 +18,11 @@ unsigned MachineFunction::GetNextAvailableVReg() {
 
   // The next one is 1 more then the found highest
   return ++NextVReg;
+}
+
+void MachineFunction::Print() const {
+  std::cout << "function:" << Name << std::endl;
+
+  for (auto &BB : BasicBlocks)
+    BB.Print();
 }

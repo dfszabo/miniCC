@@ -2,6 +2,7 @@
 #define MACHINEINSTRUCTION_HPP
 
 #include "MachineOperand.hpp"
+#include <iostream>
 #include <vector>
 
 class MachineBasicBlock;
@@ -86,15 +87,13 @@ public:
     AddOperand(MachineOperand::CreateImmediate(Num));
   }
 
-  void AddMemory(uint64_t Id) {
-    AddOperand(MachineOperand::CreateMemory(Id));
-  }
+  void AddMemory(uint64_t Id) { AddOperand(MachineOperand::CreateMemory(Id)); }
 
   void AddStackAccess(uint64_t Slot) {
     AddOperand(MachineOperand::CreateStackAccess(Slot));
   }
 
-  void AddLabel(const char* Label) {
+  void AddLabel(const char *Label) {
     AddOperand(MachineOperand::CreateLabel(Label));
   }
 
@@ -104,8 +103,66 @@ public:
 
   bool IsFallThroughBranch() const { return Operands.size() == 2; }
   bool IsLoad() const { return Opcode == LOAD || (OtherAttributes & IS_LOAD); }
-  bool IsStore() const { return Opcode == STORE || (OtherAttributes & IS_STORE); }
+  bool IsStore() const {
+    return Opcode == STORE || (OtherAttributes & IS_STORE);
+  }
   bool IsLoadOrStore() const { return IsLoad() || IsStore(); }
+
+  void Print() const {
+    std::string OpcodeStr;
+
+    switch (Opcode) {
+    case AND:
+      OpcodeStr = "AND";
+      break;
+    case OR:
+      OpcodeStr = "OR";
+      break;
+    case ADD:
+      OpcodeStr = "ADD";
+      break;
+    case SUB:
+      OpcodeStr = "SUB";
+      break;
+    case MUL:
+      OpcodeStr = "MUL";
+      break;
+    case DIV:
+      OpcodeStr = "DIV";
+      break;
+    case MOD:
+      OpcodeStr = "MOD";
+      break;
+    case CMP:
+      OpcodeStr = "CMP";
+      break;
+    case STORE:
+      OpcodeStr = "STORE";
+      break;
+    case LOAD:
+      OpcodeStr = "LOAD";
+      break;
+    case JUMP:
+      OpcodeStr = "JUMP";
+      break;
+    case BRANCH:
+      OpcodeStr = "BRANCH";
+      break;
+    case RET:
+      OpcodeStr = "RET";
+      break;
+    default:
+      break;
+    }
+
+    std::cout << OpcodeStr << "\t";
+    for (size_t i = 0; i < Operands.size(); i++) {
+      Operands[i].Print();
+      if (i < Operands.size() - 1)
+        std::cout << ", ";
+    }
+    std::cout << std::endl;
+  }
 
 private:
   unsigned Opcode = 0;

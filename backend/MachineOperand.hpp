@@ -3,6 +3,7 @@
 
 #include "LowLevelType.hpp"
 #include <cstdint>
+#include <iostream>
 
 class MachineOperand {
 public:
@@ -87,6 +88,31 @@ public:
     MO.SetToLabel();
     MO.SetLabel(Label);
     return MO;
+  }
+
+  void Print() const {
+    switch (Type) {
+    case REGISTER:
+      std::cout << "%" << Value;
+      break;
+    case VIRTUAL_REGISTER:
+      std::cout << "%vreg" << Value;
+      break;
+    case INT_IMMEDIATE:
+      std::cout << (int64_t)Value;
+      break;
+    case STACK_ACCESS:
+      std::cout << "stack" << Value;
+      break;
+    case PARAMETER:
+      std::cout << "@" << Value;
+      break;
+    case LABEL:
+      std::cout << "<" << Label << ">";
+      break;
+    default:
+      break;
+    }
   }
 
 private:
