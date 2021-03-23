@@ -1,9 +1,9 @@
 #include "MachineBasicBlock.hpp"
 #include "MachineInstruction.hpp"
 #include <cassert>
+#include <iostream>
 #include <string>
 #include <vector>
-#include <iostream>
 
 void MachineBasicBlock::InsertInstr(MachineInstruction MI) {
   if (MI.GetParent() == nullptr)
@@ -23,6 +23,19 @@ MachineBasicBlock::InsertInstrToFront(MachineInstruction MI) {
   if (MI.GetParent() == nullptr)
     MI.SetParent(this);
   return Instructions.insert(Instructions.begin(), MI);
+}
+
+MachineBasicBlock::InstructionList::iterator
+MachineBasicBlock::InsertBefore(MachineInstruction MI,
+                                MachineInstruction *BeforeMI) {
+  size_t i = 0;
+  for (; i < Instructions.size(); i++)
+    if (&Instructions[i] == BeforeMI)
+      break;
+
+  assert(i < Instructions.size() && "Instruction not found in the list");
+
+  return InsertInstr(MI, i);
 }
 
 MachineBasicBlock::InstructionList::iterator

@@ -51,11 +51,48 @@ bool ExpandMOD(MachineInstruction *MI) {
   return true;
 }
 
+/// If the target does not support storing directly an immediate, then
+/// the following
+///     STORE [address], immediate
+///
+/// is replaced with
+///     LOAD_IMM %reg, immediate
+///     STORE [address], %reg
+///
+/// where immediate is a constans number
+bool ExpandSTORE(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 2 && "STORE must have exactly 2 operands");
+  auto ParentBB = MI->GetParent();
+  auto ParentFunc = ParentBB->GetParent();
+
+  auto Immediate = *MI->GetOperand(1);
+
+  assert(Immediate.IsImmediate() && "Operand #2 must be an immediate");
+
+  // Create the result register where the immediate will be loaded
+  auto LOAD_IMMResult = ParentFunc->GetNextAvailableVReg();
+  auto LOAD_IMMResultVReg =
+      MachineOperand::CreateVirtualRegister(LOAD_IMMResult);
+
+  // Replace the immediate operand with the result register
+  MI->RemoveOperand(1);
+  MI->AddOperand(LOAD_IMMResultVReg);
+
+  MachineInstruction LOAD_IMM;
+  LOAD_IMM.SetOpcode(MachineInstruction::LOAD_IMM);
+  LOAD_IMM.AddOperand(LOAD_IMMResultVReg);
+  LOAD_IMM.AddOperand(Immediate);
+  ParentBB->InsertBefore(std::move(LOAD_IMM), MI);
+
+  return true;
+}
+
 bool TargetInstructionLegalizer::Expand(MachineInstruction *MI) {
   switch (MI->GetOpcode()) {
   case MachineInstruction::MOD:
     return ExpandMOD(MI);
-
+  case MachineInstruction::STORE:
+    return ExpandSTORE(MI);
   default:
     break;
   }

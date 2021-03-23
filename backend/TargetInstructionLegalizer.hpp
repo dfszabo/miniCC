@@ -13,7 +13,7 @@ public:
   virtual ~TargetInstructionLegalizer() {}
 
   /// Predicate to decide which instructions are legal and which not.
-  virtual bool Check(const MachineInstruction *MI) { return true; }
+  virtual bool Check(MachineInstruction *MI) { return true; }
 
   /// Predicate to decide whether the instruction is expandable or not.
   virtual bool IsExpandable(const MachineInstruction *MI) { return false; }

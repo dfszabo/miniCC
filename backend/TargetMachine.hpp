@@ -28,6 +28,7 @@ public:
   virtual bool SelectMOD(MachineInstruction *MI) { return false; }
   virtual bool SelectCMP(MachineInstruction *MI) { return false; }
   virtual bool SelectLOAD(MachineInstruction *MI) { return false; }
+  virtual bool SelectLOAD_IMM(MachineInstruction *MI) { return false; }
   virtual bool SelectSTORE(MachineInstruction *MI) { return false; }
   virtual bool SelectBRANCH(MachineInstruction *MI) { return false; }
   virtual bool SelectJUMP(MachineInstruction *MI) { return false; }

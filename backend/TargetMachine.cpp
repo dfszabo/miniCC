@@ -18,6 +18,8 @@ bool TargetMachine::SelectInstruction(MachineInstruction *MI) {
     return SelectCMP(MI);
   case MachineInstruction::MOD:
     return SelectMOD(MI);
+  case MachineInstruction::LOAD_IMM:
+    return SelectLOAD_IMM(MI);
   case MachineInstruction::LOAD:
     return SelectLOAD(MI);
   case MachineInstruction::STORE:

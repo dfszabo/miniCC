@@ -36,6 +36,9 @@ public:
     LOAD,
     STORE,
     STACK_ALLOC,
+
+    // Moves and constant materializations
+    LOAD_IMM,
   };
 
   enum CMPRelation { INVALID, EQ, NE, LT, GT, LE, GE };
@@ -135,6 +138,9 @@ public:
       break;
     case CMP:
       OpcodeStr = "CMP";
+      break;
+    case LOAD_IMM:
+      OpcodeStr = "LOAD_IMM";
       break;
     case STORE:
       OpcodeStr = "STORE";
