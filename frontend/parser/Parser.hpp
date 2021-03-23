@@ -52,6 +52,7 @@ public:
   std::unique_ptr<Expression> ParseIdentifierExpression();
   std::unique_ptr<Expression> ParsePrimaryExpression();
   std::unique_ptr<WhileStatement> ParseWhileStatement();
+  std::unique_ptr<ForStatement> ParseForStatement();
   std::unique_ptr<IfStatement> ParseIfStatement();
   std::unique_ptr<Expression> ParseConstantExpression();
   unsigned ParseIntegerConstant();

@@ -303,6 +303,7 @@ double Parser::ParseRealConstant() {
 
 // <Statement> ::= <ExpressionStatement>
 //               | <WhileStatement>
+//               | <ForStatement>
 //               | <IfStatement>
 //               | <CompoundStatement>
 //               | <ReturnStatement>
@@ -311,6 +312,8 @@ std::unique_ptr<Statement> Parser::ParseStatement() {
     return ParseIfStatement();
   if (lexer.Is(Token::While))
     return ParseWhileStatement();
+  if (lexer.Is(Token::For))
+    return ParseForStatement();
   if (lexer.Is(Token::LeftCurly))
     return ParseCompoundStatement();
   if (lexer.Is(Token::Return))
@@ -346,6 +349,23 @@ std::unique_ptr<WhileStatement> Parser::ParseWhileStatement() {
   WS->SetBody(std::move(ParseStatement()));
 
   return WS;
+}
+
+// <ForStatement> ::= for '(' <Expression> ')' <Statement>
+std::unique_ptr<ForStatement> Parser::ParseForStatement() {
+  std::unique_ptr<ForStatement> FS = std::make_unique<ForStatement>();
+
+  Expect(Token::For);
+  Expect(Token::LeftParen);
+  FS->SetInit(std::move(ParseExpression()));
+  Expect(Token::SemiColon);
+  FS->SetCondition(std::move(ParseExpression()));
+  Expect(Token::SemiColon);
+  FS->SetIncrement(std::move(ParseExpression()));
+  Expect(Token::RightParen);
+  FS->SetBody(std::move(ParseStatement()));
+
+  return FS;
 }
 
 // <ExpressionStatement> ::= <Expression>? ';'

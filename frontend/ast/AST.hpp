@@ -189,6 +189,37 @@ private:
   std::unique_ptr<Statement> Body;
 };
 
+class ForStatement : public Statement {
+public:
+  std::unique_ptr<Expression> &GetInit() { return Init; }
+  void SetInit(std::unique_ptr<Expression> c) { Init = std::move(c); }
+
+  std::unique_ptr<Expression> &GetCondition() { return Condition; }
+  void SetCondition(std::unique_ptr<Expression> c) { Condition = std::move(c); }
+
+  std::unique_ptr<Expression> &GetIncrement() { return Increment; }
+  void SetIncrement(std::unique_ptr<Expression> c) { Increment = std::move(c); }
+
+  std::unique_ptr<Statement> &GetBody() { return Body; }
+  void SetBody(std::unique_ptr<Statement> b) { Body = std::move(b); }
+
+  void ASTDump(unsigned tab = 0) override {
+    PrintLn("ForStatement", tab);
+    Init->ASTDump(tab + 2);
+    Condition->ASTDump(tab + 2);
+    Increment->ASTDump(tab + 2);
+    Body->ASTDump(tab + 2);
+  }
+
+  Value *IRCodegen(IRFactory *IRF) override;
+
+private:
+  std::unique_ptr<Expression> Init;
+  std::unique_ptr<Expression> Condition;
+  std::unique_ptr<Expression> Increment;
+  std::unique_ptr<Statement> Body;
+};
+
 class ReturnStatement : public Statement {
 public:
   std::unique_ptr<Expression> &GetCondition() {
