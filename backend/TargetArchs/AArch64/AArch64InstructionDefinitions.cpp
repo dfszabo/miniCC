@@ -28,8 +28,12 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
                   "str\t$1, [$2, #$3]",
                   {GPR, GPR, SIMM12},
                   TargetInstruction::STORE};
+      ret[BGE] = {BGE, 32, "b.ge\t$1", {SIMM21_LSB0}};
+      ret[BGT] = {BGT, 32, "b.gt\t$1", {SIMM21_LSB0}};
       ret[BLE] = {BLE, 32, "b.le\t$1", {SIMM21_LSB0}};
+      ret[BLT] = {BLT, 32, "b.lt\t$1", {SIMM21_LSB0}};
       ret[BEQ] = {BEQ, 32, "b.eq\t$1", {SIMM21_LSB0}};
+      ret[BNE] = {BNE, 32, "b.ne\t$1", {SIMM21_LSB0}};
       ret[B] = {B, 32, "b\t$1", {SIMM21_LSB0}};
       ret[RET] = {RET, 32, "ret", {}, TargetInstruction::RETURN};
 

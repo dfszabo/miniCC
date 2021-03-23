@@ -162,13 +162,29 @@ bool AArch64TargetMachine::SelectBRANCH(MachineInstruction *MI) {
 
     // choose the appropriate conditional branch based on the cmp type
     switch (PrecedingMI->GetRelation()) {
+    case MachineInstruction::EQ:
+      MI->SetOpcode(BEQ);
+      break;
+    case MachineInstruction::NE:
+      MI->SetOpcode(BNE);
+      break;
     case MachineInstruction::LE:
       MI->SetOpcode(BLE);
-      MI->RemoveOperand(0);
-      return true;
+      break;
+    case MachineInstruction::LT:
+      MI->SetOpcode(BLT);
+      break;
+    case MachineInstruction::GE:
+      MI->SetOpcode(BGE);
+      break;
+    case MachineInstruction::GT:
+      MI->SetOpcode(BGT);
+      break;
     default:
       assert(!"Unimplemented");
     }
+
+    MI->RemoveOperand(0);
     return true;
   }
 

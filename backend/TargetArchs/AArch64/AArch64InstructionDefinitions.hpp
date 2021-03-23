@@ -24,7 +24,11 @@ enum Opcodes : unsigned {
   LDR,
   STR,
   BEQ,
+  BNE,
+  BGE,
+  BGT,
   BLE,
+  BLT,
   B,
   RET,
 };
