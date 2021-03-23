@@ -11,7 +11,7 @@ public:
   AArch64InstructionLegalizer() {}
   ~AArch64InstructionLegalizer() override {}
 
-  bool Check(const MachineInstruction *MI) override;
+  bool Check(MachineInstruction *MI) override;
   bool IsExpandable(const MachineInstruction *MI) override;
 
 private:

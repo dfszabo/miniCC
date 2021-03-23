@@ -125,6 +125,18 @@ bool AArch64TargetMachine::SelectCMP(MachineInstruction *MI) {
   return false;
 }
 
+bool AArch64TargetMachine::SelectLOAD_IMM(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 2 &&
+         "LOAD_IMM must have exactly 2 operands");
+
+  assert(MI->GetOperand(1)->IsImmediate() && "Operand #2 must be an immediate");
+  assert(IsUInt<16>(MI->GetOperand(1)->GetImmediate()) &&
+         "Ivalid immediate value");
+
+  MI->SetOpcode(MOV_rc);
+  return true;
+}
+
 bool AArch64TargetMachine::SelectLOAD(MachineInstruction *MI) {
   assert((MI->GetOperandsNumber() == 2 || MI->GetOperandsNumber() == 3) &&
          "LOAD must have 2 or 3 operands");

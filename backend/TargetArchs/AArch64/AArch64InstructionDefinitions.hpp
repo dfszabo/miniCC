@@ -21,6 +21,7 @@ enum Opcodes : unsigned {
   CMP_ri,
   CMP_rr,
   CSET,
+  MOV_rc,
   LDR,
   STR,
   BEQ,
@@ -37,6 +38,7 @@ enum OperandTypes : unsigned {
   GPR,
   SIMM12,
   UIMM12,
+  UIMM16,
   SIMM13_LSB0,
   SIMM21_LSB0,
 };

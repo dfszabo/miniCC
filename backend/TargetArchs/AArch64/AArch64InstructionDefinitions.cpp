@@ -18,6 +18,7 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[CMP_rr] = {CMP_rr, 32, "cmp\t$1, $2", {GPR, GPR}};
       ret[CMP_ri] = {CMP_ri, 32, "cmp\t$1, #$2", {GPR, UIMM12}};
       ret[CSET] = {CSET, 32, "cset\t$1, $2, $3", {GPR, GPR, GPR}};
+      ret[MOV_rc] = {MOV_rc, 32, "mov\t$1, #$2", {GPR, UIMM16}};
       ret[LDR] = {LDR,
                   32,
                   "ldr\t$1, [$2, #$3]",
