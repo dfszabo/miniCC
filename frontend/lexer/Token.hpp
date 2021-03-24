@@ -53,6 +53,7 @@ public:
     If,
     Else,
     Return,
+    Char,
     Int,
     Double,
     Void
@@ -145,6 +146,8 @@ public:
       return "else";
     case Return:
       return "return";
+    case Char:
+      return "char";
     case Int:
       return "int";
     case Double:

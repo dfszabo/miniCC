@@ -71,7 +71,16 @@ void static EmitError(const std::string &msg, Lexer &L, Token &T) {
 }
 
 static bool IsTypeSpecifier(Token::TokenKind tk) {
-  return tk == Token::Int || tk == Token::Double;
+  switch (tk) {
+  case Token::Char:
+  case Token::Int:
+  case Token::Double:
+    return true;
+
+  default:
+    break;
+  }
+  return false;
 }
 
 static bool IsReturnTypeSpecifier(Token::TokenKind tk) {
@@ -85,6 +94,9 @@ static Type ParseType(Token::TokenKind tk) {
   case Token::Void:
     Result.SetTypeVariant(Type::Void);
     break;
+  case Token::Char:
+    Result.SetTypeVariant(Type::Char);
+    break;
   case Token::Int:
     Result.SetTypeVariant(Type::Int);
     break;
@@ -92,7 +104,7 @@ static Type ParseType(Token::TokenKind tk) {
     Result.SetTypeVariant(Type::Double);
     break;
   default:
-    // TODO: emit error
+    assert(!"Unknown token kind.");
     break;
   }
 
@@ -110,6 +122,7 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
 
   while (IsReturnTypeSpecifier(TokenKind)) {
     Type Type = ParseType(TokenKind);
+    CurrentFuncRetType = Type;
     Lex();
 
     auto Name = Expect(Token::Identifier);
@@ -384,7 +397,19 @@ std::unique_ptr<ExpressionStatement> Parser::ParseExpressionStatement() {
 // TODO: we need explicit type conversions here as well
 std::unique_ptr<ReturnStatement> Parser::ParseReturnStatement() {
   Expect(Token::Return);
-  auto RS = std::make_unique<ReturnStatement>(ParseExpression());
+  auto Expr = ParseExpression();
+  auto LeftType = CurrentFuncRetType.GetTypeVariant();
+  auto RightType = Expr->GetResultType().GetTypeVariant();
+  std::unique_ptr<ReturnStatement> RS;
+
+  if (LeftType != RightType) {
+    std::unique_ptr<Expression> CastExpr =
+        std::make_unique<ImplicitCastExpression>(std::move(Expr), LeftType);
+    RS = std::make_unique<ReturnStatement>(std::move(CastExpr));
+  } else {
+    RS = std::make_unique<ReturnStatement>(std::move(Expr));
+  }
+
   Expect(Token::SemiColon);
   return RS;
 }

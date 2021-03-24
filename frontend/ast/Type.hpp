@@ -8,7 +8,7 @@
 class Type {
 public:
   /// Basic type variants. Numerical ones are ordered by conversion rank.
-  enum VariantKind { Invalid, Void, Int, Double };
+  enum VariantKind { Invalid, Void, Char, Int, Double };
 
   VariantKind GetTypeVariant() const { return Ty; }
   void SetTypeVariant(VariantKind t) { Ty = t; }
@@ -19,6 +19,8 @@ public:
     switch (vk) {
     case Double:
       return "double";
+    case Char:
+      return "char";
     case Int:
       return "int";
     case Void:
@@ -56,7 +58,8 @@ public:
 
   static bool IsImplicitlyCastable(const Type::VariantKind from,
                                    const Type::VariantKind to) {
-    return (from == Int && to == Double) || (from == Double && to == Int);
+    return (from == Int && to == Double) || (from == Double && to == Int) ||
+           (from == Char && to == Int) || (from == Int && to == Char);
   }
 
 protected:

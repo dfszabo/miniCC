@@ -8,6 +8,9 @@
 
 static IRType GetIRTypeFromVK(Type::VariantKind VK) {
   switch (VK) {
+  case Type::Char:
+    return IRType(IRType::SINT, 8);
+    break;
   case Type::Int:
     return IRType(IRType::SINT);
     break;
@@ -196,6 +199,9 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   IRType RetType;
 
   switch (Type.GetReturnType()) {
+  case Type::Char:
+    RetType = IRType(IRType::SINT, 8);
+    break;
   case Type::Int:
     RetType = IRType(IRType::SINT);
     break;
@@ -206,7 +212,7 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
     RetType = IRType(IRType::NONE);
     break;
   default:
-    assert(!"Invalid funtion return type.");
+    assert(!"Invalid function return type.");
     break;
   }
 
@@ -351,6 +357,10 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
     return IRF->CreateITOF(Val, 32);
   else if (SourceTypeVariant == Type::Double && DestTypeVariant == Type::Int)
     return IRF->CreateFTOI(Val, 64);
+  else if (SourceTypeVariant == Type::Char && DestTypeVariant == Type::Int)
+    return IRF->CreateSEXT(Val, 32);
+  else if (SourceTypeVariant == Type::Int && DestTypeVariant == Type::Char)
+    return IRF->CreateTRUNC(Val, 8);
   else
     assert(!"Invaid conversion.");
 

@@ -62,6 +62,9 @@ private:
   Lexer lexer;
   SymbolTableStack SymTabStack;
   IRFactory *IRF;
+
+  /// Used for determining if implicit cast need or not in return statements
+  Type CurrentFuncRetType = Type::Invalid;
 };
 
 #endif

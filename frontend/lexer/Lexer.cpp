@@ -4,10 +4,11 @@
 
 std::unordered_map<std::string, Token::TokenKind> Lexer::Keywords =
     std::unordered_map<std::string, Token::TokenKind>{
-        {"int", Token::Int},     {"double", Token::Double},
-        {"void", Token::Void},   {"if", Token::If},
-        {"else", Token::Else},   {"for", Token::For},
-        {"while", Token::While}, {"return", Token::Return}};
+        {"int", Token::Int},      {"double", Token::Double},
+        {"void", Token::Void},    {"char", Token::Char},
+        {"if", Token::If},        {"else", Token::Else},
+        {"for", Token::For},      {"while", Token::While},
+        {"return", Token::Return}};
 
 Lexer::Lexer(std::vector<std::string> &s) {
   Source = std::move(s);
@@ -269,7 +270,8 @@ Token Lexer::Lex() {
 
   // Handle single line comment. If "//" detected, then advance to next line and
   // lex again.
-  if (Result.has_value() && Result.value().GetKind() == Token::DoubleForwardSlash) {
+  if (Result.has_value() &&
+      Result.value().GetKind() == Token::DoubleForwardSlash) {
     LineIndex++;
     ColumnIndex = 0;
     return Lex();
