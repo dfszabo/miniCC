@@ -59,6 +59,28 @@ public:
     return CreateBinaryInstruction(Instruction::MOD, LHS, RHS);
   }
 
+  UnaryInstruction *CreateSEXT(Value *Operand, uint8_t BitWidth = 32) {
+    auto Inst = std::make_unique<UnaryInstruction>(
+        Instruction::SEXT, IRType::CreateInt(BitWidth), Operand,
+        GetCurrentBB());
+    Inst->SetID(ID++);
+    auto InstPtr = Inst.get();
+    Insert(std::move(Inst));
+
+    return InstPtr;
+  }
+
+  UnaryInstruction *CreateTRUNC(Value *Operand, uint8_t BitWidth = 32) {
+    auto Inst = std::make_unique<UnaryInstruction>(
+        Instruction::TRUNC, IRType::CreateInt(BitWidth), Operand,
+        GetCurrentBB());
+    Inst->SetID(ID++);
+    auto InstPtr = Inst.get();
+    Insert(std::move(Inst));
+
+    return InstPtr;
+  }
+
   UnaryInstruction *CreateFTOI(Value *Operand, uint8_t FloatBitWidth = 32) {
     auto Inst = std::make_unique<UnaryInstruction>(
         Instruction::FTOI, IRType::CreateFloat(FloatBitWidth), Operand,

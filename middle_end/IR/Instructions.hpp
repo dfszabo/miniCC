@@ -23,6 +23,9 @@ public:
     CMP, // Logical comparison
 
     // Conversions
+    SEXT, // Sign extension
+    ZEXT, // Zero extension
+    TRUNC, // Truncating
     FTOI, // Float TO Integer
     ITOF, // Integer TO Float
 
@@ -79,6 +82,8 @@ public:
 
   UnaryInstruction(IKind UO, IRType ResultType, Value *Operand, BasicBlock *P)
       : Instruction(UO, P, ResultType), Op(Operand) {}
+
+  Value *GetOperand() { return Op; }
 
   void Print() const override;
 
