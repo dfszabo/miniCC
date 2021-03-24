@@ -22,6 +22,8 @@ unsigned MachineFunction::GetNextAvailableVReg() {
 
 void MachineFunction::Print() const {
   std::cout << "function:" << Name << std::endl;
+  std::cout << "\tStackFrame:" << std::endl;
+  SF.Print();
 
   for (auto &BB : BasicBlocks)
     BB.Print();

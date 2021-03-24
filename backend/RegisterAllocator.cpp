@@ -214,7 +214,7 @@ void RegisterAllocator::RunRA() {
           // Using SP as frame register for simplicity
           // TODO: Add FP register handling if target support it.
           auto FrameReg = TM->GetRegInfo()->GetStackRegister();
-          auto Offset = StackFrameSize - 4 -
+          auto Offset = StackFrameSize - Func.GetStackObjectSize(Operand.GetSlot()) -
                         (int)Func.GetStackObjectPosition(Operand.GetSlot());
 
           Instr.RemoveMemOperand();

@@ -23,6 +23,9 @@ public:
     CMP, // Logical comparison
 
     // Conversions
+    SEXT, // Sign extension
+    ZEXT, // Zero extension
+    TRUNC, // Truncating
     FTOI, // Float TO Integer
     ITOF, // Integer TO Float
 
@@ -92,7 +95,7 @@ public:
 
   void AddMemory(uint64_t Id) { AddOperand(MachineOperand::CreateMemory(Id)); }
 
-  void AddStackAccess(uint64_t Slot) {
+  void AddStackAccess(uint64_t Slot, unsigned Size = 4) {
     AddOperand(MachineOperand::CreateStackAccess(Slot));
   }
 
@@ -138,6 +141,15 @@ public:
       break;
     case CMP:
       OpcodeStr = "CMP";
+      break;
+    case SEXT:
+      OpcodeStr = "SEXT";
+      break;
+    case ZEXT:
+      OpcodeStr = "ZEXT";
+      break;
+    case TRUNC:
+      OpcodeStr = "TRUNC";
       break;
     case LOAD_IMM:
       OpcodeStr = "LOAD_IMM";

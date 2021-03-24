@@ -35,7 +35,7 @@ public:
   void SetValue(uint64_t V) { Value = V; }
 
   void SetType(LowLevelType LLT) { this->LLT = LLT; }
-  LowLevelType GetType(LowLevelType LLT) const { return LLT; }
+  LowLevelType GetType() const { return LLT; }
 
   const char *GetLabel() { return Label; }
   void SetLabel(const char *L) { Label = L; }
@@ -83,6 +83,13 @@ public:
     return MO;
   }
 
+  static MachineOperand CreateParameter(uint64_t Val) {
+    MachineOperand MO;
+    MO.SetToParameter();
+    MO.SetReg(Val);
+    return MO;
+  }
+
   static MachineOperand CreateLabel(const char* Label) {
     MachineOperand MO;
     MO.SetToLabel();
@@ -113,6 +120,9 @@ public:
     default:
       break;
     }
+
+    if (LLT.IsValid())
+      std::cout << "(" << LLT.ToString() << ")";
   }
 
 private:

@@ -1,6 +1,8 @@
 #ifndef LOW_LEVEL_TYPE_HPP
 #define LOW_LEVEL_TYPE_HPP
 
+#include <string>
+
 class LowLevelType {
 public:
   enum Type : unsigned {
@@ -22,7 +24,21 @@ public:
     return LLT;
   }
 
+  bool IsValid() const { return Type != INVALID; }
   bool IsInteger() const { return Type == INTEGER; }
+
+  std::string ToString() const {
+    std::string str;
+
+    if (Type == INTEGER)
+      str = "i";
+    else if (Type == FLOATING_POINT)
+      str = "f";
+
+    str += std::to_string(BitWidth);
+
+    return str;
+  }
 
 private:
   unsigned Type = INVALID;

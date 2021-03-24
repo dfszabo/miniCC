@@ -20,6 +20,9 @@ public:
   bool IsStackSlot(unsigned ID) const { return 0 != StackSlots.count(ID); }
 
   unsigned GetPosition(unsigned ID);
+  unsigned GetSize(unsigned ID);
+
+  void Print() const;
 
 private:
   unsigned ObjectsSize = 0;
