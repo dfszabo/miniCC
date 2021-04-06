@@ -23,6 +23,13 @@ static IRType GetIRTypeFromVK(Type::VariantKind VK) {
   }
 }
 
+static IRType GetIRTypeFromASTType(ComplexType CT) {
+  IRType Result = GetIRTypeFromVK(CT.GetTypeVariant());
+
+  Result.SetPointerLevel(CT.GetPointerLevel());
+  return Result;
+}
+
 Value *IfStatement::IRCodegen(IRFactory *IRF) {
   // if there is no else clause, then IR should be something like:
   //    # generate code for Condition
@@ -226,12 +233,12 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
 }
 
 Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {
-  auto SA = IRF->CreateSA(Name, GetIRTypeFromVK(Ty.GetTypeVariant()));
+  auto Type = GetIRTypeFromASTType(Ty);
+  auto SA = IRF->CreateSA(Name, Type);
   IRF->AddToSymbolTable(Name, SA);
 
-  IRType ParamType = GetIRTypeFromVK(Ty.GetTypeVariant());
   auto Param =
-      std::make_unique<FunctionParameter>(FunctionParameter(Name, ParamType));
+      std::make_unique<FunctionParameter>(FunctionParameter(Name, Type));
 
   IRF->CreateSTR(Param.get(), SA);
   IRF->Insert(std::move(Param));
@@ -239,7 +246,7 @@ Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {
 }
 
 Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
-  auto Type = GetIRTypeFromVK(AType.GetTypeVariant());
+  auto Type = GetIRTypeFromASTType(AType);
 
   // If an array type, then change Type to reflect this
   if (AType.IsArray()) {
@@ -363,6 +370,18 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
     return IRF->CreateTRUNC(Val, 8);
   else
     assert(!"Invaid conversion.");
+
+  return nullptr;
+}
+
+Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
+  auto E = Expr->IRCodegen(IRF);
+
+  if (GetOperationKind() == DEREF) {
+    auto ResultType = E->GetType();
+    return IRF->CreateLD(ResultType, E);
+  } else
+    assert(!"Unimplemented");
 
   return nullptr;
 }

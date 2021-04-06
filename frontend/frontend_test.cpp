@@ -93,10 +93,11 @@ int main(int argc, char *argv[]) {
   IRFactory IRF(IRModule);
   Parser parser(src, &IRF);
   auto AST = parser.Parse();
-  AST->IRCodegen(&IRF);
 
   if (DumpAST)
     AST->ASTDump();
+
+  AST->IRCodegen(&IRF);
   if (DumpIR)
     IRModule.Print();
 

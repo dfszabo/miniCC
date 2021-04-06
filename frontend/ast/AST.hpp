@@ -423,6 +423,58 @@ private:
   std::unique_ptr<Expression> Right;
 };
 
+class UnaryExpression : public Expression {
+  using ExprPtr = std::unique_ptr<Expression>;
+
+public:
+  enum UnaryOperation {
+    DEREF,
+  };
+
+  UnaryOperation GetOperationKind() {
+    switch (Operation.GetKind()) {
+    case Token::Astrix:
+      return DEREF;
+    default:
+      assert(!"Invalid unary operator kind.");
+      break;
+    }
+  }
+
+  Token GetOperation() { return Operation; }
+  void SetOperation(Token bo) { Operation = bo; }
+
+  ExprPtr &GetExpr() { return Expr; }
+  void SetExpr(ExprPtr &e) { Expr = std::move(e); }
+
+  UnaryExpression(Token Op, ExprPtr E) {
+    Operation = Op;
+    Expr = std::move(E);
+
+    if (GetOperationKind() == DEREF) {
+      ResultType = Expr->GetResultType();
+      ResultType.DecrementPointerLevel();
+    } else
+      assert(!"Unimplemented!");
+  }
+
+  UnaryExpression() = default;
+
+  void ASTDump(unsigned tab = 0) override {
+    Print("UnaryExpression ", tab);
+    auto Str = "'" + ResultType.ToString() + "' ";
+    Str += "'" + Operation.GetString() + "'";
+    PrintLn(Str.c_str());
+    Expr->ASTDump(tab + 2);
+  }
+
+  Value *IRCodegen(IRFactory *IRF) override;
+
+private:
+  Token Operation;
+  std::unique_ptr<Expression> Expr;
+};
+
 class CallExpression : public Expression {
   using ExprVec = std::vector<std::unique_ptr<Expression>>;
 

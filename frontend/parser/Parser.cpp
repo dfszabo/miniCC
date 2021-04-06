@@ -83,6 +83,17 @@ static bool IsTypeSpecifier(Token::TokenKind tk) {
   return false;
 }
 
+static bool IsUnaryOperator(Token::TokenKind tk) {
+  switch (tk) {
+  case Token::Astrix:
+    return true;
+
+  default:
+    break;
+  }
+  return false;
+}
+
 static bool IsReturnTypeSpecifier(Token::TokenKind tk) {
   return tk == Token::Void || IsTypeSpecifier(tk);
 }
@@ -204,7 +215,7 @@ Parser::ParseParameterList() {
   return Params;
 }
 
-// <ParameterDeclaration> ::= { <TypeSpecifier> <Identifier>? }?
+// <ParameterDeclaration> ::= { <TypeSpecifier> '*'* <Identifier>? }?
 std::unique_ptr<FunctionParameterDeclaration>
 Parser::ParseParameterDeclaration() {
   std::unique_ptr<FunctionParameterDeclaration> FPD =
@@ -213,6 +224,12 @@ Parser::ParseParameterDeclaration() {
   if (IsTypeSpecifier(GetCurrentTokenKind())) {
     Type Type = ParseTypeSpecifier();
     Lex();
+
+    while (lexer.Is(Token::Astrix)) {
+      Type.IncrementPointerLevel();
+      Lex(); // Eat the * character
+    }
+
     FPD->SetType(Type);
 
     if (lexer.Is(Token::Identifier)) {
@@ -255,11 +272,16 @@ std::unique_ptr<CompoundStatement> Parser::ParseCompoundStatement() {
   return std::make_unique<CompoundStatement>(Declarations, Statements);
 }
 
-// <VaraibleDeclaration> ::= <TypeSpecifier> <Identifier>
+// <VaraibleDeclaration> ::= <TypeSpecifier> '*'* <Identifier>
 //                           {'[' <IntegerConstant> ]'}* ';'
 std::unique_ptr<VariableDeclaration> Parser::ParseVaraibleDeclaration() {
   Type Type = ParseTypeSpecifier();
   Lex();
+
+  while (lexer.Is(Token::Astrix)) {
+    Type.IncrementPointerLevel();
+    Lex(); // Eat the * character
+  }
 
   std::string Name = Expect(Token::Identifier).GetString();
 
@@ -419,6 +441,22 @@ std::unique_ptr<Expression> Parser::ParseExpression() {
   return ParseBinaryExpression();
 }
 
+std::unique_ptr<Expression> Parser::ParseUnaryExpression() {
+  auto UnaryOperation = lexer.GetCurrentToken();
+  Lex(); // eat the unary operation char
+
+  std::unique_ptr<Expression> Expr;
+
+  if (IsUnaryOperator((GetCurrentTokenKind())))
+    return std::make_unique<UnaryExpression>(UnaryOperation,
+                                             std::move(ParseUnaryExpression()));
+
+  // TODO: Add semantic check that only pointer types are dereferenced
+  Expr = ParsePrimaryExpression();
+  return std::make_unique<UnaryExpression>(UnaryOperation,
+                                           std::move(Expr));
+}
+
 static int GetBinOpPrecedence(Token::TokenKind TK) {
   switch (TK) {
   case Token::Equal:
@@ -449,6 +487,8 @@ static int GetBinOpPrecedence(Token::TokenKind TK) {
 
 std::unique_ptr<Expression> Parser::ParseBinaryExpression() {
   auto LeftExpression = ParsePrimaryExpression();
+  if (!LeftExpression)
+    LeftExpression = ParseUnaryExpression();
 
   return ParseBinaryExpressionRHS(0, std::move(LeftExpression));
 }
@@ -465,6 +505,8 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
     Token BinaryOperator = Lex();
 
     auto RightExpression = ParsePrimaryExpression();
+    if (!RightExpression)
+      RightExpression = ParseUnaryExpression();
 
     // In case of an assignment check if the left operand since it should be an
     // lvalue. Which is either an identifier reference or an array expression.
@@ -554,8 +596,10 @@ std::unique_ptr<Expression> Parser::ParsePrimaryExpression() {
     return Expression;
   } else if (lexer.Is(Token::Identifier)) {
     return ParseIdentifierExpression();
-  } else {
+  } else if (lexer.Is(Token::Real) || lexer.Is(Token::Integer)) {
     return ParseConstantExpression();
+  } else {
+    return nullptr;
   }
 }
 

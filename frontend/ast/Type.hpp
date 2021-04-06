@@ -13,6 +13,16 @@ public:
   VariantKind GetTypeVariant() const { return Ty; }
   void SetTypeVariant(VariantKind t) { Ty = t; }
 
+  uint8_t GetPointerLevel() const { return PointerLevel; }
+  void SetPointerLevel(uint8_t pl) { PointerLevel = pl; }
+  void IncrementPointerLevel() { PointerLevel++; }
+  void DecrementPointerLevel() {
+    assert(PointerLevel > 0 && "Cannot decrement below 0");
+    PointerLevel--;
+  }
+
+  bool IsPointerType() const { return PointerLevel != 0; }
+
   virtual std::string ToString() const { return ToString(Ty); }
 
   static std::string ToString(const VariantKind vk) {
@@ -64,6 +74,7 @@ public:
 
 protected:
   VariantKind Ty;
+  uint8_t PointerLevel = 0;
 };
 
 class ArrayType : public Type {
@@ -138,23 +149,18 @@ private:
 class ComplexType : public Type {
 public:
   ComplexType() : Kind(Simple), Type(Invalid) {}
-  ComplexType(Type t) {
-    Kind = Simple;
-    Ty = t.GetTypeVariant();
-  }
+  ComplexType(Type t) : Type(t) { Kind = Simple; }
   ComplexType(Type::VariantKind vk) {
     Kind = Simple;
     Ty = vk;
   }
-  ComplexType(Type t, std::vector<unsigned> d) {
+  ComplexType(Type t, std::vector<unsigned> d) : Type(t) {
     if (d.size() == 0) {
       Kind = Simple;
-      Ty = t.GetTypeVariant();
     } else {
       Kind = Array;
       Dimensions = std::move(d);
     }
-    Ty = t.GetTypeVariant();
   }
   ComplexType(Type t, std::vector<Type::VariantKind> a) {
     Kind = Function;
@@ -168,6 +174,7 @@ public:
         ArgumentTypes(t.GetArgumentTypes()) {}
 
   ComplexType(ComplexType &&ct) {
+    PointerLevel = ct.PointerLevel;
     Ty = ct.Ty;
     Kind = ct.Kind;
     if (ct.Kind == Array)
@@ -177,6 +184,7 @@ public:
   }
 
   ComplexType(const ComplexType &ct) {
+    PointerLevel = ct.PointerLevel;
     Ty = ct.Ty;
     Kind = ct.Kind;
     if (ct.Kind == Array)
@@ -186,6 +194,7 @@ public:
   }
 
   ComplexType &operator=(const ComplexType &ct) {
+    PointerLevel = ct.PointerLevel;
     Ty = ct.Ty;
     Kind = ct.Kind;
     if (ct.Kind == Array)
