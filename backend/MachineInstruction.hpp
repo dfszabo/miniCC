@@ -2,6 +2,7 @@
 #define MACHINEINSTRUCTION_HPP
 
 #include "MachineOperand.hpp"
+#include <cassert>
 #include <iostream>
 #include <vector>
 
@@ -81,8 +82,11 @@ public:
 
   void RemoveMemOperand() {
     for (size_t i = 0; i < Operands.size(); i++)
-      if (Operands[i].IsStackAccess())
+      if (Operands[i].IsStackAccess() || Operands[i].IsMemory()) {
         Operands.erase(Operands.begin() + i--);
+        return;
+      }
+    assert(!"Nothing was removed");
   }
 
   void AddRegister(uint64_t Reg) {

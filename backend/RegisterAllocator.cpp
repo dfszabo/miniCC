@@ -207,19 +207,33 @@ void RegisterAllocator::RunRA() {
 
         // Check the operands
         for (auto &Operand : Instr.GetOperands()) {
-          // Only interested in stack accessing operands
-          if (!Operand.IsStackAccess())
+          // Only interested in memory accessing operands
+          if (!Operand.IsStackAccess() && !Operand.IsMemory())
             continue;
 
-          // Using SP as frame register for simplicity
-          // TODO: Add FP register handling if target support it.
-          auto FrameReg = TM->GetRegInfo()->GetStackRegister();
-          auto Offset = StackFrameSize - Func.GetStackObjectSize(Operand.GetSlot()) -
-                        (int)Func.GetStackObjectPosition(Operand.GetSlot());
+          // Handle stack access
+          if (Operand.IsStackAccess()) {
+            // Using SP as frame register for simplicity
+            // TODO: Add FP register handling if target support it.
+            auto FrameReg = TM->GetRegInfo()->GetStackRegister();
+            auto Offset = StackFrameSize -
+                          Func.GetStackObjectSize(Operand.GetSlot()) -
+                          (int)Func.GetStackObjectPosition(Operand.GetSlot());
 
-          Instr.RemoveMemOperand();
-          Instr.AddRegister(FrameReg);
-          Instr.AddImmediate(Offset);
+            Instr.RemoveMemOperand();
+            Instr.AddRegister(FrameReg);
+            Instr.AddImmediate(Offset);
+          }
+          // Handle memory access
+          else {
+            auto BaseReg = Operand.GetReg();
+            // TODO: Investigate when exactly this should be other then 0
+            auto Offset = 0;
+
+            Instr.RemoveMemOperand();
+            Instr.AddRegister(BaseReg);
+            Instr.AddImmediate(Offset);
+          }
 
           break; // there should be only at most one stack access / instr
         }

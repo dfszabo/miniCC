@@ -24,8 +24,15 @@ public:
     return LLT;
   }
 
+  static LowLevelType CreatePTR(unsigned BitWidth = 32) {
+    LowLevelType LLT(POINTER);
+    LLT.SetBitWidth(BitWidth);
+    return LLT;
+  }
+
   bool IsValid() const { return Type != INVALID; }
   bool IsInteger() const { return Type == INTEGER; }
+  bool IsPointer() const { return Type == POINTER; }
 
   std::string ToString() const {
     std::string str;
@@ -34,6 +41,8 @@ public:
       str = "i";
     else if (Type == FLOATING_POINT)
       str = "f";
+    else if (Type == POINTER)
+      return "p";
 
     str += std::to_string(BitWidth);
 

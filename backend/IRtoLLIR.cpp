@@ -15,7 +15,10 @@ MachineOperand GetMachineOperandFromValue(Value *Val) {
 
     assert(Val->IsIntType() && "Only handling integer types for now");
 
-    VReg.SetType(LowLevelType::CreateINT(BitWidth));
+    if (Val->GetTypeRef().IsPTR())
+      VReg.SetType(LowLevelType::CreatePTR());
+    else
+      VReg.SetType(LowLevelType::CreateINT(BitWidth));
 
     return VReg;
   } else if (Val->IsParameter()) {
@@ -23,7 +26,10 @@ MachineOperand GetMachineOperandFromValue(Value *Val) {
     auto BitWidth = Val->GetBitWidth();
     // FIXME: Only handling int params now, handle others too
     // And add type to registers and others too
-    Result.SetType(LowLevelType::CreateINT(BitWidth));
+    if (Val->GetTypeRef().IsPTR())
+      Result.SetType(LowLevelType::CreatePTR());
+    else
+      Result.SetType(LowLevelType::CreateINT(BitWidth));
 
     return Result;
   } else if (Val->IsConstant()) {
@@ -160,7 +166,10 @@ void HandleFunctionParams(Function &F, MachineFunction *Func) {
     assert(Param->IsIntType() && "Other types UNIMPLEMENTED YET");
     auto ParamSize = Param->GetBitWidth();
 
-    Func->InsertParameter(ParamID, LowLevelType::CreateINT(ParamSize));
+    if (Param->GetTypeRef().IsPTR())
+      Func->InsertParameter(ParamID, LowLevelType::CreatePTR());
+    else
+      Func->InsertParameter(ParamID, LowLevelType::CreateINT(ParamSize));
   }
 }
 
