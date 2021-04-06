@@ -159,8 +159,7 @@ void ReturnInstruction::Print() const {
 
 void StackAllocationInstruction::Print() const {
   std::cout << "\t" << AsString(InstKind) << "\t";
-  std::cout << ValueString() << " :";
-  std::cout << ValueType.AsString() << std::endl;
+  std::cout << ValueString() << std::endl;
 }
 
 void StoreInstruction::Print() const {

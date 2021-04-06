@@ -188,7 +188,10 @@ private:
 class StackAllocationInstruction : public Instruction {
 public:
   StackAllocationInstruction(std::string &S, IRType T, BasicBlock *P)
-      : Instruction(Instruction::STACK_ALLOC, P, T), VariableName(S) {}
+      : Instruction(Instruction::STACK_ALLOC, P, T), VariableName(S) {
+    this->GetTypeRef().SetPointerLevel(this->GetTypeRef().GetPointerLevel() +
+                                       1);
+  }
 
   void Print() const override;
 
@@ -215,10 +218,16 @@ private:
 class LoadInstruction : public Instruction {
 public:
   LoadInstruction(IRType T, Value *S, Value *O, BasicBlock *P)
-      : Instruction(Instruction::LOAD, P, T), Source(S), Offset(O) {}
+      : Instruction(Instruction::LOAD, P, T), Source(S), Offset(O) {
+    this->GetTypeRef().SetPointerLevel(this->GetTypeRef().GetPointerLevel() -
+                                       1);
+  }
 
   LoadInstruction(IRType T, Value *S, BasicBlock *P)
-      : Instruction(Instruction::LOAD, P, T), Source(S), Offset(nullptr) {}
+      : Instruction(Instruction::LOAD, P, T), Source(S), Offset(nullptr) {
+    this->GetTypeRef().SetPointerLevel(this->GetTypeRef().GetPointerLevel() -
+                                       1);
+  }
 
   void Print() const override;
 

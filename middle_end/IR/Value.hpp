@@ -17,7 +17,7 @@ public:
 
   virtual ~Value(){};
 
-  IRType &GetType() { return ValueType; }
+  IRType &GetTypeRef() { return ValueType; }
   IRType GetType() const { return ValueType; }
 
   unsigned GetID() const { return UniqeID; }
@@ -32,7 +32,7 @@ public:
   bool IsIntType() const { return ValueType.IsINT(); }
 
   virtual std::string ValueString() const {
-    return "$" + std::to_string(UniqeID);
+    return "$" + std::to_string(UniqeID) + "<" + ValueType.AsString() + ">";
   }
 
 protected:

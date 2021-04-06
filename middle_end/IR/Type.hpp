@@ -22,6 +22,12 @@ public:
 
   void SetToPointerKind() { Kind = PTR; }
 
+  uint8_t GetPointerLevel() const { return PointerLevel; }
+  void SetPointerLevel(uint8_t pl) {
+    assert(pl < 10 && "Unrealistic pointer level");
+    PointerLevel = pl;
+  }
+
   static IRType CreateBool() { return IRType(SINT, 1); }
   static IRType CreateFloat(uint8_t BitWidht = 32) {
     return IRType(FP, BitWidht);
@@ -37,11 +43,13 @@ public:
 
   bool IsFP() const { return Kind == FP; }
   bool IsINT() const { return Kind == SINT || Kind == UINT; }
+  bool IsPTR() const { return PointerLevel > 0; }
   bool IsVoid() const { return Kind == NONE; }
 
   void SetNumberOfElements(unsigned N) { NumberOfElements = N; }
   size_t GetBitSize() const { return BitWidth; }
-  size_t GetByteSize() const { return (BitWidth * NumberOfElements + 7) / 8; }
+
+  size_t GetByteSize() const;
 
   IRType GetBaseType() const { return IRType(Kind, BitWidth); }
 
@@ -49,6 +57,7 @@ public:
 
 private:
   uint8_t BitWidth;
+  uint8_t PointerLevel = 0;
   unsigned NumberOfElements = 1;
   TKind Kind;
 };
