@@ -1,6 +1,7 @@
 #ifndef MODULE_HPP
 #define MODULE_HPP
 
+#include "Type.hpp"
 #include <cassert>
 #include <memory>
 #include <vector>
@@ -34,6 +35,7 @@ public:
   void Print() const;
 
 private:
+  std::vector<IRType> StructTypes;
   std::vector<std::unique_ptr<Value>> GlobalVars;
   std::vector<Function> Functions;
 };

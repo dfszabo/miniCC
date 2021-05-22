@@ -3,4 +3,5 @@ test
 build/
 .idea/
 cmake-build-debug/
+venv
 

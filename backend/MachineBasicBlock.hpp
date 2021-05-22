@@ -6,6 +6,7 @@
 #include <vector>
 
 class MachineFunction;
+class TargetMachine;
 
 class MachineBasicBlock {
   using InstructionList = std::vector<MachineInstruction>;
@@ -40,7 +41,7 @@ public:
   InstructionList::iterator ReplaceInstr(MachineInstruction MI,
                                          MachineInstruction *Replacable);
 
-  void Print() const;
+  void Print(TargetMachine *TM) const;
 
 private:
   std::string Name;

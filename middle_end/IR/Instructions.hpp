@@ -39,6 +39,9 @@ public:
     LOAD,
     STORE,
     STACK_ALLOC,
+    GET_ELEM_PTR,
+
+    MOV,
   };
 
   IKind GetInstructionKind() { return InstKind; }
@@ -199,6 +202,28 @@ private:
   std::string VariableName;
 };
 
+class GetElementPointerInstruction : public Instruction {
+public:
+  GetElementPointerInstruction(IRType T, Value *CompositeObject,
+                               Value* AccessIndex, BasicBlock *P)
+      : Instruction(Instruction::GET_ELEM_PTR, P, T),
+        Source(CompositeObject), Index(AccessIndex) {
+//    auto PtrLVL = this->GetTypeRef().GetPointerLevel();
+//    if (PtrLVL != 0)
+//      PtrLVL--;
+//    this->GetTypeRef().SetPointerLevel(PtrLVL);
+  }
+
+  Value *GetSource() const { return Source; }
+  Value *GetIndex() { return Index; }
+
+  void Print() const override;
+
+private:
+  Value *Source;
+  Value *Index;
+};
+
 class StoreInstruction : public Instruction {
 public:
   StoreInstruction(Value *S, Value *D, BasicBlock *P)
@@ -219,14 +244,18 @@ class LoadInstruction : public Instruction {
 public:
   LoadInstruction(IRType T, Value *S, Value *O, BasicBlock *P)
       : Instruction(Instruction::LOAD, P, T), Source(S), Offset(O) {
-    this->GetTypeRef().SetPointerLevel(this->GetTypeRef().GetPointerLevel() -
-                                       1);
+    auto PtrLVL = this->GetTypeRef().GetPointerLevel();
+    if (PtrLVL != 0)
+      PtrLVL--;
+    this->GetTypeRef().SetPointerLevel(PtrLVL);
   }
 
   LoadInstruction(IRType T, Value *S, BasicBlock *P)
       : Instruction(Instruction::LOAD, P, T), Source(S), Offset(nullptr) {
-    this->GetTypeRef().SetPointerLevel(this->GetTypeRef().GetPointerLevel() -
-                                       1);
+    auto PtrLVL = this->GetTypeRef().GetPointerLevel();
+    if (PtrLVL != 0)
+      PtrLVL--;
+    this->GetTypeRef().SetPointerLevel(PtrLVL);
   }
 
   void Print() const override;

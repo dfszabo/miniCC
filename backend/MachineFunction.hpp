@@ -39,7 +39,7 @@ public:
   /// Get the next available virtual register.
   unsigned GetNextAvailableVReg();
 
-  void Print() const;
+  void Print(TargetMachine *TM) const;
 
 private:
   std::string Name;

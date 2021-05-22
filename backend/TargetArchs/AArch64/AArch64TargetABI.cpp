@@ -5,26 +5,26 @@ using namespace AArch64;
 AArch64TargetABI::AArch64TargetABI(RegisterInfo *RI) {
   StackAlignment = 16;
 
-  // w0-w7
-  for (int i = 0; i <= 7; i++)
+  // x0-x7
+  for (int i = 32; i <= 39; i++)
     ArgumentRegisters.push_back(RI->GetRegister(i));
 
   // sp
-  CalleSavedRegisters.push_back(RI->GetRegister(32));
+  CalleSavedRegisters.push_back(RI->GetRegister(64));
   // fp
-  CalleSavedRegisters.push_back(RI->GetRegister(29));
-  // w19-w28
-  for (int i = 19; i <= 28; i++)
+  CalleSavedRegisters.push_back(RI->GetRegister(61));
+  // x19-x28
+  for (int i = 51; i <= 60; i++)
     CalleSavedRegisters.push_back(RI->GetRegister(i));
 
   // w0-w7
-  for (int i = 0; i <= 7; i++)
+  for (int i = 32; i <= 39; i++)
     CallerSavedRegisters.push_back(RI->GetRegister(i));
-  // w9-w15
-  for (int i = 9; i <= 15; i++)
+  // x9-x15
+  for (int i = 41; i <= 47; i++)
     CallerSavedRegisters.push_back(RI->GetRegister(i));
 
-  // w0-w7
-  for (int i = 0; i <= 7; i++)
+  // x0-x7
+  for (int i = 32; i <= 39; i++)
     ReturnRegisters.push_back(RI->GetRegister(i));
 }

@@ -9,9 +9,10 @@ PrologueEpilogInsertion::CreateADDInstruction(int64_t StackAdjustmentSize) {
   MachineInstruction Add(MachineInstruction::ADD, nullptr);
 
   auto SPReg = TM->GetRegInfo()->GetStackRegister();
+  auto SPRegSize = TM->GetRegInfo()->GetRegisterByID(SPReg)->GetBitWidth();
 
-  Add.AddRegister(SPReg);
-  Add.AddRegister(SPReg);
+  Add.AddRegister(SPReg, SPRegSize);
+  Add.AddRegister(SPReg, SPRegSize);
   Add.AddImmediate(StackAdjustmentSize);
 
   if (!TM->SelectInstruction(&Add)) {

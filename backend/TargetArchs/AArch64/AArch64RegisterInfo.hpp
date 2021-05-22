@@ -23,7 +23,7 @@ public:
   unsigned GetStackRegister() override;
 
 private:
-  TargetRegister Registers[35];
+  TargetRegister Registers[67];
 };
 
 } // namespace AArch64

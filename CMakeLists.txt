@@ -24,7 +24,9 @@ add_executable(miniCC
     backend/InstructionSelection.cpp
     backend/MachineBasicBlock.cpp
     backend/MachineFunction.cpp
+    backend/MachineInstruction.cpp
     backend/MachineInstructionLegalizer.cpp
+    backend/MachineOperand.cpp
     backend/PrologueEpilogInsertion.cpp
     backend/RegisterAllocator.cpp
     backend/Support.cpp

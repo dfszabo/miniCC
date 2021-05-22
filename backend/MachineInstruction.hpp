@@ -7,6 +7,7 @@
 #include <vector>
 
 class MachineBasicBlock;
+class TargetMachine;
 
 class MachineInstruction {
   using OperandList = std::vector<MachineOperand>;
@@ -40,6 +41,7 @@ public:
     LOAD,
     STORE,
     STACK_ALLOC,
+    STACK_ADDRESS,
 
     // Moves and constant materializations
     LOAD_IMM,
@@ -89,18 +91,28 @@ public:
     assert(!"Nothing was removed");
   }
 
-  void AddRegister(uint64_t Reg) {
-    AddOperand(MachineOperand::CreateRegister(Reg));
+  void AddVirtualRegister(uint64_t Reg, unsigned BitWidth = 32) {
+    auto I = MachineOperand::CreateVirtualRegister(Reg);
+    I.SetType(LowLevelType::CreateINT(BitWidth));
+    AddOperand(I);
   }
 
-  void AddImmediate(uint64_t Num) {
-    AddOperand(MachineOperand::CreateImmediate(Num));
+  void AddRegister(uint64_t Reg, unsigned BitWidth = 32) {
+    auto I = MachineOperand::CreateRegister(Reg);
+    I.SetType(LowLevelType::CreateINT(BitWidth));
+    AddOperand(I);
+  }
+
+  void AddImmediate(uint64_t Num, unsigned BitWidth = 32) {
+    auto I = MachineOperand::CreateImmediate(Num);
+    I.SetType(LowLevelType::CreateINT(BitWidth));
+    AddOperand(I);
   }
 
   void AddMemory(uint64_t Id) { AddOperand(MachineOperand::CreateMemory(Id)); }
 
-  void AddStackAccess(uint64_t Slot, unsigned Size = 4) {
-    AddOperand(MachineOperand::CreateStackAccess(Slot));
+  void AddStackAccess(uint64_t Slot, unsigned Offset = 0) {
+    AddOperand(MachineOperand::CreateStackAccess(Slot, Offset));
   }
 
   void AddLabel(const char *Label) {
@@ -118,73 +130,7 @@ public:
   }
   bool IsLoadOrStore() const { return IsLoad() || IsStore(); }
 
-  void Print() const {
-    std::string OpcodeStr;
-
-    switch (Opcode) {
-    case AND:
-      OpcodeStr = "AND";
-      break;
-    case OR:
-      OpcodeStr = "OR";
-      break;
-    case ADD:
-      OpcodeStr = "ADD";
-      break;
-    case SUB:
-      OpcodeStr = "SUB";
-      break;
-    case MUL:
-      OpcodeStr = "MUL";
-      break;
-    case DIV:
-      OpcodeStr = "DIV";
-      break;
-    case MOD:
-      OpcodeStr = "MOD";
-      break;
-    case CMP:
-      OpcodeStr = "CMP";
-      break;
-    case SEXT:
-      OpcodeStr = "SEXT";
-      break;
-    case ZEXT:
-      OpcodeStr = "ZEXT";
-      break;
-    case TRUNC:
-      OpcodeStr = "TRUNC";
-      break;
-    case LOAD_IMM:
-      OpcodeStr = "LOAD_IMM";
-      break;
-    case STORE:
-      OpcodeStr = "STORE";
-      break;
-    case LOAD:
-      OpcodeStr = "LOAD";
-      break;
-    case JUMP:
-      OpcodeStr = "JUMP";
-      break;
-    case BRANCH:
-      OpcodeStr = "BRANCH";
-      break;
-    case RET:
-      OpcodeStr = "RET";
-      break;
-    default:
-      break;
-    }
-
-    std::cout << OpcodeStr << "\t";
-    for (size_t i = 0; i < Operands.size(); i++) {
-      Operands[i].Print();
-      if (i < Operands.size() - 1)
-        std::cout << ", ";
-    }
-    std::cout << std::endl;
-  }
+  void Print(TargetMachine *TM) const;
 
 private:
   unsigned Opcode = 0;

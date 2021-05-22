@@ -42,7 +42,7 @@ public:
     else if (Type == FLOATING_POINT)
       str = "f";
     else if (Type == POINTER)
-      return "p";
+      str = "p";
 
     str += std::to_string(BitWidth);
 

@@ -68,6 +68,7 @@ public:
   FunctionParameter(std::string &Name, IRType Type)
       : Value(PARAM, Type), Name(Name) {}
 
+  std::string &GetName() { return Name; }
   std::string ValueString() const override { return "$" + Name; }
 
 private:

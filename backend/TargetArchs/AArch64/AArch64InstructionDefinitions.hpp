@@ -51,12 +51,16 @@ class AArch64InstructionDefinitions : public InstructionDefinitions {
   using IRToTargetInstrMap = std::map<unsigned, TargetInstruction>;
 
 public:
-  AArch64InstructionDefinitions() {}
+  AArch64InstructionDefinitions();
   ~AArch64InstructionDefinitions() override {}
   TargetInstruction *GetTargetInstr(unsigned Opcode) override;
+  std::string GetInstrString(unsigned index) override {
+    return InstrEnumStrings[index];
+  }
 
 private:
   static IRToTargetInstrMap Instructions;
+  std::vector<std::string> InstrEnumStrings;
 };
 
 } // namespace AArch64

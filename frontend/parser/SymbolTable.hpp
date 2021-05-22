@@ -10,10 +10,10 @@
 /// Holds a stack (vector) of SymbolTables (vector of tuples).
 /// FIXME: An unordered_map would be more appropriate, but
 /// had trouble with it so rather than wasting too much time
-/// with it curently vectors used. Later improve this.
+/// with it currently vectors used. Later improve this.
 class SymbolTableStack {
 public:
-  using Entry = std::tuple<std::string, ComplexType, ValueType>;
+  using Entry = std::tuple<std::string, Type, ValueType>;
   using Table = std::vector<Entry>;
 
   /// Adding the first empty table when constructed

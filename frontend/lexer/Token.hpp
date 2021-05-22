@@ -18,6 +18,7 @@ public:
     Real,
 
     // Operators
+    Dot,
     Comma,
     Plus,
     Minus,
@@ -56,7 +57,8 @@ public:
     Char,
     Int,
     Double,
-    Void
+    Void,
+    Struct,
   };
 
   Token() : Kind(Invalid) {}
@@ -92,6 +94,8 @@ public:
       return "Integer";
     case Real:
       return "Float";
+    case Dot:
+      return ".";
     case Comma:
       return ",";
     case Plus:
@@ -154,6 +158,8 @@ public:
       return "double";
     case Void:
       return "void";
+    case Struct:
+      return "struct";
 
     default:
       assert(false && "Unhandled token type.");

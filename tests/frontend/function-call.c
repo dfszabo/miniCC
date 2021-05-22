@@ -1,7 +1,7 @@
-int bar(int a, double b) {
-  return 1;
+int bar(int a) {
+  return 1 + a;
 }
 
 int foo() {
-  return bar(1 + 2, 2.0);
+  return bar(1 + 2);
 }

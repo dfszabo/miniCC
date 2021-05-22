@@ -2,6 +2,8 @@
 #include "MachineBasicBlock.hpp"
 #include <iostream>
 
+class TargetMachine;
+
 unsigned MachineFunction::GetNextAvailableVReg() {
   // If the next virtual register was computed already once, then just
   // increment it
@@ -20,11 +22,11 @@ unsigned MachineFunction::GetNextAvailableVReg() {
   return ++NextVReg;
 }
 
-void MachineFunction::Print() const {
+void MachineFunction::Print(TargetMachine *TM) const {
   std::cout << "function:" << Name << std::endl;
   std::cout << "\tStackFrame:" << std::endl;
   SF.Print();
 
   for (auto &BB : BasicBlocks)
-    BB.Print();
+    BB.Print(TM);
 }
