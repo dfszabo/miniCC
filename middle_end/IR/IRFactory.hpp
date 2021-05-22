@@ -11,7 +11,7 @@
 
 class IRFactory {
 private:
-  BinaryInstruction *CreateBinaryInstruction(Instruction::IKind K, Value *L,
+  Instruction *CreateBinaryInstruction(Instruction::IKind K, Value *L,
                                              Value *R) {
     auto Inst = std::make_unique<BinaryInstruction>(K, L, R, GetCurrentBB());
     Inst->SetID(ID++);
@@ -31,32 +31,50 @@ public:
   IRFactory() = delete;
   IRFactory(Module &M) : CurrentModule(M), ID(0) {}
 
-  BinaryInstruction *CreateAND(Value *LHS, Value *RHS) {
+  Instruction *CreateAND(Value *LHS, Value *RHS) {
     return CreateBinaryInstruction(Instruction::AND, LHS, RHS);
   }
 
-  BinaryInstruction *CreateOR(Value *LHS, Value *RHS) {
+  Instruction *CreateOR(Value *LHS, Value *RHS) {
     return CreateBinaryInstruction(Instruction::OR, LHS, RHS);
   }
 
-  BinaryInstruction *CreateADD(Value *LHS, Value *RHS) {
+  Instruction *CreateADD(Value *LHS, Value *RHS) {
     return CreateBinaryInstruction(Instruction::ADD, LHS, RHS);
   }
 
-  BinaryInstruction *CreateSUB(Value *LHS, Value *RHS) {
+  Instruction *CreateSUB(Value *LHS, Value *RHS) {
     return CreateBinaryInstruction(Instruction::SUB, LHS, RHS);
   }
 
-  BinaryInstruction *CreateMUL(Value *LHS, Value *RHS) {
+  Instruction *CreateMUL(Value *LHS, Value *RHS) {
+    if (LHS->IsConstant() && RHS->IsConstant()) {
+      uint64_t Val =
+          ((Constant*)LHS)->GetIntValue() * ((Constant*)RHS)->GetIntValue();
+      return CreateMOV(GetConstant(Val));
+    }
     return CreateBinaryInstruction(Instruction::MUL, LHS, RHS);
   }
 
-  BinaryInstruction *CreateDIV(Value *LHS, Value *RHS) {
+  Instruction *CreateDIV(Value *LHS, Value *RHS) {
     return CreateBinaryInstruction(Instruction::DIV, LHS, RHS);
   }
 
-  BinaryInstruction *CreateMOD(Value *LHS, Value *RHS) {
+  Instruction *CreateMOD(Value *LHS, Value *RHS) {
     return CreateBinaryInstruction(Instruction::MOD, LHS, RHS);
+  }
+
+  // FIXME: revisit this, it may be better to make a unique instruction variant
+  // for 'mov' instead of using UnaryInstruction
+  UnaryInstruction *CreateMOV(Value *Operand, uint8_t BitWidth = 32) {
+    auto Inst = std::make_unique<UnaryInstruction>(
+        Instruction::MOV, IRType::CreateInt(BitWidth), Operand,
+        GetCurrentBB());
+    Inst->SetID(ID++);
+    auto InstPtr = Inst.get();
+    Insert(std::move(Inst));
+
+    return InstPtr;
   }
 
   UnaryInstruction *CreateSEXT(Value *Operand, uint8_t BitWidth = 32) {
@@ -132,6 +150,17 @@ public:
     auto InstPtr = Inst.get();
     Inst->SetID(ID++);
     CurrentModule.GetBB(0)->InsertSA(std::move(Inst));
+
+    return InstPtr;
+  }
+
+  GetElementPointerInstruction *CreateGEP(IRType ResultType, Value *Source,
+                            Value* Index) {
+    auto Inst = std::make_unique<GetElementPointerInstruction>(ResultType, Source, Index,
+                                                  GetCurrentBB());
+    auto InstPtr = Inst.get();
+    Inst->SetID(ID++);
+    Insert(std::move(Inst));
 
     return InstPtr;
   }

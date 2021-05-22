@@ -189,6 +189,14 @@ bool AArch64TargetMachine::SelectSTORE(MachineInstruction *MI) {
   return true;
 }
 
+bool AArch64TargetMachine::SelectSTACK_ADDRESS(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 2 &&
+         "STACK_ADDRESS must have 2 operands");
+
+  MI->SetOpcode(ADD_rri);
+  return true;
+}
+
 bool AArch64TargetMachine::SelectBRANCH(MachineInstruction *MI) {
   // 1) Get the preceding instruction if exists
   // 2) If a compare then use its condition to determine the condition code

@@ -8,7 +8,14 @@
 class Type {
 public:
   /// Basic type variants. Numerical ones are ordered by conversion rank.
-  enum VariantKind { Invalid, Void, Char, Int, Double };
+  enum VariantKind { Invalid, Composite, Void, Char, Int, Double };
+  enum TypeKind { Simple, Array, Function, Struct };
+
+  std::string GetName() const { return Name; }
+  void SetName(std::string &n) { Name = n; }
+
+  TypeKind GetTypeKind() const { return Kind; }
+  void SetTypeKind(TypeKind t) { Kind = t; }
 
   VariantKind GetTypeVariant() const { return Ty; }
   void SetTypeVariant(VariantKind t) { Ty = t; }
@@ -23,10 +30,8 @@ public:
 
   bool IsPointerType() const { return PointerLevel != 0; }
 
-  virtual std::string ToString() const { return ToString(Ty); }
-
-  static std::string ToString(const VariantKind vk) {
-    switch (vk) {
+  static std::string ToString(const Type *t) {
+    switch (t->GetTypeVariant()) {
     case Double:
       return "double";
     case Char:
@@ -35,6 +40,8 @@ public:
       return "int";
     case Void:
       return "void";
+    case Composite:
+      return t->GetName();
     case Invalid:
       return "invalid";
     default:
@@ -42,18 +49,6 @@ public:
       break;
     }
   }
-
-  Type() : Ty(Invalid) {}
-  Type(VariantKind vk) : Ty(vk) {}
-
-  Type(Type &&) = default;
-  Type &operator=(Type &&) = default;
-
-  Type(const Type &) = default;
-  Type &operator=(const Type &) = default;
-
-  // FIXME: This can be deleted I believe.
-  virtual ~Type() = default;
 
   /// Given two type variants it return the stronger one.
   /// Type variants must be numerical ones.
@@ -72,158 +67,95 @@ public:
            (from == Char && to == Int) || (from == Int && to == Char);
   }
 
-protected:
-  VariantKind Ty;
-  uint8_t PointerLevel = 0;
-};
-
-class ArrayType : public Type {
-public:
-  ArrayType() = default;
-  ArrayType(Type t) : Type(t) {}
-  ArrayType(Type t, std::vector<unsigned> d) : Type(t), Dimensions(d) {}
-
-  ArrayType(ArrayType &&) = default;
-  ArrayType &operator=(ArrayType &&) = default;
-
-  ArrayType(const ArrayType &) = default;
-  ArrayType &operator=(const ArrayType &) = default;
-
-  std::vector<unsigned> &GetDimensions() { return Dimensions; }
-  void SetDimensions(std::vector<unsigned> d) { Dimensions = std::move(d); }
-
-  std::string ToString() const override {
-    auto TyStr = Type::ToString(Ty);
-
-    for (size_t i = 0; i < Dimensions.size(); i++)
-      TyStr += "[" + std::to_string(Dimensions[i]) + "]";
-    return TyStr;
-  }
-
-  bool IsArray() { return Dimensions.size() > 0; }
-
-private:
-  std::vector<unsigned> Dimensions;
-};
-
-class FunctionType : public Type {
-public:
-  FunctionType() = default;
-  FunctionType(Type t) : Type(t) {}
-  FunctionType(Type t, std::vector<VariantKind> a)
-      : Type(t), ArgumentTypes(a) {}
-
-  FunctionType(FunctionType &&) = default;
-  FunctionType &operator=(FunctionType &&) = delete;
-
-  FunctionType(const FunctionType &) = default;
-  FunctionType &operator=(const FunctionType &) = default;
-
-  std::vector<VariantKind> &GetArgumentTypes() { return ArgumentTypes; }
-  void SetArgumentTypes(std::vector<VariantKind> &v) { ArgumentTypes = v; }
-  void AddArgumentType(VariantKind v) { ArgumentTypes.push_back(v); }
-
-  VariantKind GetReturnType() const { return GetTypeVariant(); }
-  void SetReturnType(VariantKind v) { SetTypeVariant(v); }
-
-  std::string ToString() const override {
-    auto TyStr = Type::ToString(GetReturnType());
-    auto ArgSize = ArgumentTypes.size();
-    if (ArgSize > 0)
-      TyStr += " (";
-    for (size_t i = 0; i < ArgSize; i++) {
-      TyStr += Type::ToString(ArgumentTypes[i]);
-      if (i + 1 < ArgSize)
-        TyStr += ",";
-      else
-        TyStr += ")";
+  Type() : Kind(Simple), Ty(Invalid) {}
+  Type(TypeKind tk)  { Kind = tk;
+    switch (tk) {
+    case Array:
+    case Struct:
+    case Function:
+      Ty = Composite;
+      break;
+    case Simple:
+    default:
+      Ty = Invalid;
+      break;
     }
-    return TyStr;
   }
-
-private:
-  std::vector<VariantKind> ArgumentTypes;
-};
-
-// For now make this a separate type but it should be the only type
-class ComplexType : public Type {
-public:
-  ComplexType() : Kind(Simple), Type(Invalid) {}
-  ComplexType(Type t) : Type(t) { Kind = Simple; }
-  ComplexType(Type::VariantKind vk) {
+  Type(VariantKind vk) {
     Kind = Simple;
     Ty = vk;
   }
-  ComplexType(Type t, std::vector<unsigned> d) : Type(t) {
-    if (d.size() == 0) {
+
+  Type(Type t, std::vector<unsigned> d) : Type(t) {
+    if (d.empty()) {
       Kind = Simple;
     } else {
       Kind = Array;
       Dimensions = std::move(d);
     }
   }
-  ComplexType(Type t, std::vector<Type::VariantKind> a) {
+
+  Type(Type t, std::vector<Type> a) {
     Kind = Function;
-    ArgumentTypes = std::move(a);
+    TypeList = std::move(a);
     Ty = t.GetTypeVariant();
   }
-  ComplexType(ArrayType t)
-      : Type(t.GetTypeVariant()), Kind(Array), Dimensions(t.GetDimensions()) {}
-  ComplexType(FunctionType t)
-      : Type(t.GetReturnType()), Kind(Function),
-        ArgumentTypes(t.GetArgumentTypes()) {}
 
-  ComplexType(ComplexType &&ct) {
+  Type(Type &&ct) {
     PointerLevel = ct.PointerLevel;
     Ty = ct.Ty;
     Kind = ct.Kind;
-    if (ct.Kind == Array)
-      Dimensions = std::move(ct.Dimensions);
-    else if (ct.Kind == Function)
-      ArgumentTypes = std::move(ct.ArgumentTypes);
+    Dimensions = std::move(ct.Dimensions);
+    TypeList = std::move(ct.TypeList);
+    Name = ct.Name;
   }
 
-  ComplexType(const ComplexType &ct) {
+  Type(const Type &ct) {
     PointerLevel = ct.PointerLevel;
     Ty = ct.Ty;
     Kind = ct.Kind;
-    if (ct.Kind == Array)
-      Dimensions = ct.Dimensions;
-    else if (ct.Kind == Function)
-      ArgumentTypes = ct.ArgumentTypes;
+    Dimensions = ct.Dimensions;
+    TypeList = ct.TypeList;
+    Name = ct.Name;
   }
 
-  ComplexType &operator=(const ComplexType &ct) {
+  Type &operator=(const Type &ct) {
     PointerLevel = ct.PointerLevel;
     Ty = ct.Ty;
     Kind = ct.Kind;
-    if (ct.Kind == Array)
-      Dimensions = ct.Dimensions;
-    else if (ct.Kind == Function)
-      ArgumentTypes = ct.ArgumentTypes;
+    Dimensions = ct.Dimensions;
+    TypeList = ct.TypeList;
+    Name = ct.Name;
     return *this;
   }
 
-  bool IsSimpleType() { return Kind == Simple; }
-  bool IsArrayType() { return Kind == Array; }
-  bool IsFunctionType() { return Kind == Function; }
+  bool IsSimpleType() const { return Kind == Simple; }
+  bool IsArray() const { return Kind == Array; }
+  bool IsFunction() const { return Kind == Function; }
+  bool IsStruct() const { return Kind == Struct; }
 
-  Type GetType() { return Type(Ty); }
-  ArrayType GetArrayType() { return ArrayType(Ty, Dimensions); }
-  FunctionType GetFunctionType() { return FunctionType(Ty, ArgumentTypes); }
+  std::vector<Type> &GetTypeList() { return TypeList; }
+  VariantKind GetReturnType() const { return Ty; }
 
   std::vector<unsigned> &GetDimensions() {
-    assert(IsArrayType() && "Must be an Array type to access Dimensions.");
+    assert(IsArray() && "Must be an Array type to access Dimensions.");
     return Dimensions;
   }
 
-  std::vector<Type::VariantKind> &GetArgTypes() {
-    assert(IsFunctionType() &&
-           "Must be a Function type to access ArgumentTypes.");
-    return ArgumentTypes;
+  std::vector<Type> &GetArgTypes() {
+    assert(IsFunction() && "Must be a Function type to access TypeList.");
+    return TypeList;
   }
 
-  friend bool operator==(const ComplexType &lhs, const ComplexType &rhs) {
+  Type GetStructMemberType(const std::string &Member) {
+    for (auto &T : TypeList)
+      if (T.GetName() == Member)
+        return T;
+
+    return Type(VariantKind::Invalid);
+  }
+
+  friend bool operator==(const Type &lhs, const Type &rhs) {
     bool result = lhs.Kind == rhs.Kind && lhs.Ty == rhs.Ty;
 
     if (!result)
@@ -231,7 +163,7 @@ public:
 
     switch (lhs.Kind) {
     case Function:
-      result = result && (lhs.ArgumentTypes == rhs.ArgumentTypes);
+      result = result && (lhs.TypeList == rhs.TypeList);
       break;
     case Array:
       result = result && (lhs.Dimensions == rhs.Dimensions);
@@ -242,14 +174,14 @@ public:
     return result;
   }
 
-  std::string ToString() const override {
+  std::string ToString() const {
     if (Kind == Function) {
-      auto TyStr = Type::ToString(Ty);
-      auto ArgSize = ArgumentTypes.size();
+      auto TyStr = Type::ToString(this);
+      auto ArgSize = TypeList.size();
       if (ArgSize > 0)
         TyStr += " (";
       for (size_t i = 0; i < ArgSize; i++) {
-        TyStr += Type::ToString(ArgumentTypes[i]);
+        TyStr += Type::ToString(&TypeList[i]);
         if (i + 1 < ArgSize)
           TyStr += ",";
         else
@@ -257,22 +189,25 @@ public:
       }
       return TyStr;
     } else if (Kind == Array) {
-      auto TyStr = Type::ToString(Ty);
+      auto TyStr = Type::ToString(this);
 
       for (size_t i = 0; i < Dimensions.size(); i++)
         TyStr += "[" + std::to_string(Dimensions[i]) + "]";
       return TyStr;
     } else {
-      return Type::ToString(Ty);
+      return Type::ToString(this);
     }
   }
 
 private:
-  enum TypeKind { Simple, Array, Function };
+  std::string Name; // For structs
+  VariantKind Ty;
+  uint8_t PointerLevel = 0;
+
   TypeKind Kind;
   // TODO: revisit the use of union, deleted from here since
   // it just made things complicated
-  std::vector<VariantKind> ArgumentTypes;
+  std::vector<Type> TypeList;
   std::vector<unsigned> Dimensions;
 };
 

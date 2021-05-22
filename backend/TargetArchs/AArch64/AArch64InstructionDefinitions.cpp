@@ -2,6 +2,13 @@
 
 using namespace AArch64;
 
+AArch64InstructionDefinitions::AArch64InstructionDefinitions() {
+    InstrEnumStrings = {"ADD_rrr", "ADD_rri",  "AND_rri",  "SUB_rrr", "SUB_rri", "SUBS", "MUL_rri",
+    "MUL_rrr", "SDIV_rri", "SDIV_rrr", "CMP_ri",  "CMP_rr",  "CSET", "SXTB",
+    "MOV_rc",  "LDR",      "LDRB",     "STR",     "STRB",    "BEQ",  "BNE",
+    "BGE",     "BGT",      "BLE",      "BLT",     "B",       "RET"};
+}
+
 AArch64InstructionDefinitions::IRToTargetInstrMap
     AArch64InstructionDefinitions::Instructions = [] {
       IRToTargetInstrMap ret;

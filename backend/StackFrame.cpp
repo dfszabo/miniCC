@@ -23,9 +23,11 @@ unsigned StackFrame::GetPosition(unsigned ID) {
     if (Entry.first == ID)
       return Position; // then return its position
 
-    // FIXME: See InsertStackSlot comment
     // NOTE: Hard coded 4 byte alignment
-    Position += 4;
+    if (Entry.second >= 4)
+      Position += Entry.second;
+    else
+      Position += 4;
   }
 
   return ~0; // Error

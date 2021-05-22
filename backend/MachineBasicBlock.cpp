@@ -67,10 +67,10 @@ MachineBasicBlock::ReplaceInstr(MachineInstruction MI,
   return Instructions.end();
 }
 
-void MachineBasicBlock::Print() const {
+void MachineBasicBlock::Print(TargetMachine *TM) const {
   std::cout << "%BB:" << Name << ":" << std::endl;
   for (auto &I : Instructions) {
     std::cout << "\t";
-    I.Print();
+    I.Print(TM);
   }
 }

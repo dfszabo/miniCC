@@ -41,8 +41,12 @@ std::string Instruction::AsString(IKind IK) {
     return "str";
   case STACK_ALLOC:
     return "sa";
+  case GET_ELEM_PTR:
+    return "gep";
   case CMP:
     return "cmp";
+  case MOV:
+    return "mov";
   default:
     assert(!"Unknown instruction kind.");
     break;
@@ -160,6 +164,21 @@ void ReturnInstruction::Print() const {
 void StackAllocationInstruction::Print() const {
   std::cout << "\t" << AsString(InstKind) << "\t";
   std::cout << ValueString() << std::endl;
+}
+
+void GetElementPointerInstruction::Print() const {
+  std::cout << "\t" << AsString(InstKind) << "\t";
+  std::cout << ValueString() << ", ";
+  std::cout << Source->ValueString();
+  std::string str = ", ";
+  //size_t counter = 0;
+  //for (auto &I : Indexes) {
+  //  if (counter > 0)
+  //    str += ", ";
+    str += Index->ValueString();
+  //  counter++;
+  //}
+  std::cout << str << std::endl;
 }
 
 void StoreInstruction::Print() const {

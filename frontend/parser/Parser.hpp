@@ -28,14 +28,20 @@ public:
 
   /// Helper function to make insertion to the symbol table stack more compact
   /// and readable
-  void InsertToSymTable(const std::string &SymName, ComplexType SymType,
+  void InsertToSymTable(const std::string &SymName, Type SymType,
                         const bool ToGlobal, ValueType SymValue);
+
+  Type ParseType(Token::TokenKind tk);
+  bool IsTypeSpecifier(Token::TokenKind tk);
+  bool IsReturnTypeSpecifier(Token::TokenKind tk);
 
   std::unique_ptr<Node> ParseTranslationUnit();
   std::unique_ptr<Node> ParseExternalDeclaration();
   std::unique_ptr<FunctionDeclaration>
   ParseFunctionDeclaration(const Type &ReturnType, const Token &Name);
-  std::unique_ptr<VariableDeclaration> ParseVaraibleDeclaration();
+  std::unique_ptr<VariableDeclaration> ParseVariableDeclaration();
+  std::unique_ptr<MemberDeclaration> ParseMemberDeclaration();
+  std::unique_ptr<StructDeclaration> ParseStructDeclaration();
   Node ParseReturnTypeSpecifier();
   std::vector<std::unique_ptr<FunctionParameterDeclaration>>
   ParseParameterList();
@@ -46,10 +52,13 @@ public:
   std::unique_ptr<Statement> ParseStatement();
   std::unique_ptr<ExpressionStatement> ParseExpressionStatement();
   std::unique_ptr<Expression> ParseExpression();
+  std::unique_ptr<Expression> ParsePostFixExpression();
   std::unique_ptr<Expression> ParseUnaryExpression();
   std::unique_ptr<Expression> ParseBinaryExpression();
   std::unique_ptr<Expression>
   ParseBinaryExpressionRHS(int Precedence, std::unique_ptr<Expression> LHS);
+  std::unique_ptr<Expression> ParseCallExpression(Token ID);
+  std::unique_ptr<Expression> ParseArrayExpression(std::unique_ptr<Expression> Base);
   std::unique_ptr<Expression> ParseIdentifierExpression();
   std::unique_ptr<Expression> ParsePrimaryExpression();
   std::unique_ptr<WhileStatement> ParseWhileStatement();
@@ -63,6 +72,9 @@ private:
   Lexer lexer;
   SymbolTableStack SymTabStack;
   IRFactory *IRF;
+
+  // Type name to type, and the list of names for the struct field
+  std::map<std::string, std::tuple<Type, std::vector<std::string>>> UserDefinedTypes;
 
   /// Used for determining if implicit cast need or not in return statements
   Type CurrentFuncRetType = Type::Invalid;

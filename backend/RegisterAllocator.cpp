@@ -8,25 +8,28 @@
 #include <algorithm>
 #include <vector>
 
+using VirtualReg = unsigned;
+using PhysicalReg = unsigned;
+
 void PreAllocateParameters(MachineFunction &Func, TargetMachine *TM,
-                           std::map<unsigned, unsigned> &AllocatedRegisters) {
+                           std::map<VirtualReg, PhysicalReg> &AllocatedRegisters) {
   auto ArgRegs = TM->GetABI()->GetArgumentRegisters();
   unsigned CurrentParamReg = 0;
 
   for (auto Param : Func.GetParameters()) {
-    // FIXME: Handle others as well
-    assert(Param.second.GetBitWidth() <= 32 &&
-           "Only handling <= 32 bits for now");
     // FIXME: excess parameters should be stored on the stack
     assert(CurrentParamReg < ArgRegs.size() && "Run out of param regs");
     // allocate the param to the CurrentParamReg -th param register
-    AllocatedRegisters[Param.first] = ArgRegs[CurrentParamReg++]->GetID();
+    if (Param.second.GetBitWidth() <= 32)
+      AllocatedRegisters[Param.first] = ArgRegs[CurrentParamReg++]->GetSubRegs()[0];
+    else
+      AllocatedRegisters[Param.first] = ArgRegs[CurrentParamReg++]->GetID();
   }
 }
 
 void PreAllocateReturnRegister(
     MachineFunction &Func, TargetMachine *TM,
-    std::map<unsigned, unsigned> &AllocatedRegisters) {
+    std::map<VirtualReg, PhysicalReg> &AllocatedRegisters) {
   auto RetRegs = TM->GetABI()->GetReturnRegisters();
   auto LastBBInstrs = Func.GetBasicBlocks().back().GetInstructions();
 
@@ -34,22 +37,60 @@ void PreAllocateReturnRegister(
     // If return instruction
     auto Opcode = It->GetOpcode();
     if (auto TargetInstr = TM->GetInstrDefs()->GetTargetInstr(Opcode);
-        TargetInstr->IsReturn())
-      AllocatedRegisters[It->GetOperand(0)->GetReg()] = RetRegs[0]->GetID();
+        TargetInstr->IsReturn()) {
+      auto RetValSize = It->GetOperands()[0].GetSize();
+
+      if (RetValSize == RetRegs[0]->GetBitWidth())
+        AllocatedRegisters[It->GetOperand(0)->GetReg()] = RetRegs[0]->GetID();
+      else
+        AllocatedRegisters[It->GetOperand(0)->GetReg()] = RetRegs[0]->GetSubRegs()[0];
+    }
   }
+}
+
+PhysicalReg GetNextAvailableReg(uint8_t BitSize, std::vector<PhysicalReg> &Pool,
+                                TargetMachine *TM) {
+  unsigned loopCounter = 0;
+  for (auto UnAllocatedReg : Pool) {
+    auto UnAllocatedRegInfo = TM->GetRegInfo()->GetRegisterByID(UnAllocatedReg);
+    // If the register bit width matches the requested size then return this
+    // register and delete it from the pool
+    if (UnAllocatedRegInfo->GetBitWidth() == BitSize) {
+      Pool.erase(Pool.begin() + loopCounter);
+      return UnAllocatedReg;
+    }
+    // Otherwise check the subregisters of the register if it has, and try to
+    // find a right candidate
+    for (auto SubReg : UnAllocatedRegInfo->GetSubRegs()) {
+      auto SubRegInfo = TM->GetRegInfo()->GetRegisterByID(SubReg);
+      if (SubRegInfo->GetBitWidth() == BitSize) {
+        Pool.erase(Pool.begin() + loopCounter);
+        return SubReg;
+      }
+    }
+
+    loopCounter++;
+  }
+
+  assert(!"Have not found the right registers");
+  return 0;
 }
 
 void RegisterAllocator::RunRA() {
   // mapping from virtual reg to physical
-  std::map<unsigned, unsigned> AllocatedRegisters;
-  std::vector<unsigned> RegisterPool;  // available registers
-  std::set<unsigned> RegistersToSpill; // register require spilling
-
-  // Initialize the usable register's pool
-  for (auto TargetReg : TM->GetABI()->GetCallerSavedRegisters())
-    RegisterPool.push_back(TargetReg->GetID());
+  std::map<VirtualReg, PhysicalReg> AllocatedRegisters;
+  std::vector<PhysicalReg> RegisterPool;  // available registers
+  std::set<VirtualReg> RegistersToSpill; // register require spilling
 
   for (auto &Func : MIRM->GetFunctions()) {
+    AllocatedRegisters.clear();
+    RegisterPool.clear();
+    RegistersToSpill.clear();
+
+    // Initialize the usable register's pool
+    for (auto TargetReg : TM->GetABI()->GetCallerSavedRegisters())
+      RegisterPool.push_back(TargetReg->GetID());
+
     PreAllocateParameters(Func, TM, AllocatedRegisters);
     PreAllocateReturnRegister(Func, TM, AllocatedRegisters);
 
@@ -108,13 +149,8 @@ void RegisterAllocator::RunRA() {
             // if not allocated yet
             if (!AlreadyAllocated) {
               // then allocate it
-              auto Reg = RegisterPool[0];
+              auto Reg = GetNextAvailableReg(Operand.GetSize(), RegisterPool, TM);
               AllocatedRegisters[UsedReg] = Reg;
-              // FIXME: vector is not a good container type if we commonly
-              // removing the first element HINT: list or dequeue
-              // Remove the register from the available register pool
-              RegisterPool.erase(RegisterPool.begin());
-
               Operand.SetToRegister();
               Operand.SetReg(Reg);
             }
@@ -190,7 +226,7 @@ void RegisterAllocator::RunRA() {
   }
 
   // FIXME: Move this out from here and make it a PostRA pass
-  // After RA lower the stack asccessing operands to their final form
+  // After RA lower the stack accessing operands to their final form
   // based on the final stack frame
   for (auto &Func : MIRM->GetFunctions()) {
     unsigned StackFrameSize = Func.GetStackFrameSize();
@@ -199,12 +235,6 @@ void RegisterAllocator::RunRA() {
 
     for (auto &BB : Func.GetBasicBlocks())
       for (auto &Instr : BB.GetInstructions()) {
-        // Only consider load and stores
-        auto TargetInstr =
-            TM->GetInstrDefs()->GetTargetInstr(Instr.GetOpcode());
-        if (!TargetInstr->IsLoadOrStore())
-          continue;
-
         // Check the operands
         for (auto &Operand : Instr.GetOperands()) {
           // Only interested in memory accessing operands
@@ -216,12 +246,11 @@ void RegisterAllocator::RunRA() {
             // Using SP as frame register for simplicity
             // TODO: Add FP register handling if target support it.
             auto FrameReg = TM->GetRegInfo()->GetStackRegister();
-            auto Offset = StackFrameSize -
-                          Func.GetStackObjectSize(Operand.GetSlot()) -
-                          (int)Func.GetStackObjectPosition(Operand.GetSlot());
+            auto Offset = (int)Func.GetStackObjectPosition(Operand.GetSlot())
+                          + Operand.GetOffset();
 
             Instr.RemoveMemOperand();
-            Instr.AddRegister(FrameReg);
+            Instr.AddRegister(FrameReg, TM->GetPointerSize());
             Instr.AddImmediate(Offset);
           }
           // Handle memory access
@@ -230,8 +259,9 @@ void RegisterAllocator::RunRA() {
             // TODO: Investigate when exactly this should be other then 0
             auto Offset = 0;
 
+            auto RegSize = TM->GetRegInfo()->GetRegister(AllocatedRegisters[BaseReg])->GetBitWidth();
             Instr.RemoveMemOperand();
-            Instr.AddRegister(BaseReg);
+            Instr.AddRegister(AllocatedRegisters[BaseReg], RegSize);
             Instr.AddImmediate(Offset);
           }
 

@@ -4,11 +4,11 @@
 
 std::unordered_map<std::string, Token::TokenKind> Lexer::Keywords =
     std::unordered_map<std::string, Token::TokenKind>{
-        {"int", Token::Int},      {"double", Token::Double},
-        {"void", Token::Void},    {"char", Token::Char},
-        {"if", Token::If},        {"else", Token::Else},
-        {"for", Token::For},      {"while", Token::While},
-        {"return", Token::Return}};
+        {"int", Token::Int},       {"double", Token::Double},
+        {"void", Token::Void},     {"char", Token::Char},
+        {"if", Token::If},         {"else", Token::Else},
+        {"for", Token::For},       {"while", Token::While},
+        {"return", Token::Return}, {"struct", Token::Struct}};
 
 Lexer::Lexer(std::vector<std::string> &s) {
   Source = std::move(s);
@@ -133,6 +133,9 @@ std::optional<Token> Lexer::LexSymbol() {
   unsigned Size = 1;
 
   switch (GetNextChar()) {
+  case '.':
+    TokenKind = Token::Dot;
+    break;
   case ',':
     TokenKind = Token::Comma;
     break;
@@ -262,11 +265,11 @@ Token Lexer::Lex() {
   auto Result = LexKeyword();
 
   if (!Result)
+    Result = LexSymbol();
+  if (!Result)
     Result = LexNumber();
   if (!Result)
     Result = LexIdentifier();
-  if (!Result)
-    Result = LexSymbol();
 
   // Handle single line comment. If "//" detected, then advance to next line and
   // lex again.

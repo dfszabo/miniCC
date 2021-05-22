@@ -19,6 +19,8 @@ public:
 
   ~AArch64TargetMachine() override {}
 
+  uint8_t GetPointerSize() override { return 64; }
+
   bool SelectADD(MachineInstruction *MI) override;
   bool SelectSUB(MachineInstruction *MI) override;
   bool SelectMUL(MachineInstruction *MI) override;
@@ -30,6 +32,7 @@ public:
   bool SelectLOAD_IMM(MachineInstruction *MI) override;
   bool SelectLOAD(MachineInstruction *MI) override;
   bool SelectSTORE(MachineInstruction *MI) override;
+  bool SelectSTACK_ADDRESS(MachineInstruction *MI) override;
   bool SelectBRANCH(MachineInstruction *MI) override;
   bool SelectJUMP(MachineInstruction *MI) override;
   bool SelectRET(MachineInstruction *MI) override;

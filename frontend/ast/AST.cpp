@@ -10,21 +10,29 @@ static IRType GetIRTypeFromVK(Type::VariantKind VK) {
   switch (VK) {
   case Type::Char:
     return IRType(IRType::SINT, 8);
-    break;
   case Type::Int:
     return IRType(IRType::SINT);
-    break;
   case Type::Double:
     return IRType(IRType::FP, 64);
-    break;
+  case Type::Composite:
+    return IRType(IRType::STRUCT);
   default:
     assert(!"Invalid type");
     return IRType();
   }
 }
 
-static IRType GetIRTypeFromASTType(ComplexType CT) {
+static IRType GetIRTypeFromASTType(Type &CT) {
   IRType Result = GetIRTypeFromVK(CT.GetTypeVariant());
+
+  if (Result.IsStruct()) {
+    auto StructName = CT.GetName();
+    Result.SetStructName(StructName);
+
+    // convert each members AST type to IRType (recursive)
+    for (auto &MemberASTType : CT.GetTypeList())
+      Result.GetMemberTypes().push_back(GetIRTypeFromASTType(MemberASTType));
+  }
 
   Result.SetPointerLevel(CT.GetPointerLevel());
   return Result;
@@ -205,7 +213,7 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
 
   IRType RetType;
 
-  switch (Type.GetReturnType()) {
+  switch (T.GetReturnType()) {
   case Type::Char:
     RetType = IRType(IRType::SINT, 8);
     break;
@@ -233,15 +241,14 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
 }
 
 Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {
-  auto Type = GetIRTypeFromASTType(Ty);
-  auto SA = IRF->CreateSA(Name, Type);
+  auto ParamType = GetIRTypeFromASTType(Ty);
+  auto Param = std::make_unique<FunctionParameter>(Name, ParamType);
+
+  auto SA = IRF->CreateSA(Name, ParamType);
   IRF->AddToSymbolTable(Name, SA);
-
-  auto Param =
-      std::make_unique<FunctionParameter>(FunctionParameter(Name, Type));
-
   IRF->CreateSTR(Param.get(), SA);
   IRF->Insert(std::move(Param));
+
   return nullptr;
 }
 
@@ -249,14 +256,8 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
   auto Type = GetIRTypeFromASTType(AType);
 
   // If an array type, then change Type to reflect this
-  if (AType.IsArray()) {
-    unsigned ElementNumber = 1;
-
-    for (auto Dim : AType.GetDimensions())
-      ElementNumber *= Dim;
-
-    Type.SetNumberOfElements(ElementNumber);
-  }
+  if (AType.IsArray())
+    Type.SetDimensions(AType.GetDimensions());
 
   // If we are in global scope, then its a global variable declaration
   if (IRF->IsGlobalScope())
@@ -269,35 +270,46 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
   return SA;
 }
 
+Value *MemberDeclaration::IRCodegen(IRFactory *IRF) {
+  return nullptr;
+}
+
+Value *StructDeclaration::IRCodegen(IRFactory *IRF) {
+  return nullptr;
+}
+
 Value *CallExpression::IRCodegen(IRFactory *IRF) {
   std::vector<Value *> Args;
 
   for (auto &Arg : Arguments)
     Args.push_back(Arg->IRCodegen(IRF));
 
-  auto RetType = GetResultType().GetFunctionType().GetReturnType();
+  auto RetType = GetResultType().GetReturnType();
 
-  IRType IRretType;
+  IRType IRRetType;
 
   switch (RetType) {
   case Type::Int:
-    IRretType = IRType(IRType::SINT);
+    IRRetType = IRType(IRType::SINT);
     break;
   case Type::Double:
-    IRretType = IRType(IRType::FP, 64);
+    IRRetType = IRType(IRType::FP, 64);
     break;
   case Type::Void:
-    IRretType = IRType(IRType::NONE, 0);
+    IRRetType = IRType(IRType::NONE, 0);
     break;
   default:
     break;
   }
 
-  return IRF->CreateCALL(Name, Args, IRretType);
+  return IRF->CreateCALL(Name, Args, IRRetType);
 }
 
 Value *ReferenceExpression::IRCodegen(IRFactory *IRF) {
   auto Local = IRF->GetSymbolValue(Identifier);
+
+  if (this->GetResultType().IsStruct())
+    return Local;
 
   if (Local) {
     if (GetLValueness())
@@ -316,43 +328,20 @@ Value *ReferenceExpression::IRCodegen(IRFactory *IRF) {
 }
 
 Value *ArrayExpression::IRCodegen(IRFactory *IRF) {
-  // If used as RValue
-  //    # calc index expression
-  //    mul $final_index, $index, sizeof($array.basetype)
-  //    ld  $rv, [$arr + #final_index]
-  //
-  // If used as LValue
-  // # generate Index
-  //    mul $offset, $Index, sizeof(Array[0])
-  //    str [$array_base + $offset], $R
+  assert(BaseExpression && "BaseExpression cannot be NULL");
+  auto BaseValue = BaseExpression->IRCodegen(IRF);
+  assert(IndexExpression && "IndexExpression cannot be NULL");
+  auto IndexValue = IndexExpression->IRCodegen(IRF);
 
-  // FIXME: for now just assume only 1 dimensional arrays
-  auto Index = IndexExpressions[0]->IRCodegen(IRF);
+  auto ArrayBaseType = BaseValue->GetType().GetBaseType();
+  ArrayBaseType.IncrementPointerLevel();
 
-  auto ArrayBaseType = Index->GetType().GetBaseType();
+  auto GEP = IRF->CreateGEP(ArrayBaseType, BaseValue, IndexValue);
 
-  auto SizeOfArrayBaseType = IRF->GetConstant(ArrayBaseType.GetByteSize());
-  auto FinalIndex = IRF->CreateMUL(Index, SizeOfArrayBaseType);
+  if (!GetLValueness())
+    return IRF->CreateLD(ArrayBaseType, GEP);
 
-  // Return a ptr to the LValue
-  if (GetLValueness()) {
-    auto ID = Identifier.GetString();
-    auto LocalVal = IRF->GetSymbolValue(ID);
-    auto GlobalVal = IRF->GetGlobalVar(ID);
-
-    auto PtrToElement =
-        IRF->CreateADD(LocalVal ? LocalVal : GlobalVal, FinalIndex);
-
-    PtrToElement->GetType().SetToPointerKind();
-
-    return PtrToElement;
-  }
-
-  // return the RValue
-  auto Element = IRF->CreateLD(
-      ArrayBaseType, IRF->GetSymbolValue(Identifier.GetString()), FinalIndex);
-
-  return Element;
+  return GEP;
 }
 
 Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
@@ -372,6 +361,24 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
     assert(!"Invaid conversion.");
 
   return nullptr;
+}
+
+Value *StructMemberReference::IRCodegen(IRFactory *IRF) {
+  assert(StructTypedExpression && "cannot be NULL");
+  auto BaseValue = StructTypedExpression->IRCodegen(IRF);
+
+  auto ExprType = BaseValue->GetType();
+  assert(ExprType.IsStruct());
+
+  auto IndexValue = IRF->GetConstant((uint64_t)MemberIndex);
+  auto GEP = IRF->CreateGEP(ExprType, BaseValue, IndexValue);
+
+  if (GetLValueness())
+    return GEP;
+
+  auto ResultIRType = GetIRTypeFromASTType(this->GetResultType());
+
+  return IRF->CreateLD(ResultIRType, GEP);
 }
 
 Value *UnaryExpression::IRCodegen(IRFactory *IRF) {

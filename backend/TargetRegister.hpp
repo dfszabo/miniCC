@@ -3,6 +3,7 @@
 
 #include <set>
 #include <string>
+#include <vector>
 
 class TargetRegister {
 public:
@@ -12,6 +13,7 @@ public:
   unsigned GetID() { return ID; }
 
   void SetBitWidth(unsigned BitWidth) { this->BitWidth = BitWidth; }
+  unsigned GetBitWidth() const { return BitWidth; }
 
   void SetName(std::string &N) { Name = N; }
   void SetName(const char *N) { Name = N; }
@@ -20,13 +22,18 @@ public:
   void SetAlias(const char *N) { AliasName = N; }
   std::string &GetAlias() { return AliasName; }
 
+  void SetSubRegs(std::vector<unsigned> &N) { SubRegisters = N; }
+  std::vector<unsigned> &GetSubRegs() { return SubRegisters; }
+
   static TargetRegister Create(unsigned ID, unsigned BitWidth, const char *Name,
-                               const char *Alias) {
+                               const char *Alias,
+                               std::vector<unsigned> SubRegs = {}) {
     TargetRegister NewReg;
     NewReg.SetID(ID);
     NewReg.SetBitWidth(BitWidth);
     NewReg.SetName(Name);
     NewReg.SetAlias(Alias);
+    NewReg.SetSubRegs(SubRegs);
     return NewReg;
   }
 
@@ -35,6 +42,7 @@ private:
   unsigned BitWidth = 0;
   std::string Name;
   std::string AliasName;
+  std::vector<unsigned> SubRegisters;
 };
 
 class RegisterClass {

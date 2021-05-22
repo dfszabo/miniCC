@@ -4,19 +4,17 @@
 #include <cassert>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class IRType {
 public:
-  enum TKind : uint8_t { INVALID, NONE, FP, UINT, SINT, PTR };
+  enum TKind : uint8_t { INVALID, NONE, FP, UINT, SINT, PTR, STRUCT };
 
   IRType() : Kind(INVALID), BitWidth(0) {}
 
   IRType(IRType::TKind kind) : Kind(kind), BitWidth(32) {}
 
   IRType(IRType::TKind kind, uint8_t BW) : Kind(kind), BitWidth(BW) {}
-
-  IRType(IRType::TKind kind, uint8_t BW, unsigned NumberOfElements)
-      : Kind(kind), BitWidth(BW), NumberOfElements(NumberOfElements) {}
 
   void SetKind(IRType::TKind K) { Kind = K; }
 
@@ -26,6 +24,11 @@ public:
   void SetPointerLevel(uint8_t pl) {
     assert(pl < 10 && "Unrealistic pointer level");
     PointerLevel = pl;
+  }
+  void IncrementPointerLevel() { PointerLevel++; }
+  void DecrementPointerLevel() {
+    assert(PointerLevel > 0 && "Cannot decrement below 0");
+    PointerLevel--;
   }
 
   static IRType CreateBool() { return IRType(SINT, 1); }
@@ -44,21 +47,50 @@ public:
   bool IsFP() const { return Kind == FP; }
   bool IsINT() const { return Kind == SINT || Kind == UINT; }
   bool IsPTR() const { return PointerLevel > 0; }
+  bool IsStruct() const { return Kind == STRUCT; }
   bool IsVoid() const { return Kind == NONE; }
 
-  void SetNumberOfElements(unsigned N) { NumberOfElements = N; }
-  size_t GetBitSize() const { return BitWidth; }
+  void SetDimensions(const std::vector<unsigned>& N) { Dimensions = N; }
+  std::vector<unsigned>& GetDimensions() { return Dimensions; }
+  unsigned CalcElemSize(unsigned dim) {
+    unsigned result = 1;
+    assert(dim < Dimensions.size() && "Out of bound");
+    for (size_t i = dim + 1; i < Dimensions.size(); i++)
+      result *= Dimensions[i];
+
+    return result * (BitWidth / 8);
+  }
+  unsigned GetElemByteOffset(const unsigned StructElemIndex) const {
+    assert(StructElemIndex < MembersTypeList.size() && "Out of bound access");
+
+    unsigned ByteOffset = 0;
+    for (size_t i = 0; i < StructElemIndex; i++)
+      ByteOffset += MembersTypeList[i].GetByteSize();
+
+    return ByteOffset;
+  }
+  size_t GetBitSize() const {
+
+    return BitWidth;
+  }
 
   size_t GetByteSize() const;
 
   IRType GetBaseType() const { return IRType(Kind, BitWidth); }
+
+  void SetStructName(std::string &str) {StructName = str;}
+  const std::string &GetStructName() const { return StructName; }
+
+  std::vector<IRType> &GetMemberTypes() {return MembersTypeList;}
 
   std::string AsString() const;
 
 private:
   uint8_t BitWidth;
   uint8_t PointerLevel = 0;
-  unsigned NumberOfElements = 1;
+  std::string StructName;
+  std::vector<IRType> MembersTypeList;
+  std::vector<unsigned> Dimensions;
   TKind Kind;
 };
 
