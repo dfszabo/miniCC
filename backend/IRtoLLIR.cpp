@@ -7,6 +7,7 @@
 #include "MachineInstruction.hpp"
 #include "MachineOperand.hpp"
 #include <cassert>
+#include "Support.hpp"
 
 MachineOperand GetMachineOperandFromValue(Value *Val, TargetMachine *TM) {
   if (Val->IsRegister()) {
@@ -205,6 +206,47 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     ResultMI.AddOperand(SecondSrcOp);
 
     ResultMI.SetAttributes(I->GetRelation());
+  }
+  // Call instruction: call Result, function_name(Param1, ...)
+  else if (auto I = dynamic_cast<CallInstruction *>(Instr); I != nullptr) {
+    // The function has a call instruction
+    ParentFunction->SetToCaller();
+
+    // insert COPY/MOV -s for each Param to move them the right registers
+    // ignoring the case when there is too much parameter and has to pass
+    // some parameters on the stack
+    auto &TargetArgRegs = TM->GetABI()->GetArgumentRegisters();
+    unsigned ParamCounter = 0;
+    for (auto *Param : I->GetArgs()) {
+      MachineInstruction Instr;
+
+      if (Param->GetTypeRef().IsStruct()) {
+        // how many register are used to pass this struct
+        unsigned StructBitSize = (Param->GetTypeRef().GetByteSize() * 8);
+        unsigned MaxRegSize = TM->GetPointerSize();
+        unsigned RegsCount = GetNextAlignedValue(StructBitSize, MaxRegSize) / MaxRegSize;
+
+        for (size_t i = 0; i < RegsCount; i++) {
+          Instr = MachineInstruction(MachineInstruction::LOAD, BB);
+          Instr.AddRegister(TargetArgRegs[ParamCounter]->GetID(),
+                            TargetArgRegs[ParamCounter]->GetBitWidth());
+          Instr.AddStackAccess(Param->GetID(), i * (TM->GetPointerSize() / 8));
+          BB->InsertInstr(Instr);
+          ParamCounter++;
+        }
+      } else {
+        Instr = MachineInstruction(MachineInstruction::MOV, BB);
+
+        Instr.AddRegister(TargetArgRegs[ParamCounter]->GetID(),
+                          TargetArgRegs[ParamCounter]->GetBitWidth());
+
+        Instr.AddOperand(GetMachineOperandFromValue(Param, TM));
+        BB->InsertInstr(Instr);
+        ParamCounter++;
+      }
+    }
+
+    ResultMI.AddFunctionName(I->GetName().c_str());
   }
   // Ret instruction: ret op
   else if (auto I = dynamic_cast<ReturnInstruction *>(Instr); I != nullptr) {

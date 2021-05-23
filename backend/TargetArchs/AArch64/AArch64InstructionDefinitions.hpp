@@ -24,6 +24,7 @@ enum Opcodes : unsigned {
   CSET,
   SXTB,
   MOV_rc,
+  MOV_rr,
   LDR,
   LDRB,
   STR,
@@ -35,6 +36,7 @@ enum Opcodes : unsigned {
   BLE,
   BLT,
   B,
+  BL,
   RET,
 };
 
@@ -55,6 +57,7 @@ public:
   ~AArch64InstructionDefinitions() override {}
   TargetInstruction *GetTargetInstr(unsigned Opcode) override;
   std::string GetInstrString(unsigned index) override {
+    assert(index < InstrEnumStrings.size() && "Out of bound access");
     return InstrEnumStrings[index];
   }
 

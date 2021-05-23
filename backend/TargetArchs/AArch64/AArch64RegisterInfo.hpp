@@ -20,6 +20,7 @@ public:
   TargetRegister *GetRegister(unsigned i) override;
   TargetRegister *GetRegisterByID(unsigned i) override;
   unsigned GetFrameRegister() override;
+  unsigned GetLinkRegister() override;
   unsigned GetStackRegister() override;
 
 private:

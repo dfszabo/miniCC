@@ -30,6 +30,7 @@ public:
 
   ParamList GetParameters() { return Parameters; }
 
+  StackFrame &GetStackFrame() { return SF; }
   unsigned GetStackFrameSize() { return SF.GetSize(); }
   unsigned GetStackObjectPosition(unsigned ID) { return SF.GetPosition(ID); }
   unsigned GetStackObjectSize(unsigned ID) { return SF.GetSize(ID); }
@@ -39,6 +40,9 @@ public:
   /// Get the next available virtual register.
   unsigned GetNextAvailableVReg();
 
+  void SetToCaller() { HasCall = true; }
+  bool IsCaller() const { return HasCall; }
+
   void Print(TargetMachine *TM) const;
 
 private:
@@ -47,6 +51,9 @@ private:
   StackFrame SF;
   BasicBlockList BasicBlocks;
   unsigned NextVReg = 0;
+
+  /// Predicate to signal if the function is calling other functions or not
+  bool HasCall = false;
 };
 
 #endif

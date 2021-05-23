@@ -24,6 +24,8 @@ bool TargetMachine::SelectInstruction(MachineInstruction *MI) {
     return SelectTRUNC(MI);
   case MachineInstruction::LOAD_IMM:
     return SelectLOAD_IMM(MI);
+  case MachineInstruction::MOV:
+    return SelectMOV(MI);
   case MachineInstruction::LOAD:
     return SelectLOAD(MI);
   case MachineInstruction::STORE:
@@ -34,6 +36,8 @@ bool TargetMachine::SelectInstruction(MachineInstruction *MI) {
     return SelectBRANCH(MI);
   case MachineInstruction::JUMP:
     return SelectJUMP(MI);
+  case MachineInstruction::CALL:
+    return SelectCALL(MI);
   case MachineInstruction::RET:
     return SelectRET(MI);
   default:

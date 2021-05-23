@@ -88,4 +88,6 @@ TargetRegister *AArch64RegisterInfo::GetRegisterByID(unsigned i) {
 
 unsigned AArch64RegisterInfo::GetFrameRegister() { return 61; }
 
+unsigned AArch64RegisterInfo::GetLinkRegister() { return X30; }
+
 unsigned AArch64RegisterInfo::GetStackRegister() { return 64; }

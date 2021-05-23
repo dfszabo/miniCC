@@ -37,6 +37,9 @@ void MachineOperand::Print(TargetMachine *TM) const {
   case LABEL:
     std::cout << "<" << Label << ">";
     break;
+  case FUNCTION_NAME:
+    std::cout << "@" << Label;
+    break;
   default:
     break;
   }

@@ -18,7 +18,8 @@ public:
     MEMORY_ADDRESS,
     STACK_ACCESS,
     PARAMETER,
-    LABEL
+    LABEL,
+    FUNCTION_NAME,
   };
 
   MachineOperand() {}
@@ -30,6 +31,7 @@ public:
   void SetToStackAccess() { Type = STACK_ACCESS; }
   void SetToParameter() { Type = PARAMETER; }
   void SetToLabel() { Type = LABEL; }
+  void SetToFunctionName() { Type = FUNCTION_NAME; }
 
   int64_t GetImmediate() const { return Value; }
   int64_t GetReg() const { return Value; }
@@ -44,6 +46,7 @@ public:
   LowLevelType GetType() const { return LLT; }
 
   const char *GetLabel() { return Label; }
+  const char *GetFunctionName() { return Label; }
   void SetLabel(const char *L) { Label = L; }
 
   bool IsRegister() const { return Type == REGISTER; }
@@ -53,6 +56,7 @@ public:
   bool IsStackAccess() const { return Type == STACK_ACCESS; }
   bool IsParameter() const { return Type == PARAMETER; }
   bool IsLabel() const { return Type == LABEL; }
+  bool IsFunctionName() const { return Type == FUNCTION_NAME; }
 
   unsigned GetSize() { return LLT.GetBitWidth(); }
 
@@ -105,6 +109,13 @@ public:
   static MachineOperand CreateLabel(const char* Label) {
     MachineOperand MO;
     MO.SetToLabel();
+    MO.SetLabel(Label);
+    return MO;
+  }
+
+  static MachineOperand CreateFunctionName(const char* Label) {
+    MachineOperand MO;
+    MO.SetToFunctionName();
     MO.SetLabel(Label);
     return MO;
   }

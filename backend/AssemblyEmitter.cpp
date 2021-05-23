@@ -63,11 +63,13 @@ void AssemblyEmitter::GenerateAssembly() {
             std::string ImmStr = std::to_string(CurrentOperand->GetImmediate());
             AssemblyTemplateStr.replace(DollarPos, 2, ImmStr);
           }
-          // Label case
-          else if (CurrentOperand->IsLabel()) {
-            std::string Label = ".L";
-            Label.append(CurrentOperand->GetLabel());
-            AssemblyTemplateStr.replace(DollarPos, 2, Label);
+          // Label and FunctionName (function call) case
+          else if (CurrentOperand->IsLabel() || CurrentOperand->IsFunctionName()) {
+            std::string Str = "";
+            if (CurrentOperand->IsLabel())
+              Str += ".L";
+            Str.append(CurrentOperand->GetLabel());
+            AssemblyTemplateStr.replace(DollarPos, 2, Str);
           } else
             assert(!"Invalid Machine Operand type");
         }
