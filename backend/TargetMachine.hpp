@@ -35,10 +35,12 @@ public:
   virtual bool SelectTRUNC(MachineInstruction *MI) { return false; }
   virtual bool SelectLOAD(MachineInstruction *MI) { return false; }
   virtual bool SelectLOAD_IMM(MachineInstruction *MI) { return false; }
+  virtual bool SelectMOV(MachineInstruction *MI) { return false; }
   virtual bool SelectSTORE(MachineInstruction *MI) { return false; }
   virtual bool SelectSTACK_ADDRESS(MachineInstruction *MI) { return false; }
   virtual bool SelectBRANCH(MachineInstruction *MI) { return false; }
   virtual bool SelectJUMP(MachineInstruction *MI) { return false; }
+  virtual bool SelectCALL(MachineInstruction *MI) { return false; }
   virtual bool SelectRET(MachineInstruction *MI) { return false; }
 
 protected:

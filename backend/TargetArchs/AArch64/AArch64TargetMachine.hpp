@@ -30,11 +30,13 @@ public:
   bool SelectSEXT(MachineInstruction *MI) override;
   bool SelectTRUNC(MachineInstruction *MI) override;
   bool SelectLOAD_IMM(MachineInstruction *MI) override;
+  bool SelectMOV(MachineInstruction *MI) override;
   bool SelectLOAD(MachineInstruction *MI) override;
   bool SelectSTORE(MachineInstruction *MI) override;
   bool SelectSTACK_ADDRESS(MachineInstruction *MI) override;
   bool SelectBRANCH(MachineInstruction *MI) override;
   bool SelectJUMP(MachineInstruction *MI) override;
+  bool SelectCALL(MachineInstruction *MI) override;
   bool SelectRET(MachineInstruction *MI) override;
 };
 

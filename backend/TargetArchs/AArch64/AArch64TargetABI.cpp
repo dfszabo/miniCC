@@ -13,6 +13,8 @@ AArch64TargetABI::AArch64TargetABI(RegisterInfo *RI) {
   CalleSavedRegisters.push_back(RI->GetRegister(64));
   // fp
   CalleSavedRegisters.push_back(RI->GetRegister(61));
+  // lr
+  CalleSavedRegisters.push_back(RI->GetRegister(62));
   // x19-x28
   for (int i = 51; i <= 60; i++)
     CalleSavedRegisters.push_back(RI->GetRegister(i));

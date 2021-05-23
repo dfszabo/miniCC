@@ -45,6 +45,7 @@ public:
 
     // Moves and constant materializations
     LOAD_IMM,
+    MOV,
   };
 
   enum CMPRelation { INVALID, EQ, NE, LT, GT, LE, GE };
@@ -117,6 +118,10 @@ public:
 
   void AddLabel(const char *Label) {
     AddOperand(MachineOperand::CreateLabel(Label));
+  }
+
+  void AddFunctionName(const char *Name) {
+    AddOperand(MachineOperand::CreateFunctionName(Name));
   }
 
   void AddAttribute(unsigned AttributeFlag) {

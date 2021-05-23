@@ -18,14 +18,14 @@ unsigned StackFrame::GetPosition(unsigned ID) {
 
   unsigned Position = 0;
 
-  for (const auto &Entry : StackSlots) {
+  for (const auto &[ObjectID, ObjectSize] : StackSlots) {
     // If the stack object is what we are looking for
-    if (Entry.first == ID)
+    if (ObjectID == ID)
       return Position; // then return its position
 
     // NOTE: Hard coded 4 byte alignment
-    if (Entry.second >= 4)
-      Position += Entry.second;
+    if (ObjectSize >= 4)
+      Position += ObjectSize;
     else
       Position += 4;
   }

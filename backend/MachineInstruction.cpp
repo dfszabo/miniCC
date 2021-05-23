@@ -44,6 +44,9 @@ void MachineInstruction::Print(TargetMachine *TM) const {
   case LOAD_IMM:
     OpcodeStr = "LOAD_IMM";
     break;
+  case MOV:
+    OpcodeStr = "MOV";
+    break;
   case STORE:
     OpcodeStr = "STORE";
     break;
@@ -55,6 +58,9 @@ void MachineInstruction::Print(TargetMachine *TM) const {
     break;
   case BRANCH:
     OpcodeStr = "BRANCH";
+    break;
+  case CALL:
+    OpcodeStr = "CALL";
     break;
   case RET:
     OpcodeStr = "RET";

@@ -12,8 +12,9 @@ public:
   void Run();
 
   MachineInstruction CreateADDInstruction(int64_t StackAdjustmentSize);
-  MachineInstruction CreateLOADInstruction(unsigned Source, int64_t Offset);
 
+  void InsertLinkRegisterSave(MachineFunction &Func);
+  void InsertLinkRegisterReload(MachineFunction &Func);
   void InsertStackAdjustmentUpward(MachineFunction &Func);
   void InsertStackAdjustmentDownward(MachineFunction &Func);
 

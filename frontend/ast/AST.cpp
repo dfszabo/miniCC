@@ -480,6 +480,24 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
   if (!L || !R)
     return nullptr;
 
+  // if the left operand is a constant
+  if (L->IsConstant() && !R->IsConstant()) {
+    // and if its a commutative operation
+    switch (GetOperationKind()) {
+    case ADD:
+    case MUL:
+    case AND:
+    case EQ:
+    case NE:
+      // then swap the operands, since most architecture supports immediate
+      // as the last operand. Ex.: AArch64 add x0, x1, #123 not add x0, #123, x1
+      std::swap(L, R);
+      break;
+    default:
+      break;
+    }
+  }
+
   switch (GetOperationKind()) {
   case ADD:
     return IRF->CreateADD(L, R);
