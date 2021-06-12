@@ -43,6 +43,8 @@ std::string Instruction::AsString(IKind IK) {
     return "sa";
   case GET_ELEM_PTR:
     return "gep";
+  case MEM_COPY:
+    return "memcopy";
   case CMP:
     return "cmp";
   case MOV:
@@ -194,4 +196,11 @@ void LoadInstruction::Print() const {
   if (Offset)
     std::cout << " + " << Offset->ValueString();
   std::cout << "]" << std::endl;
+}
+
+void MemoryCopyInstruction::Print() const {
+  std::cout << "\t" << AsString(InstKind) << "\t";
+  std::cout << Dest->ValueString() << ", ";
+  std::cout << Src->ValueString() << ", ";
+  std::cout << N << std::endl;
 }

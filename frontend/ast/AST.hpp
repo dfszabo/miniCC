@@ -357,7 +357,6 @@ public:
 
   static Type CreateType(const Type &t, const ParamVec &params) {
     Type ResultType(t);
-    ResultType.SetTypeKind(Type::Function);
 
     for (size_t i = 0; i < params.size(); i++) {
       auto t = params[i]->GetType();

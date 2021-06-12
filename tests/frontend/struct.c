@@ -8,14 +8,19 @@ struct Point {
   int z;
 };
 
-// TODO: test this also when function calling implemented
-int testS(struct Point P) {
+int struct_param(struct Point P) {
   return P.x + P.z;
+}
+
+struct Point struct_return() {
+  struct Point P;
+  P.x = 1;
+  P.z = 2;
+  return P;
 }
 
 int test() {
   struct Point P;
-  P.x = 1;
-  P.z = 2;
-  return testS(P);
+  P = struct_return();
+  return struct_param(P);
 }

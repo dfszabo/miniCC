@@ -77,5 +77,6 @@ void AssemblyEmitter::GenerateAssembly() {
         std::cout << AssemblyTemplateStr << std::endl;
       }
     }
+    std::cout << std::endl;
   }
 }
