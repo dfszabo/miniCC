@@ -8,7 +8,8 @@ std::unordered_map<std::string, Token::TokenKind> Lexer::Keywords =
         {"void", Token::Void},     {"char", Token::Char},
         {"if", Token::If},         {"else", Token::Else},
         {"for", Token::For},       {"while", Token::While},
-        {"return", Token::Return}, {"struct", Token::Struct}};
+        {"return", Token::Return}, {"struct", Token::Struct},
+        {"enum", Token::Enum}};
 
 Lexer::Lexer(std::vector<std::string> &s) {
   Source = std::move(s);
