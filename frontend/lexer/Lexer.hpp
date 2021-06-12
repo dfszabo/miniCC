@@ -32,7 +32,7 @@ public:
 
   unsigned GetLineNum() { return LineIndex + 1; }
 
-  Token Lex();
+  Token Lex(bool LookAhead = false);
 
   Lexer(std::vector<std::string> &s);
 

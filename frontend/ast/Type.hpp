@@ -9,7 +9,7 @@ class Type {
 public:
   /// Basic type variants. Numerical ones are ordered by conversion rank.
   enum VariantKind { Invalid, Composite, Void, Char, Int, Double };
-  enum TypeKind { Simple, Array, Function, Struct };
+  enum TypeKind { Simple, Array, Struct };
 
   std::string GetName() const { return Name; }
   void SetName(std::string &n) { Name = n; }
@@ -72,7 +72,6 @@ public:
     switch (tk) {
     case Array:
     case Struct:
-    case Function:
       Ty = Composite;
       break;
     case Simple:
@@ -96,8 +95,7 @@ public:
   }
 
   Type(Type t, std::vector<Type> a) {
-    Kind = Function;
-    TypeList = std::move(a);
+    ParameterList = std::move(a);
     Ty = t.GetTypeVariant();
   }
 
@@ -107,34 +105,20 @@ public:
     Kind = ct.Kind;
     Dimensions = std::move(ct.Dimensions);
     TypeList = std::move(ct.TypeList);
+    ParameterList = std::move(ct.ParameterList);
     Name = ct.Name;
   }
 
-  Type(const Type &ct) {
-    PointerLevel = ct.PointerLevel;
-    Ty = ct.Ty;
-    Kind = ct.Kind;
-    Dimensions = ct.Dimensions;
-    TypeList = ct.TypeList;
-    Name = ct.Name;
-  }
-
-  Type &operator=(const Type &ct) {
-    PointerLevel = ct.PointerLevel;
-    Ty = ct.Ty;
-    Kind = ct.Kind;
-    Dimensions = ct.Dimensions;
-    TypeList = ct.TypeList;
-    Name = ct.Name;
-    return *this;
-  }
+  Type(const Type &ct) = default;
+  Type &operator=(const Type &ct) = default;
 
   bool IsSimpleType() const { return Kind == Simple; }
   bool IsArray() const { return Kind == Array; }
-  bool IsFunction() const { return Kind == Function; }
+  bool IsFunction() const { return ParameterList.size() > 0; }
   bool IsStruct() const { return Kind == Struct; }
 
   std::vector<Type> &GetTypeList() { return TypeList; }
+  std::vector<Type> &GetParameterList() { return ParameterList; }
   VariantKind GetReturnType() const { return Ty; }
 
   std::vector<unsigned> &GetDimensions() {
@@ -142,10 +126,7 @@ public:
     return Dimensions;
   }
 
-  std::vector<Type> &GetArgTypes() {
-    assert(IsFunction() && "Must be a Function type to access TypeList.");
-    return TypeList;
-  }
+  std::vector<Type> &GetArgTypes() { return ParameterList; }
 
   Type GetStructMemberType(const std::string &Member) {
     for (auto &T : TypeList)
@@ -162,9 +143,6 @@ public:
       return false;
 
     switch (lhs.Kind) {
-    case Function:
-      result = result && (lhs.TypeList == rhs.TypeList);
-      break;
     case Array:
       result = result && (lhs.Dimensions == rhs.Dimensions);
       break;
@@ -175,13 +153,13 @@ public:
   }
 
   std::string ToString() const {
-    if (Kind == Function) {
+    if (IsFunction()) {
       auto TyStr = Type::ToString(this);
-      auto ArgSize = TypeList.size();
+      auto ArgSize = ParameterList.size();
       if (ArgSize > 0)
         TyStr += " (";
       for (size_t i = 0; i < ArgSize; i++) {
-        TyStr += Type::ToString(&TypeList[i]);
+        TyStr += Type::ToString(&ParameterList[i]);
         if (i + 1 < ArgSize)
           TyStr += ",";
         else
@@ -208,6 +186,7 @@ private:
   // TODO: revisit the use of union, deleted from here since
   // it just made things complicated
   std::vector<Type> TypeList;
+  std::vector<Type> ParameterList;
   std::vector<unsigned> Dimensions;
 };
 

@@ -185,6 +185,16 @@ public:
     return InstPtr;
   }
 
+  MemoryCopyInstruction *CreateMEMCOPY(Value *Destination, Value *Source, size_t Bytes) {
+    auto Inst = std::make_unique<MemoryCopyInstruction>(Destination, Source, Bytes,
+                                                  GetCurrentBB());
+    auto InstPtr = Inst.get();
+    Inst->SetID(ID++);
+    Insert(std::move(Inst));
+
+    return InstPtr;
+  }
+
   CompareInstruction *CreateCMP(CompareInstruction::CompRel Relation,
                                 Value *LHS, Value *RHS) {
     auto Inst = std::make_unique<CompareInstruction>(LHS, RHS, Relation,

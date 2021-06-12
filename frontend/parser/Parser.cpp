@@ -141,7 +141,7 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
   auto TokenKind = GetCurrentTokenKind();
 
   while (IsReturnTypeSpecifier(TokenKind) || lexer.Is(Token::Struct)) {
-    if (lexer.Is(Token::Struct)) {
+    if (lexer.Is(Token::Struct) && lexer.LookAhead(3).GetKind() == Token::LeftCurly) {
       TU->AddDeclaration(ParseStructDeclaration());
       TokenKind = GetCurrentTokenKind();
       continue;
@@ -201,7 +201,7 @@ Parser::ParseFunctionDeclaration(const Type &ReturnType, const Token &Name) {
 
   auto FuncType = FunctionDeclaration::CreateType(ReturnType, PL);
   auto NameStr = Name.GetString();
-  InsertToSymTable(NameStr, Type(FuncType), true);
+  InsertToSymTable(NameStr, FuncType, true);
 
   // For now assume that a function is defined always not just declared
   // TODO: was it planed to have function declaration?

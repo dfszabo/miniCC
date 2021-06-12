@@ -214,6 +214,12 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   IRType RetType;
 
   switch (T.GetReturnType()) {
+  case Type::Composite:
+    if (T.IsStruct()) {
+      RetType = GetIRTypeFromASTType(T);
+    } else
+      assert(!"Other cases unhandled");
+    break;
   case Type::Char:
     RetType = IRType(IRType::SINT, 8);
     break;
@@ -287,6 +293,7 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
   auto RetType = GetResultType().GetReturnType();
 
   IRType IRRetType;
+  StackAllocationInstruction* StructTemp = nullptr;
 
   switch (RetType) {
   case Type::Int:
@@ -298,8 +305,26 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
   case Type::Void:
     IRRetType = IRType(IRType::NONE, 0);
     break;
+  case Type::Composite: {
+    IRRetType = GetIRTypeFromASTType(GetResultType());
+
+    // If the return type is a struct, then also make a stack allocation
+    // to use that as a temporary, where the result would be copied to after
+    // the call
+    StructTemp = IRF->CreateSA(Name + ".temp", IRRetType);
+    break;
+  }
   default:
     break;
+  }
+
+  // in case if the ret type was a struct, so StructTemp not nullptr
+  if (StructTemp) {
+    // make the call
+    auto CallRes = IRF->CreateCALL(Name, Args, IRRetType);
+    // issue a store using the freshly allocated temporary StructTemp
+    IRF->CreateSTR(CallRes, StructTemp);
+    return StructTemp;
   }
 
   return IRF->CreateCALL(Name, Args, IRRetType);
@@ -470,6 +495,9 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     if (!L || !R)
       return nullptr;
 
+    if (R->GetTypeRef().IsStruct())
+      IRF->CreateMEMCOPY(L, R, R->GetTypeRef().GetByteSize());
+    else
     IRF->CreateSTR(R, L);
     return R;
   }

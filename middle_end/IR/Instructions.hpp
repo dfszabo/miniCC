@@ -38,6 +38,7 @@ public:
     // Memory operations
     LOAD,
     STORE,
+    MEM_COPY,
     STACK_ALLOC,
     GET_ELEM_PTR,
 
@@ -265,6 +266,23 @@ public:
 private:
   Value *Source;
   Value *Offset;
+};
+
+class MemoryCopyInstruction : public Instruction {
+public:
+  MemoryCopyInstruction(Value *Destination, Value *Source, size_t Bytes, BasicBlock *P)
+      : Instruction(Instruction::MEM_COPY, P, IRType()), Dest(Destination), Src(Source), N(Bytes) { }
+
+  Value *GetDestination() { return Dest; }
+  Value *GetSource() { return Src; }
+  size_t GetSize() const { return N; }
+
+  void Print() const override;
+
+private:
+  Value *Dest;
+  Value *Src;
+  size_t N;
 };
 
 #endif
