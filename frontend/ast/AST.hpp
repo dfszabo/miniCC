@@ -154,6 +154,39 @@ private:
   std::vector<std::unique_ptr<MemberDeclaration>> Members;
 };
 
+class EnumDeclaration : public Statement {
+public:
+  using EnumList = std::vector<std::pair<std::string, int>>;
+
+  EnumDeclaration(Type &BaseType, EnumList Enumerators)
+      : BaseType(BaseType), Enumerators(std::move(Enumerators)) {}
+
+  EnumDeclaration(EnumList Enumerators)
+      : Enumerators(std::move(Enumerators)) {}
+
+  void ASTDump(unsigned tab = 0) override {
+    std::string Str = "EnumDeclaration '";
+    Str += BaseType.ToString() + "'";
+    PrintLn(Str.c_str(), tab);
+    Str.clear();
+    Str = "Enumerators ";
+    unsigned LoopCounter = 0;
+    for (auto &[Enum, Val] : Enumerators) {
+      Str += "'" + Enum + "'";
+      Str += " = " + std::to_string(Val);
+      if (++LoopCounter < Enumerators.size())
+        Str += ", ";
+    }
+    PrintLn(Str.c_str(), tab + 2);
+  }
+
+  Value *IRCodegen(IRFactory *IRF) override;
+
+private:
+  Type BaseType = Type(Type::Int);
+  EnumList Enumerators;
+};
+
 class CompoundStatement : public Statement {
   using DeclVec = std::vector<std::unique_ptr<VariableDeclaration>>;
   using StmtVec = std::vector<std::unique_ptr<Statement>>;
@@ -226,7 +259,8 @@ public:
     PrintLn("IfStatement", tab);
     Condition->ASTDump(tab + 2);
     IfBody->ASTDump(tab + 2);
-    ElseBody->ASTDump(tab + 2);
+    if (ElseBody)
+      ElseBody->ASTDump(tab + 2);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;

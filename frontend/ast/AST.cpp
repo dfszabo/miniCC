@@ -284,6 +284,10 @@ Value *StructDeclaration::IRCodegen(IRFactory *IRF) {
   return nullptr;
 }
 
+Value *EnumDeclaration::IRCodegen(IRFactory *IRF) {
+  return nullptr;
+}
+
 Value *CallExpression::IRCodegen(IRFactory *IRF) {
   std::vector<Value *> Args;
 

@@ -42,6 +42,7 @@ public:
   std::unique_ptr<VariableDeclaration> ParseVariableDeclaration();
   std::unique_ptr<MemberDeclaration> ParseMemberDeclaration();
   std::unique_ptr<StructDeclaration> ParseStructDeclaration();
+  std::unique_ptr<EnumDeclaration> ParseEnumDeclaration();
   Node ParseReturnTypeSpecifier();
   std::vector<std::unique_ptr<FunctionParameterDeclaration>>
   ParseParameterList();

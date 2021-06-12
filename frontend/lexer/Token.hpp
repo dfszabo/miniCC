@@ -59,6 +59,7 @@ public:
     Double,
     Void,
     Struct,
+    Enum,
   };
 
   Token() : Kind(Invalid) {}
@@ -160,7 +161,8 @@ public:
       return "void";
     case Struct:
       return "struct";
-
+    case Enum:
+      return "struct";
     default:
       assert(false && "Unhandled token type.");
       break;

@@ -207,7 +207,7 @@ public:
   bool IsFloat() { return Kind == Float; }
   bool IsEmpty() { return Kind == Empty; }
 
-  unsigned GetIntVal() {
+  int GetIntVal() {
     assert(IsInt() && "Must be an integer type.");
     return IntVal;
   }
