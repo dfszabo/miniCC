@@ -37,6 +37,7 @@ public:
     DoubleEqual,
 
     // Symbols
+    Colon,
     SemiColon,
     LeftParen,
     RightParen,
@@ -52,6 +53,10 @@ public:
     For,
     While,
     If,
+    Switch,
+    Case,
+    Default,
+    Break,
     Else,
     Return,
     Char,
@@ -125,6 +130,8 @@ public:
       return "&&";
     case DoubleEqual:
       return "==";
+    case Colon:
+      return ":";
     case SemiColon:
       return ";";
     case LeftParen:
@@ -147,6 +154,14 @@ public:
       return "while";
     case If:
       return "if";
+    case Switch:
+      return "switch";
+    case Case:
+      return "case";
+    case Default:
+      return "default";
+    case Break:
+      return "break";
     case Else:
       return "else";
     case Return:
@@ -162,7 +177,7 @@ public:
     case Struct:
       return "struct";
     case Enum:
-      return "struct";
+      return "enum";
     default:
       assert(false && "Unhandled token type.");
       break;

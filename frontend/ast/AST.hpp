@@ -271,6 +271,46 @@ private:
   std::unique_ptr<Statement> ElseBody = nullptr;
 };
 
+class SwitchStatement : public Statement {
+public:
+  using VecOfStmts = std::vector<std::unique_ptr<Statement>>;
+  using VecOfCasesData = std::vector<std::pair<int, VecOfStmts>>;
+
+  std::unique_ptr<Expression> &GetCondition() { return Condition; }
+  void SetCondition(std::unique_ptr<Expression> c) { Condition = std::move(c); }
+
+  VecOfCasesData &GetCaseBodies() { return Cases; }
+  void SetCaseBodies(VecOfCasesData c) { Cases = std::move(c); }
+
+  VecOfStmts &GetDefaultBody() { return DefaultBody; }
+  void SetDefaultBody(VecOfStmts db) { DefaultBody = std::move(db); }
+
+  void ASTDump(unsigned tab = 0) override {
+    PrintLn("SwitchStatement", tab);
+    Condition->ASTDump(tab + 2);
+
+    for (auto &[CaseConst, CaseBody] : Cases) {
+      std::string Str = "Case '" + std::to_string(CaseConst) + "'";
+      PrintLn(Str.c_str(), tab + 2);
+      Str.clear();
+      for (auto &CaseStatement : CaseBody)
+        CaseStatement->ASTDump(tab + 4);
+    }
+
+    if (DefaultBody.size() > 0)
+      PrintLn("DefaultCase", tab + 2);
+    for (auto &DefaultStatement : DefaultBody)
+      DefaultStatement->ASTDump(tab + 4);
+  }
+
+  Value *IRCodegen(IRFactory *IRF) override;
+
+private:
+  std::unique_ptr<Expression> Condition;
+  VecOfCasesData Cases;
+  VecOfStmts DefaultBody;
+};
+
 class WhileStatement : public Statement {
 public:
   std::unique_ptr<Expression> &GetCondition() { return Condition; }
@@ -347,6 +387,17 @@ public:
 
 private:
   std::optional<std::unique_ptr<Expression>> ReturnValue;
+};
+
+class BreakStatement : public Statement {
+public:
+  BreakStatement() = default;
+
+  void ASTDump(unsigned tab = 0) override {
+    PrintLn("BreakStatement", tab);
+  }
+
+  Value *IRCodegen(IRFactory *IRF) override { return nullptr; }
 };
 
 class FunctionParameterDeclaration : public Statement {
@@ -665,6 +716,7 @@ private:
 class IntegerLiteralExpression : public Expression {
 public:
   unsigned GetValue() { return IntValue; }
+  int64_t GetSIntValue() const { return IntValue; }
   void SetValue(uint64_t v) { IntValue = v; }
 
   IntegerLiteralExpression(uint64_t v) : IntValue(v) {

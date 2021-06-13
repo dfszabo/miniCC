@@ -116,6 +116,7 @@ public:
   bool IsArray() const { return Kind == Array; }
   bool IsFunction() const { return ParameterList.size() > 0; }
   bool IsStruct() const { return Kind == Struct; }
+  bool IsIntegerType() const { return Ty == Char || Ty == Int; }
 
   std::vector<Type> &GetTypeList() { return TypeList; }
   std::vector<Type> &GetParameterList() { return ParameterList; }

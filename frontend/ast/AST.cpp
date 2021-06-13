@@ -100,6 +100,80 @@ Value *IfStatement::IRCodegen(IRFactory *IRF) {
   return nullptr;
 }
 
+Value *SwitchStatement::IRCodegen(IRFactory *IRF) {
+  //   # generate code for Condition
+  //   cmp.eq $cmp_res1, %Condition, case1_const
+  //   br $cmp_res1, <case1_body>
+  //   cmp.eq $cmp_res2, %Condition, case2_const
+  //   br $cmp_res2, <case2_body>
+  //   ...
+  //   cmp.eq $cmp_resN, %Condition, caseN_const
+  //   br $cmp_resN, <caseN_body>
+  //   j <default_case>
+  //
+  // <case1_body>
+  //   # generate case1 body
+  //   # create "j <switch_end>" when break is used
+  // ...
+  // <caseN_body>
+  //   # generate caseN body
+  //   # create "j <switch_end>" when break is used
+  // <default_case>
+  //   # generate default case body
+  // <switch_end>
+
+  const auto FuncPtr = IRF->GetCurrentFunction();
+  auto SwitchEnd = std::make_unique<BasicBlock>("switch_end", FuncPtr);
+  auto DefaultCase = std::make_unique<BasicBlock>("switch_default", FuncPtr);
+
+  auto Cond = Condition->IRCodegen(IRF);
+
+  std::vector<std::unique_ptr<BasicBlock>> CaseBodies;
+
+  for (auto &[Const, Statements] : Cases)
+    if (!Statements.empty())
+      CaseBodies.push_back(std::make_unique<BasicBlock>("switch_case", FuncPtr));
+
+  // because of the fallthrough mechanism multiple cases could use the same
+  // code block, CaseIdx keep track the current target basic block so falling
+  // through cases could refer to it
+  size_t CaseIdx = 0;
+  for (auto &[Const, Statements] : Cases) {
+    auto CMP_res = IRF->CreateCMP(CompareInstruction::EQ, Cond,
+                                  IRF->GetConstant((uint64_t)Const));
+    IRF->CreateBR(CMP_res, CaseBodies[CaseIdx].get());
+
+    if (!Statements.empty())
+      CaseIdx++;
+  }
+
+  IRF->CreateJUMP(DefaultCase.get());
+
+  // Generating the bodies for the cases
+  for (auto &[Const, Statements] : Cases) {
+    if (!Statements.empty()) {
+      IRF->InsertBB(std::move(CaseBodies.front()));
+      for (auto &Statement : Statements) {
+        Statement->IRCodegen(IRF);
+        // If the statement is a "break" then insert jump to the default case
+        // here, since cannot generate that jump simply, it would require context
+        if (auto Break = dynamic_cast<BreakStatement*>(Statement.get()); Break != nullptr)
+          IRF->CreateJUMP(SwitchEnd.get());
+      }
+      CaseBodies.erase(CaseBodies.begin());
+    }
+  }
+
+  // Generate default case
+  IRF->InsertBB(std::move(DefaultCase));
+  for (auto &Statement : DefaultBody)
+    Statement->IRCodegen(IRF);
+
+  IRF->InsertBB(std::move(SwitchEnd));
+
+  return nullptr;
+}
+
 Value *WhileStatement::IRCodegen(IRFactory *IRF) {
   //  <loop_header>
   //    # generate code for the Condition
