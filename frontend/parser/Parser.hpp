@@ -50,6 +50,7 @@ public:
   Type ParseTypeSpecifier();
   std::unique_ptr<CompoundStatement> ParseCompoundStatement();
   std::unique_ptr<ReturnStatement> ParseReturnStatement();
+  std::unique_ptr<BreakStatement> ParseBreakStatement();
   std::unique_ptr<Statement> ParseStatement();
   std::unique_ptr<ExpressionStatement> ParseExpressionStatement();
   std::unique_ptr<Expression> ParseExpression();
@@ -65,6 +66,7 @@ public:
   std::unique_ptr<WhileStatement> ParseWhileStatement();
   std::unique_ptr<ForStatement> ParseForStatement();
   std::unique_ptr<IfStatement> ParseIfStatement();
+  std::unique_ptr<SwitchStatement> ParseSwitchStatement();
   std::unique_ptr<Expression> ParseConstantExpression();
   unsigned ParseIntegerConstant();
   double ParseRealConstant();

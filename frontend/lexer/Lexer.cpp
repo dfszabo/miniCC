@@ -6,7 +6,9 @@ std::unordered_map<std::string, Token::TokenKind> Lexer::Keywords =
     std::unordered_map<std::string, Token::TokenKind>{
         {"int", Token::Int},       {"double", Token::Double},
         {"void", Token::Void},     {"char", Token::Char},
-        {"if", Token::If},         {"else", Token::Else},
+        {"if", Token::If},         {"switch", Token::Switch},
+        {"case", Token::Case},     {"default", Token::Default},
+        {"break", Token::Break},   {"else", Token::Else},
         {"for", Token::For},       {"while", Token::While},
         {"return", Token::Return}, {"struct", Token::Struct},
         {"enum", Token::Enum}};
@@ -110,7 +112,7 @@ std::optional<Token> Lexer::LexIdentifier() {
 
 std::optional<Token> Lexer::LexKeyword() {
   std::size_t WordEnd =
-      Source[LineIndex].substr(ColumnIndex).find_first_of("\t\n\v\f\r ");
+      Source[LineIndex].substr(ColumnIndex).find_first_of("\t\n\v\f\r;: ");
 
   auto Word = Source[LineIndex].substr(ColumnIndex, WordEnd);
 
@@ -185,6 +187,9 @@ std::optional<Token> Lexer::LexSymbol() {
       Size = 2;
     } else
       TokenKind = Token::And;
+    break;
+  case ':':
+    TokenKind = Token::Colon;
     break;
   case ';':
     TokenKind = Token::SemiColon;
