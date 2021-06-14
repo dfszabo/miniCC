@@ -343,9 +343,13 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
   if (IRF->IsGlobalScope())
     return IRF->CreateGlobalVar(Name, Type);
 
-  // Otherwise we are in a localscope of a function. Allocate space on
+  // Otherwise we are in a local scope of a function. Allocate space on
   // stack and update the local symbol table.
   auto SA = IRF->CreateSA(Name, Type);
+
+  if (Init)
+    IRF->CreateSTR(Init->IRCodegen(IRF), SA);
+
   IRF->AddToSymbolTable(Name, SA);
   return SA;
 }

@@ -295,7 +295,7 @@ std::unique_ptr<CompoundStatement> Parser::ParseCompoundStatement() {
 }
 
 // <VariableDeclaration> ::= <TypeSpecifier> '*'* <Identifier>
-//                           {'[' <IntegerConstant> ]'}* ';'
+//                           {'[' <IntegerConstant> ]'}* { = <Expression> }? ';'
 std::unique_ptr<VariableDeclaration> Parser::ParseVariableDeclaration() {
   Type type = ParseTypeSpecifier();
   Lex();
@@ -317,11 +317,23 @@ std::unique_ptr<VariableDeclaration> Parser::ParseVariableDeclaration() {
   if (!Dimensions.empty())
     type = Type(type, Dimensions);
 
-  Expect(Token::SemiColon);
-
   InsertToSymTable(Name, type);
 
-  return std::make_unique<VariableDeclaration>(Name, type, Dimensions);
+  // If the variable initialized
+  std::unique_ptr<Expression> InitExpr = nullptr;
+  if (lexer.Is(Token::Equal)) {
+    Lex(); // eat '='
+    InitExpr = ParseExpression();
+  }
+
+  Expect(Token::SemiColon);
+
+  auto VD = std::make_unique<VariableDeclaration>(Name, type, Dimensions);
+
+  if (InitExpr)
+    VD->SetInitExpr(std::move(InitExpr));
+
+  return VD;
 }
 
 // <VariableDeclaration> ::= <TypeSpecifier> '*'* <Identifier>
