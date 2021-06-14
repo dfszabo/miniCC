@@ -32,6 +32,8 @@ bool TargetMachine::SelectInstruction(MachineInstruction *MI) {
     return SelectSTORE(MI);
   case MachineInstruction::STACK_ADDRESS:
     return SelectSTACK_ADDRESS(MI);
+  case MachineInstruction::GLOBAL_ADDRESS:
+    return SelectGLOBAL_ADDRESS(MI);
   case MachineInstruction::BRANCH:
     return SelectBRANCH(MI);
   case MachineInstruction::JUMP:

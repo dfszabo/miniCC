@@ -42,6 +42,7 @@ public:
     STORE,
     STACK_ALLOC,
     STACK_ADDRESS,
+    GLOBAL_ADDRESS,
 
     // Moves and constant materializations
     LOAD_IMM,
@@ -124,6 +125,10 @@ public:
     AddOperand(MachineOperand::CreateFunctionName(Name));
   }
 
+  void AddGlobalSymbol(std::string Symbol) {
+    AddOperand(MachineOperand::CreateGlobalSymbol(Symbol));
+  }
+
   void AddAttribute(unsigned AttributeFlag) {
     OtherAttributes |= AttributeFlag;
   }
@@ -134,6 +139,7 @@ public:
     return Opcode == STORE || (OtherAttributes & IS_STORE);
   }
   bool IsLoadOrStore() const { return IsLoad() || IsStore(); }
+  bool IsAlreadySelected() const { return Opcode < 65536; }
 
   void Print(TargetMachine *TM) const;
 

@@ -177,12 +177,25 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
         Lex(); // consume ','
       }
 
+      if (!Dimensions.empty())
+        type.SetDimensions(std::move(Dimensions));
+
+      // If the variable initialized
+      std::unique_ptr<Expression> InitExpr = nullptr;
+      if (lexer.Is(Token::Equal)) {
+        Lex(); // eat '='
+        if (lexer.Is(Token::LeftCurly))
+          InitExpr = ParseInitializerListExpression();
+        else
+          InitExpr = ParseExpression();
+      }
+
       Expect(Token::SemiColon);
 
-      InsertToSymTable(NameStr, Type(type, Dimensions));
+      InsertToSymTable(NameStr, type);
 
-      TU->AddDeclaration(
-          std::make_unique<VariableDeclaration>(NameStr, type, Dimensions));
+      TU->AddDeclaration(std::make_unique<VariableDeclaration>(
+          NameStr, type, std::move(InitExpr)));
     }
 
     TokenKind = GetCurrentTokenKind();
@@ -323,7 +336,10 @@ std::unique_ptr<VariableDeclaration> Parser::ParseVariableDeclaration() {
   std::unique_ptr<Expression> InitExpr = nullptr;
   if (lexer.Is(Token::Equal)) {
     Lex(); // eat '='
-    InitExpr = ParseExpression();
+    if (lexer.Is(Token::LeftCurly))
+      InitExpr = ParseInitializerListExpression();
+    else
+      InitExpr = ParseExpression();
   }
 
   Expect(Token::SemiColon);
@@ -990,4 +1006,24 @@ std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
     UndefinedSymbolError(Id, lexer);
 
   return RE;
+}
+
+// <InitializerListExpression> ::= '{' <ConstantExpression>
+//                                     {',' <ConstantExpression> }* '}'
+std::unique_ptr<Expression> Parser::ParseInitializerListExpression() {
+  Expect(Token::LeftCurly);
+  auto CE = ParseConstantExpression();
+  assert(CE && "Cannot be null");
+
+  std::vector<std::unique_ptr<Expression>> ExprList;
+  ExprList.push_back(std::move(CE));
+
+  while (lexer.Is(Token::Comma)) {
+    Lex(); // eat ','
+    ExprList.push_back(std::move(ParseConstantExpression()));
+  }
+
+  Expect(Token::RightCurly);
+
+  return std::make_unique<InitializerListExpression>(std::move(ExprList));
 }

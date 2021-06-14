@@ -1,4 +1,5 @@
 #include "AArch64InstructionLegalizer.hpp"
+#include "AArch64InstructionDefinitions.hpp"
 #include "../../MachineBasicBlock.hpp"
 #include "../../MachineFunction.hpp"
 #include <cassert>
@@ -15,6 +16,8 @@ bool AArch64InstructionLegalizer::Check(MachineInstruction *MI) {
     if (MI->GetOperand(1)->IsImmediate())
       return false;
     break;
+  case MachineInstruction::GLOBAL_ADDRESS:
+    return false;
   default:
     break;
   }
@@ -26,6 +29,7 @@ bool AArch64InstructionLegalizer::IsExpandable(const MachineInstruction *MI) {
   switch (MI->GetOpcode()) {
   case MachineInstruction::MOD:
   case MachineInstruction::STORE:
+  case MachineInstruction::GLOBAL_ADDRESS:
     return true;
 
   default:
@@ -33,4 +37,25 @@ bool AArch64InstructionLegalizer::IsExpandable(const MachineInstruction *MI) {
   }
 
   return false;
+}
+
+bool AArch64InstructionLegalizer::ExpandGLOBAL_ADDRESS(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 2 && "GLOBAL_ADDRESS must have exactly 2 operands");
+  auto ParentBB = MI->GetParent();
+
+  auto GlobalVar = *MI->GetOperand(1);
+  assert(GlobalVar.IsGlobalSymbol() && "Operand #2 must be a symbol");
+  auto GlobalVarName = ":lo12:" + GlobalVar.GetGlobalSymbol();
+
+  MI->SetOpcode(ADRP);
+
+  MachineInstruction ADD;
+  ADD.SetOpcode(MachineInstruction::ADD);
+  auto DestReg = *MI->GetOperand(0);
+  ADD.AddOperand(DestReg);
+  ADD.AddOperand(DestReg);
+  ADD.AddGlobalSymbol(GlobalVarName);
+  ParentBB->InsertAfter(std::move(ADD), MI);
+
+  return true;
 }

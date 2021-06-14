@@ -18,7 +18,11 @@ public:
   /// Predicate to decide whether the instruction is expandable or not.
   virtual bool IsExpandable(const MachineInstruction *MI) { return false; }
 
-  /// Expandin the instruction into other ones which are compute the same
+  virtual bool ExpandMOD(MachineInstruction *MI);
+  virtual bool ExpandSTORE(MachineInstruction *MI);
+  virtual bool ExpandGLOBAL_ADDRESS(MachineInstruction *MI) { return false; }
+
+  /// Expanding the instruction into other ones which are compute the same
   /// value, but usually takes more instructions.
   bool Expand(MachineInstruction *MI);
 };

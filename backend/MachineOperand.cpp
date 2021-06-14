@@ -40,6 +40,9 @@ void MachineOperand::Print(TargetMachine *TM) const {
   case FUNCTION_NAME:
     std::cout << "@" << Label;
     break;
+  case GLOBAL_SYMBOL:
+    std::cout << "@" << GlobalSymbol;
+    break;
   default:
     break;
   }

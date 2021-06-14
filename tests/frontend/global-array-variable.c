@@ -2,9 +2,9 @@
 // FUNC-DECL: int test()
 // TEST-CASE: test() -> 123
 
-int global;
+int global[10];
 
 int test() {
-  global = 123;
-  return global;
+  global[4] = 123;
+  return global[4];
 }

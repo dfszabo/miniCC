@@ -48,6 +48,7 @@ public:
   bool IsINT() const { return Kind == SINT || Kind == UINT; }
   bool IsPTR() const { return PointerLevel > 0; }
   bool IsStruct() const { return Kind == STRUCT; }
+  bool IsArray() const { return !Dimensions.empty(); }
   bool IsVoid() const { return Kind == NONE; }
 
   void SetDimensions(const std::vector<unsigned>& N) { Dimensions = N; }

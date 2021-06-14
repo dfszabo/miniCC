@@ -127,6 +127,11 @@ public:
     return Dimensions;
   }
 
+   void SetDimensions(std::vector<unsigned> D) {
+     Kind = Array;
+     Dimensions = std::move(D);
+   }
+
   std::vector<Type> &GetArgTypes() { return ParameterList; }
 
   Type GetStructMemberType(const std::string &Member) {

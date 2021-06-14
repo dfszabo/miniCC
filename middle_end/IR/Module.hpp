@@ -19,6 +19,7 @@ public:
   BasicBlock *GetBB(const size_t Index);
 
   std::vector<Function>& GetFunctions() { return Functions; }
+  std::vector<std::unique_ptr<Value>>& GetGlobalVars() { return GlobalVars; }
 
   Function *CurrentFunction();
 

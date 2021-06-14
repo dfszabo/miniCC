@@ -7,6 +7,7 @@
 
 class MachineIRModule {
   using FunctionList = std::vector<MachineFunction>;
+  using GlobalsList = std::vector<GlobalData>;
 
 public:
   MachineIRModule() {}
@@ -17,13 +18,16 @@ public:
     return &Functions[Functions.size() - 1];
   }
 
+  GlobalsList &GetGlobalDatas() { return GlobalVars; }
+  void AddGlobalData(GlobalData &GD) { GlobalVars.push_back(GD); }
+
   void Print(TargetMachine *TM) const {
     for (auto &F : Functions)
       F.Print(TM);
   }
 
 private:
-  std::vector<GlobalData> GlobalVars;
+  GlobalsList GlobalVars;
   FunctionList Functions;
 };
 

@@ -11,7 +11,7 @@
 ///     DIV %div_res, %num, %mod
 ///     MUL %mul_res, %div_res, %mod
 ///     SUB %res, %num, %mul_res
-bool ExpandMOD(MachineInstruction *MI) {
+bool TargetInstructionLegalizer::ExpandMOD(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "MOD must have exactly 3 operands");
   auto ParentBB = MI->GetParent();
   auto ParentFunc = ParentBB->GetParent();
@@ -60,7 +60,7 @@ bool ExpandMOD(MachineInstruction *MI) {
 ///     STORE [address], %reg
 ///
 /// where immediate is a constans number
-bool ExpandSTORE(MachineInstruction *MI) {
+bool TargetInstructionLegalizer::ExpandSTORE(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 2 && "STORE must have exactly 2 operands");
   auto ParentBB = MI->GetParent();
   auto ParentFunc = ParentBB->GetParent();
@@ -93,6 +93,8 @@ bool TargetInstructionLegalizer::Expand(MachineInstruction *MI) {
     return ExpandMOD(MI);
   case MachineInstruction::STORE:
     return ExpandSTORE(MI);
+  case MachineInstruction::GLOBAL_ADDRESS:
+    return ExpandGLOBAL_ADDRESS(MI);
   default:
     break;
   }

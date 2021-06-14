@@ -74,6 +74,8 @@ public:
       : Name(Name), AType(Ty, std::move(Dim)) {}
 
   VariableDeclaration(std::string &Name, Type Ty) : Name(Name), AType(Ty) {}
+  VariableDeclaration(std::string &Name, Type Ty, std::unique_ptr<Expression> E)
+      : Name(Name), AType(Ty), Init(std::move(E)) {}
 
   VariableDeclaration() = default;
 
@@ -736,6 +738,7 @@ class IntegerLiteralExpression : public Expression {
 public:
   unsigned GetValue() { return IntValue; }
   int64_t GetSIntValue() const { return IntValue; }
+  uint64_t GetUIntValue() const { return IntValue; }
   void SetValue(uint64_t v) { IntValue = v; }
 
   IntegerLiteralExpression(uint64_t v) : IntValue(v) {
@@ -831,6 +834,27 @@ public:
 
 private:
   std::unique_ptr<Expression> CastableExpression;
+};
+
+class InitializerListExpression : public Expression {
+  using ExprList = std::vector<std::unique_ptr<Expression>>;
+
+public:
+  ExprList &GetExprList() { return Expressions; }
+  void SetExprList(ExprList &e) { Expressions = std::move(e); }
+
+  InitializerListExpression(ExprList EL) : Expressions(std::move(EL)) {}
+
+  void ASTDump(unsigned tab = 0) override {
+    PrintLn("InitializerListExpression", tab);
+    for (auto &E : Expressions)
+    E->ASTDump(tab + 2);
+  }
+
+  Value *IRCodegen(IRFactory *IRF) override {return nullptr;}
+
+private:
+  ExprList Expressions;
 };
 
 class TranslationUnit : public Statement {

@@ -340,13 +340,37 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
     Type.SetDimensions(AType.GetDimensions());
 
   // If we are in global scope, then its a global variable declaration
-  if (IRF->IsGlobalScope())
-    return IRF->CreateGlobalVar(Name, Type);
+  std::vector<uint64_t> InitList;
+  if (IRF->IsGlobalScope()) {
+    // if the initialization is done by an initializer
+    // FIXME: assuming 1 dimensional init list like "{ 1, 2 }", add support
+    // for more complex case like "{ { 1, 2 }, { 3, 4 } }"
+    if (auto InitListExpr = dynamic_cast<InitializerListExpression*>(Init.get());
+        InitListExpr != nullptr) {
+      for (auto &Expr : InitListExpr->GetExprList())
+        if (auto ConstExpr = dynamic_cast<IntegerLiteralExpression*>(Expr.get());
+            ConstExpr != nullptr)
+          InitList.push_back(ConstExpr->GetUIntValue());
+        else
+          assert(!"Other types unhandled yet");
+    }
+    // initialized by const expression
+    // FIXME: for now only IntegerLiteralExpression, add support for const
+    // expressions like 1 + 2 - 4 * 12
+    else {
+      if (auto ConstExpr = dynamic_cast<IntegerLiteralExpression*>(Init.get());
+          ConstExpr != nullptr) {
+        InitList.push_back(ConstExpr->GetUIntValue());
+      }
+    }
+    return IRF->CreateGlobalVar(Name, Type, std::move(InitList));
+  }
 
   // Otherwise we are in a local scope of a function. Allocate space on
   // stack and update the local symbol table.
   auto SA = IRF->CreateSA(Name, Type);
 
+  // TODO: revisit this
   if (Init)
     IRF->CreateSTR(Init->IRCodegen(IRF), SA);
 
@@ -415,7 +439,7 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
 Value *ReferenceExpression::IRCodegen(IRFactory *IRF) {
   auto Local = IRF->GetSymbolValue(Identifier);
 
-  if (this->GetResultType().IsStruct())
+  if (Local && this->GetResultType().IsStruct())
     return Local;
 
   if (Local) {
@@ -426,9 +450,13 @@ Value *ReferenceExpression::IRCodegen(IRFactory *IRF) {
   }
 
   auto GV = IRF->GetGlobalVar(Identifier);
+  assert(GV && "Cannot be null");
 
   // If LValue, then return as a ptr to the global val
   if (GetLValueness())
+    return GV;
+
+  if (this->GetResultType().IsStruct())
     return GV;
 
   return IRF->CreateLD(GV->GetType(), GV);
@@ -473,6 +501,7 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
 Value *StructMemberReference::IRCodegen(IRFactory *IRF) {
   assert(StructTypedExpression && "cannot be NULL");
   auto BaseValue = StructTypedExpression->IRCodegen(IRF);
+  assert(BaseValue && "cannot be NULL");
 
   auto ExprType = BaseValue->GetType();
   assert(ExprType.IsStruct());

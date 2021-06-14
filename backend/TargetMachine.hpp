@@ -38,6 +38,7 @@ public:
   virtual bool SelectMOV(MachineInstruction *MI) { return false; }
   virtual bool SelectSTORE(MachineInstruction *MI) { return false; }
   virtual bool SelectSTACK_ADDRESS(MachineInstruction *MI) { return false; }
+  virtual bool SelectGLOBAL_ADDRESS(MachineInstruction *MI) { return false; }
   virtual bool SelectBRANCH(MachineInstruction *MI) { return false; }
   virtual bool SelectJUMP(MachineInstruction *MI) { return false; }
   virtual bool SelectCALL(MachineInstruction *MI) { return false; }
