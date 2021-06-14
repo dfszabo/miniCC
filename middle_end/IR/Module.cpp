@@ -37,7 +37,7 @@ bool Module::IsGlobalValue(Value *V) const {
 
 Value *Module::GetGlobalVar(const std::string &Name) const {
   for (auto &GV : GlobalVars)
-    if (GV->ValueString().substr(1) == Name)
+    if (((GlobalVariable*)GV.get())->GetName() == Name)
       return GV.get();
 
   return nullptr;

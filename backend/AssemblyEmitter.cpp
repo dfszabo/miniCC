@@ -64,11 +64,16 @@ void AssemblyEmitter::GenerateAssembly() {
             AssemblyTemplateStr.replace(DollarPos, 2, ImmStr);
           }
           // Label and FunctionName (function call) case
-          else if (CurrentOperand->IsLabel() || CurrentOperand->IsFunctionName()) {
+          else if (CurrentOperand->IsLabel() || CurrentOperand->IsFunctionName()
+                   || CurrentOperand->IsGlobalSymbol()) {
             std::string Str = "";
             if (CurrentOperand->IsLabel())
               Str += ".L";
-            Str.append(CurrentOperand->GetLabel());
+
+            if (!CurrentOperand->IsGlobalSymbol())
+              Str.append(CurrentOperand->GetLabel());
+            else
+              Str.append(CurrentOperand->GetGlobalSymbol());
             AssemblyTemplateStr.replace(DollarPos, 2, Str);
           } else
             assert(!"Invalid Machine Operand type");
@@ -79,4 +84,6 @@ void AssemblyEmitter::GenerateAssembly() {
     }
     std::cout << std::endl;
   }
+  for (auto &GlobalData : MIRM->GetGlobalDatas())
+    GlobalData.Print();
 }

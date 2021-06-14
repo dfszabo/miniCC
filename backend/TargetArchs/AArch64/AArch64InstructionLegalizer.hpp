@@ -8,13 +8,18 @@ namespace AArch64 {
 
 class AArch64InstructionLegalizer : public TargetInstructionLegalizer {
 public:
-  AArch64InstructionLegalizer() {}
+  AArch64InstructionLegalizer(TargetMachine *TM) : TM(TM) {}
   ~AArch64InstructionLegalizer() override {}
 
   bool Check(MachineInstruction *MI) override;
   bool IsExpandable(const MachineInstruction *MI) override;
 
+  /// The global address materialization happens in two steps on arm. Example:
+  ///   adrp x0, global_var
+  ///   add  x0, x0, :lo12:global_var
+  bool ExpandGLOBAL_ADDRESS(MachineInstruction *MI) override;
 private:
+  TargetMachine *TM = nullptr;
 };
 
 } // namespace AArch64

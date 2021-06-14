@@ -9,8 +9,12 @@ using namespace AArch64;
 bool AArch64TargetMachine::SelectADD(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "ADD must have 3 operands");
 
+  if (auto Symbol = MI->GetOperand(2); Symbol->IsGlobalSymbol()) {
+    MI->SetOpcode(ADD_rri);
+    return true;
+  }
   // If last operand is an immediate then select "addi"
-  if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
+  else if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
     // FIXME: Since currently ADD used for adjusting the stack in the prolog,
     // therefore its possible that the immediate is negative. In that case for
     // now we just convert the ADD into a SUB and call select on that.

@@ -25,6 +25,7 @@ enum Opcodes : unsigned {
   SXTB,
   MOV_rc,
   MOV_rr,
+  ADRP,
   LDR,
   LDRB,
   STR,

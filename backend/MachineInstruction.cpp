@@ -41,6 +41,9 @@ void MachineInstruction::Print(TargetMachine *TM) const {
   case STACK_ADDRESS:
     OpcodeStr = "STACK_ADDRESS";
     break;
+  case GLOBAL_ADDRESS:
+    OpcodeStr = "GLOBAL_ADDRESS";
+    break;
   case LOAD_IMM:
     OpcodeStr = "LOAD_IMM";
     break;

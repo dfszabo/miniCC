@@ -14,7 +14,7 @@ public:
     RegInfo = std::make_unique<AArch64RegisterInfo>();
     ABI = std::make_unique<AArch64TargetABI>(RegInfo.get());
     InstrDefs = std::make_unique<AArch64InstructionDefinitions>();
-    Legalizer = std::make_unique<AArch64InstructionLegalizer>();
+    Legalizer = std::make_unique<AArch64InstructionLegalizer>(this);
   }
 
   ~AArch64TargetMachine() override {}

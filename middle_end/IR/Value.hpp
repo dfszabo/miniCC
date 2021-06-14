@@ -28,6 +28,7 @@ public:
   bool IsConstant() const { return Kind == CONST; }
   bool IsRegister() const { return Kind == REGISTER; }
   bool IsParameter() const { return Kind == PARAM; }
+  bool IsGlobalVar() const { return Kind == GLOBALVAR; }
 
   bool IsIntType() const { return ValueType.IsINT(); }
 
@@ -81,16 +82,37 @@ public:
   GlobalVariable(std::string &Name, IRType Type)
       : Value(GLOBALVAR, Type), Name(Name) {}
 
-  std::string ValueString() const override { return "@" + Name; }
+  GlobalVariable(std::string &Name, IRType Type, std::vector<uint64_t> InitList)
+      : Value(GLOBALVAR, Type), Name(Name),
+        InitList(std::move(InitList)) {}
+
+  std::string &GetName() { return Name; }
+  std::vector<uint64_t> &GetInitList() { return InitList; }
+
+  std::string ValueString() const override {
+    return "@" + Name + "<" + ValueType.AsString() + ">";
+  }
 
   void Print() const {
-    std::cout << "global " << Name << " :" << GetType().AsString() << ";"
-              << std::endl
-              << std::endl;
+    std::cout << "global var (" << GetType().AsString() << "):" << std::endl
+              << "\t" << Name;
+
+    if (!InitList.empty()) {
+      std::cout << " = {";
+      for (size_t i = 0; i < InitList.size(); i++) {
+        std::cout << " " << std::to_string(InitList[i]);
+        if (i  + 1 < InitList.size())
+          std::cout << ",";
+      }
+      std::cout << " }";
+    }
+
+    std::cout << std::endl << std::endl;
   }
 
 private:
   std::string Name;
+  std::vector<uint64_t> InitList;
 };
 
 #endif

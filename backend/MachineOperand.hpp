@@ -20,6 +20,7 @@ public:
     PARAMETER,
     LABEL,
     FUNCTION_NAME,
+    GLOBAL_SYMBOL,
   };
 
   MachineOperand() {}
@@ -32,6 +33,7 @@ public:
   void SetToParameter() { Type = PARAMETER; }
   void SetToLabel() { Type = LABEL; }
   void SetToFunctionName() { Type = FUNCTION_NAME; }
+  void SetToGlobalSymbol() { Type = GLOBAL_SYMBOL; }
 
   int64_t GetImmediate() const { return Value; }
   int64_t GetReg() const { return Value; }
@@ -47,7 +49,9 @@ public:
 
   const char *GetLabel() { return Label; }
   const char *GetFunctionName() { return Label; }
+  std::string &GetGlobalSymbol() { return GlobalSymbol; }
   void SetLabel(const char *L) { Label = L; }
+  void SetGlobalSymbol(const std::string &GS) { GlobalSymbol = GS; }
 
   bool IsRegister() const { return Type == REGISTER; }
   bool IsVirtualReg() const { return Type == VIRTUAL_REGISTER; }
@@ -57,6 +61,7 @@ public:
   bool IsParameter() const { return Type == PARAMETER; }
   bool IsLabel() const { return Type == LABEL; }
   bool IsFunctionName() const { return Type == FUNCTION_NAME; }
+  bool IsGlobalSymbol() const { return Type == GLOBAL_SYMBOL; }
 
   unsigned GetSize() { return LLT.GetBitWidth(); }
 
@@ -106,6 +111,13 @@ public:
     return MO;
   }
 
+  static MachineOperand CreateGlobalSymbol(std::string &Symbol) {
+    MachineOperand MO;
+    MO.SetToGlobalSymbol();
+    MO.SetGlobalSymbol(Symbol);
+    return MO;
+  }
+
   static MachineOperand CreateLabel(const char* Label) {
     MachineOperand MO;
     MO.SetToLabel();
@@ -128,6 +140,7 @@ private:
   int Offset = 0;
   LowLevelType LLT;
   const char *Label = nullptr;
+  std::string GlobalSymbol;
 };
 
 #endif
