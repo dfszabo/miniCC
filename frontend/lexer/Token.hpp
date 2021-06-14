@@ -32,6 +32,8 @@ public:
     And,
 
     // Multichar operators
+    PlusPlus,
+    MinusMinus,
     BangEqual,
     DoubleAnd,
     DoubleEqual,
@@ -122,6 +124,10 @@ public:
       return ">";
     case Bang:
       return "!";
+    case PlusPlus:
+      return "++";
+    case MinusMinus:
+      return "--";
     case BangEqual:
       return "!=";
     case And:

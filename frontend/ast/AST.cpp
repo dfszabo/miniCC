@@ -474,7 +474,14 @@ Value *StructMemberReference::IRCodegen(IRFactory *IRF) {
   assert(ExprType.IsStruct());
 
   auto IndexValue = IRF->GetConstant((uint64_t)MemberIndex);
-  auto GEP = IRF->CreateGEP(ExprType, BaseValue, IndexValue);
+
+  assert(ExprType.GetMemberTypes().size() > MemberIndex);
+
+  // The result type is a pointer to the member type. Ex: referred member is
+  // an i32 than an i32*.
+  auto ResultType = ExprType.GetMemberTypes()[MemberIndex];
+  ResultType.IncrementPointerLevel();
+  auto GEP = IRF->CreateGEP(ResultType, BaseValue, IndexValue);
 
   if (GetLValueness())
     return GEP;
@@ -487,11 +494,31 @@ Value *StructMemberReference::IRCodegen(IRFactory *IRF) {
 Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
   auto E = Expr->IRCodegen(IRF);
 
-  if (GetOperationKind() == DEREF) {
+  switch (GetOperationKind()) {
+  case DEREF: {
     auto ResultType = E->GetType();
     return IRF->CreateLD(ResultType, E);
-  } else
+  }
+  case POST_DECREMENT:
+  case POST_INCREMENT: {
+    // make the assumption that the expression E is an LValue which means
+    // its basically a pointer, so it requires a load first for addition to work
+    auto LoadedValType = E->GetTypeRef();
+    LoadedValType.DecrementPointerLevel();
+    auto LoadedExpr = IRF->CreateLD(LoadedValType, E);
+
+    Instruction* AddSub;
+    if (GetOperationKind() == POST_INCREMENT)
+      AddSub = IRF->CreateADD(LoadedExpr, IRF->GetConstant((uint64_t)1));
+    else
+      AddSub = IRF->CreateSUB(LoadedExpr, IRF->GetConstant((uint64_t)1));
+
+    IRF->CreateSTR(AddSub, E);
+    return LoadedExpr;
+  }
+  default:
     assert(!"Unimplemented");
+  }
 
   return nullptr;
 }

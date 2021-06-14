@@ -617,12 +617,18 @@ class UnaryExpression : public Expression {
 public:
   enum UnaryOperation {
     DEREF,
+    POST_INCREMENT,
+    POST_DECREMENT,
   };
 
   UnaryOperation GetOperationKind() {
     switch (Operation.GetKind()) {
     case Token::Astrix:
       return DEREF;
+    case Token::PlusPlus:
+      return POST_INCREMENT;
+    case Token::MinusMinus:
+      return POST_DECREMENT;
     default:
       assert(!"Invalid unary operator kind.");
       break;
@@ -639,11 +645,18 @@ public:
     Operation = Op;
     Expr = std::move(E);
 
-    if (GetOperationKind() == DEREF) {
+    switch (GetOperationKind()) {
+    case DEREF:
       ResultType = Expr->GetResultType();
       ResultType.DecrementPointerLevel();
-    } else
+      break;
+    case POST_DECREMENT:
+    case POST_INCREMENT:
+      ResultType = Expr->GetResultType();
+      break;
+    default:
       assert(!"Unimplemented!");
+    }
   }
 
   UnaryExpression() = default;
