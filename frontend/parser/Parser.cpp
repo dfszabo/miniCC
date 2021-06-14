@@ -622,7 +622,24 @@ std::unique_ptr<Expression> Parser::ParseExpression() {
   return ParseBinaryExpression();
 }
 
+static bool IsPostfixOperator(Token tk) {
+  switch (tk.GetKind()) {
+  case Token::PlusPlus:
+  case Token::MinusMinus:
+  case Token::LeftParen:
+  case Token::LeftBracet:
+  case Token::Dot:
+    return true;
+
+  default:
+    break;
+  }
+  return false;
+}
+
 // <PostFixExpression> ::= <PrimaryExpression>
+//                       | <PostFixExpression> '++'
+//                       | <PostFixExpression> '--'
 //                       | <PostFixExpression> '(' <Arguments> ')'
 //                       | <PostFixExpression> '[' <Expression> ']'
 //                       | <PostFixExpression> '.' <Identifier>
@@ -631,10 +648,15 @@ std::unique_ptr<Expression> Parser::ParsePostFixExpression() {
   auto Expr = ParsePrimaryExpression();
   assert(Expr && "Cannot be NULL");
 
-  while (lexer.Is(Token::LeftParen) || lexer.Is(Token::LeftBracet) ||
-      lexer.Is(Token::Dot)) {
+  while (IsPostfixOperator(lexer.GetCurrentToken())) {
+    if (lexer.Is(Token::PlusPlus) || lexer.Is(Token::MinusMinus)) {
+      auto Operation = lexer.GetCurrentToken();
+      Lex(); // eat the token
+      Expr->SetLValueness(true);
+      Expr = std::make_unique<UnaryExpression>(Operation, std::move(Expr));
+    }
     // Parse a CallExpression here
-    if (lexer.Is(Token::LeftParen)) {
+    else if (lexer.Is(Token::LeftParen)) {
       Expr = ParseCallExpression(CurrentToken);
     }
     // parse ArrayExpression

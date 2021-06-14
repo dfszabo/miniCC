@@ -143,10 +143,18 @@ std::optional<Token> Lexer::LexSymbol() {
     TokenKind = Token::Comma;
     break;
   case '+':
-    TokenKind = Token::Plus;
+    if (GetNextNthCharOnSameLine(1) == '+') {
+      TokenKind = Token::PlusPlus;
+      Size = 2;
+    } else
+      TokenKind = Token::Plus;
     break;
   case '-':
-    TokenKind = Token::Minus;
+    if (GetNextNthCharOnSameLine(1) == '-') {
+      TokenKind = Token::MinusMinus;
+      Size = 2;
+    } else
+      TokenKind = Token::Minus;
     break;
   case '*':
     TokenKind = Token::Astrix;
