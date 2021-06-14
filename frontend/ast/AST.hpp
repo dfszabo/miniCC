@@ -67,6 +67,9 @@ public:
   Type GetType() { return AType; }
   void SetType(Type t) { AType = t; }
 
+  std::unique_ptr<Expression> &GetInitExpr() { return Init; }
+  void SetInitExpr(std::unique_ptr<Expression> e) { Init = std::move(e); }
+
   VariableDeclaration(std::string &Name, Type Ty, std::vector<unsigned> Dim)
       : Name(Name), AType(Ty, std::move(Dim)) {}
 
@@ -80,6 +83,8 @@ public:
     Print(TypeStr.c_str());
     auto NameStr = "'" + Name + "'";
     PrintLn(NameStr.c_str());
+    if (Init)
+      Init->ASTDump(tab + 2);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -87,6 +92,7 @@ public:
 private:
   std::string Name;
   Type AType;
+  std::unique_ptr<Expression> Init = nullptr;
 };
 
 class MemberDeclaration : public Statement {
