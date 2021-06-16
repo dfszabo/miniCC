@@ -34,6 +34,10 @@ public:
     // Multichar operators
     PlusPlus,
     MinusMinus,
+    PlusEqual,
+    MinusEqual,
+    AstrixEqual,
+    ForwardSlashEqual,
     BangEqual,
     DoubleAnd,
     DoubleEqual,
@@ -128,6 +132,14 @@ public:
       return "++";
     case MinusMinus:
       return "--";
+    case PlusEqual:
+      return "+=";
+    case MinusEqual:
+      return "-=";
+    case AstrixEqual:
+      return "*=";
+    case ForwardSlashEqual:
+      return "/=";
     case BangEqual:
       return "!=";
     case And:

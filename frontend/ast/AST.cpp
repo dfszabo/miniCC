@@ -636,8 +636,47 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     if (R->GetTypeRef().IsStruct())
       IRF->CreateMEMCOPY(L, R, R->GetTypeRef().GetByteSize());
     else
-    IRF->CreateSTR(R, L);
+      IRF->CreateSTR(R, L);
     return R;
+  }
+
+  if (GetOperationKind() == ADD_ASSIGN || GetOperationKind() == SUB_ASSIGN ||
+      GetOperationKind() == MUL_ASSIGN || GetOperationKind() == DIV_ASSIGN) {
+    // Assignment right associative so generate R first
+    auto R = Right->IRCodegen(IRF);
+    auto L = Left->IRCodegen(IRF);
+
+    if (!L || !R)
+      return nullptr;
+
+    if (R->GetTypeRef().IsStruct())
+      IRF->CreateMEMCOPY(L, R, R->GetTypeRef().GetByteSize());
+    else {
+      Instruction *OperationResult = nullptr;
+
+      switch (GetOperationKind()) {
+      case ADD_ASSIGN:
+        OperationResult = IRF->CreateADD(L, R);
+        break;
+      case SUB_ASSIGN:
+        OperationResult = IRF->CreateSUB(L, R);
+        break;
+      case MUL_ASSIGN:
+        OperationResult = IRF->CreateMUL(L, R);
+        break;
+      case DIV_ASSIGN:
+        OperationResult = IRF->CreateDIV(L, R);
+        break;
+      default:
+        assert(!"Unreachable");
+      }
+      // TODO: Revisit this. Its not necessary guaranteed that it will be a load
+      // for now it seems fine
+      auto Load = dynamic_cast<LoadInstruction*>(L);
+      assert(Load);
+      IRF->CreateSTR(OperationResult, Load->GetMemoryLocation());
+      return OperationResult;
+    }
   }
 
   auto L = Left->IRCodegen(IRF);
