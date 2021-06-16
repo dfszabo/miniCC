@@ -146,6 +146,9 @@ std::optional<Token> Lexer::LexSymbol() {
     if (GetNextNthCharOnSameLine(1) == '+') {
       TokenKind = Token::PlusPlus;
       Size = 2;
+    } else if (GetNextNthCharOnSameLine(1) == '=') {
+      TokenKind = Token::PlusEqual;
+      Size = 2;
     } else
       TokenKind = Token::Plus;
     break;
@@ -153,15 +156,25 @@ std::optional<Token> Lexer::LexSymbol() {
     if (GetNextNthCharOnSameLine(1) == '-') {
       TokenKind = Token::MinusMinus;
       Size = 2;
+    } else if (GetNextNthCharOnSameLine(1) == '=') {
+      TokenKind = Token::MinusEqual;
+      Size = 2;
     } else
       TokenKind = Token::Minus;
     break;
   case '*':
-    TokenKind = Token::Astrix;
+    if (GetNextNthCharOnSameLine(1) == '=') {
+      TokenKind = Token::AstrixEqual;
+      Size = 2;
+    } else
+      TokenKind = Token::Astrix;
     break;
   case '/':
     if (GetNextNthCharOnSameLine(1) == '/') {
       TokenKind = Token::DoubleForwardSlash;
+      Size = 2;
+    } else if (GetNextNthCharOnSameLine(1) == '=') {
+      TokenKind = Token::ForwardSlashEqual;
       Size = 2;
     } else
       TokenKind = Token::ForwardSlash;

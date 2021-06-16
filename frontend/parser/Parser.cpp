@@ -741,6 +741,10 @@ std::unique_ptr<Expression> Parser::ParseUnaryExpression() {
 static int GetBinOpPrecedence(Token::TokenKind TK) {
   switch (TK) {
   case Token::Equal:
+  case Token::PlusEqual:
+  case Token::MinusEqual:
+  case Token::AstrixEqual:
+  case Token::ForwardSlashEqual:
     return 10;
   case Token::DoubleAnd:
     return 20;

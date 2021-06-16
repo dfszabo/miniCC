@@ -494,6 +494,10 @@ class BinaryExpression : public Expression {
 public:
   enum BinaryOperation {
     ASSIGN,
+    ADD_ASSIGN,
+    SUB_ASSIGN,
+    MUL_ASSIGN,
+    DIV_ASSIGN,
     ADD,
     SUB,
     MUL,
@@ -512,6 +516,14 @@ public:
     switch (Operation.GetKind()) {
     case Token::Equal:
       return ASSIGN;
+    case Token::PlusEqual:
+      return ADD_ASSIGN;
+    case Token::MinusEqual:
+      return SUB_ASSIGN;
+    case Token::AstrixEqual:
+      return MUL_ASSIGN;
+    case Token::ForwardSlashEqual:
+      return DIV_ASSIGN;
     case Token::Plus:
       return ADD;
     case Token::Minus:
