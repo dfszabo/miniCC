@@ -521,6 +521,13 @@ Value *StructMemberReference::IRCodegen(IRFactory *IRF) {
   // an i32 than an i32*.
   auto ResultType = ExprType.GetMemberTypes()[MemberIndex];
   ResultType.IncrementPointerLevel();
+
+  auto BaseType = BaseValue->GetType();
+  while (BaseType.GetPointerLevel() > 1) {
+    BaseValue = IRF->CreateLD(BaseType, BaseValue);
+    BaseType = BaseValue->GetType();
+  }
+
   auto GEP = IRF->CreateGEP(ResultType, BaseValue, IndexValue);
 
   if (GetLValueness())
@@ -532,9 +539,23 @@ Value *StructMemberReference::IRCodegen(IRFactory *IRF) {
 }
 
 Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
-  auto E = Expr->IRCodegen(IRF);
+  Value* E = nullptr;
+
+  if (GetOperationKind() != ADDRESS)
+    E = Expr->IRCodegen(IRF);
 
   switch (GetOperationKind()) {
+  case ADDRESS: {
+    auto RefExp = dynamic_cast<ReferenceExpression*>(Expr.get());
+    assert(RefExp);
+    auto Referee = RefExp->GetIdentifier();
+    auto Res = IRF->GetSymbolValue(Referee);
+    if (!Res) {
+      Res = IRF->GetGlobalVar(Referee);
+      Res->GetTypeRef().IncrementPointerLevel();
+    }
+    return Res;
+  }
   case DEREF: {
     auto ResultType = E->GetType();
     return IRF->CreateLD(ResultType, E);

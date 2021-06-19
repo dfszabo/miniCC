@@ -91,6 +91,7 @@ bool Parser::IsTypeSpecifier(Token T) {
 
 static bool IsUnaryOperator(Token::TokenKind tk) {
   switch (tk) {
+  case Token::And:
   case Token::Astrix:
     return true;
 
@@ -725,6 +726,7 @@ static bool IsPostfixOperator(Token tk) {
   case Token::LeftParen:
   case Token::LeftBracet:
   case Token::Dot:
+  case Token::MinusGreaterThan:
     return true;
 
   default:
@@ -739,6 +741,7 @@ static bool IsPostfixOperator(Token tk) {
 //                       | <PostFixExpression> '(' <Arguments> ')'
 //                       | <PostFixExpression> '[' <Expression> ']'
 //                       | <PostFixExpression> '.' <Identifier>
+//                       | <PostFixExpression> '->' <Identifier>
 std::unique_ptr<Expression> Parser::ParsePostFixExpression() {
   auto CurrentToken = lexer.GetCurrentToken();
   auto Expr = ParsePrimaryExpression();
@@ -760,12 +763,15 @@ std::unique_ptr<Expression> Parser::ParsePostFixExpression() {
       Expr = ParseArrayExpression(std::move(Expr));
     }
     // parse StructMemberAccess
-    else if (lexer.Is(Token::Dot)) {
-      Lex(); // eat the Dot
+    else if (lexer.Is(Token::Dot) || lexer.Is(Token::MinusGreaterThan)) {
+      const bool IsArrow = lexer.Is(Token::MinusGreaterThan);
+      Lex(); // eat the token
       auto MemberId = Expect(Token::Identifier);
       auto MemberIdStr = MemberId.GetString();
 
       assert(Expr->GetResultType().IsStruct() && "TODO: emit error");
+      assert((!IsArrow || (IsArrow && Expr->GetResultType().IsPointerType())) &&
+             "struct pointer expected");
       // find the type of the member
       auto StructDataTuple = UserDefinedTypes[Expr->GetResultType().GetName()];
       auto StructType = std::get<0>(StructDataTuple);

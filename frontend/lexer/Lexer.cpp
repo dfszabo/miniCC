@@ -161,6 +161,9 @@ std::optional<Token> Lexer::LexSymbol() {
     if (GetNextNthCharOnSameLine(1) == '-') {
       TokenKind = Token::MinusMinus;
       Size = 2;
+    } else if (GetNextNthCharOnSameLine(1) == '>') {
+      TokenKind = Token::MinusGreaterThan;
+      Size = 2;
     } else if (GetNextNthCharOnSameLine(1) == '=') {
       TokenKind = Token::MinusEqual;
       Size = 2;

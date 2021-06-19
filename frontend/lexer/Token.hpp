@@ -41,6 +41,7 @@ public:
     BangEqual,
     DoubleAnd,
     DoubleEqual,
+    MinusGreaterThan,
 
     // Symbols
     Colon,
@@ -150,6 +151,8 @@ public:
       return "&&";
     case DoubleEqual:
       return "==";
+    case MinusGreaterThan:
+      return "->";
     case Colon:
       return ":";
     case SemiColon:
