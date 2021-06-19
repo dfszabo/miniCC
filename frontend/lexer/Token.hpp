@@ -65,6 +65,7 @@ public:
     Break,
     Else,
     Return,
+    Const,
     Char,
     Int,
     Double,
@@ -185,6 +186,8 @@ public:
       return "else";
     case Return:
       return "return";
+    case Const:
+      return "const";
     case Char:
       return "char";
     case Int:

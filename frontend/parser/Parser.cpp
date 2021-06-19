@@ -107,6 +107,7 @@ bool Parser::IsReturnTypeSpecifier(Token T) {
 bool IsQualifier(Token::TokenKind tk) {
   switch (tk) {
   case Token::Typedef:
+  case Token::Const:
     return true;
 
   default:
@@ -125,6 +126,9 @@ unsigned Parser::ParseQualifiers() {
     switch (CurrTokenKind) {
     case Token::Typedef:
       Qualifiers |= Type::Typedef;
+      break;
+    case Token::Const:
+      Qualifiers |= Type::Const;
       break;
     default:
       break;
@@ -201,6 +205,7 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
     }
 
     Type type = ParseType(Token.GetKind());
+    type.SetQualifiers(Qualifiers);
     CurrentFuncRetType = type;
     Lex();
 
@@ -291,7 +296,7 @@ std::vector<std::unique_ptr<FunctionParameterDeclaration>>
 Parser::ParseParameterList() {
   std::vector<std::unique_ptr<FunctionParameterDeclaration>> Params;
 
-  if (!IsTypeSpecifier(GetCurrentToken()))
+  if (!IsTypeSpecifier(GetCurrentToken()) && !IsQualifier(GetCurrentTokenKind()))
     return Params;
 
   Params.push_back(ParseParameterDeclaration());
@@ -308,8 +313,10 @@ Parser::ParseParameterDeclaration() {
   std::unique_ptr<FunctionParameterDeclaration> FPD =
       std::make_unique<FunctionParameterDeclaration>();
 
-  if (IsTypeSpecifier(GetCurrentToken())) {
+  if (IsTypeSpecifier(GetCurrentToken()) || IsQualifier(GetCurrentTokenKind())) {
+    unsigned Qualifiers = ParseQualifiers();
     Type type = ParseTypeSpecifier();
+    type.SetQualifiers(Qualifiers);
     Lex();
 
     while (lexer.Is(Token::Astrix)) {
@@ -443,6 +450,7 @@ Parser::ParseStructDeclaration(unsigned Qualifiers = 0) {
   std::vector<std::unique_ptr<MemberDeclaration>> Members;
   Type type(Type::Struct);
   type.SetName(Name);
+  type.SetQualifiers(Qualifiers);
 
   std::vector<std::string> StructMemberIdentifiers;
   while (lexer.IsNot(Token::RightCurly)) {

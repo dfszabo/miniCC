@@ -10,7 +10,7 @@ public:
   /// Basic type variants. Numerical ones are ordered by conversion rank.
   enum VariantKind { Invalid, Composite, Void, Char, Int, Double };
   enum TypeKind { Simple, Array, Struct };
-  enum TypeQualifier : unsigned { None, Typedef };
+  enum TypeQualifier : unsigned { None, Typedef, Const };
 
   std::string GetName() const { return Name; }
   void SetName(std::string &n) { Name = n; }
@@ -20,6 +20,10 @@ public:
 
   VariantKind GetTypeVariant() const { return Ty; }
   void SetTypeVariant(VariantKind t) { Ty = t; }
+
+  unsigned GetQualifiers() const { return Qualifiers; }
+  void SetQualifiers(unsigned q) { Qualifiers = q; }
+  void AddQualifier(unsigned q) { Qualifiers |= q; }
 
   uint8_t GetPointerLevel() const { return PointerLevel; }
   void SetPointerLevel(uint8_t pl) { PointerLevel = pl; }
@@ -118,6 +122,8 @@ public:
   bool IsFunction() const { return ParameterList.size() > 0; }
   bool IsStruct() const { return Kind == Struct; }
   bool IsIntegerType() const { return Ty == Char || Ty == Int; }
+
+  bool IsConst() const { return Qualifiers & Const; }
 
   std::vector<Type> &GetTypeList() { return TypeList; }
   std::vector<Type> &GetParameterList() { return ParameterList; }
