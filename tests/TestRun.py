@@ -36,7 +36,7 @@ def check_file(file_name):
 
     test_main_c_template += "int main() { return $; }"
 
-    ret_code = subprocess.run(["../build/miniCC", file_name], stdout=subprocess.DEVNULL).returncode
+    ret_code = subprocess.run(["../build/miniCC", file_name], stdout=subprocess.DEVNULL, timeout=10).returncode
     if ret_code != 0:
         return False, True
 

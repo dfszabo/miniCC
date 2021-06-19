@@ -11,7 +11,7 @@ std::unordered_map<std::string, Token::TokenKind> Lexer::Keywords =
         {"break", Token::Break},   {"else", Token::Else},
         {"for", Token::For},       {"while", Token::While},
         {"return", Token::Return}, {"struct", Token::Struct},
-        {"enum", Token::Enum}};
+        {"enum", Token::Enum},     {"typedef", Token::Typedef}};
 
 Lexer::Lexer(std::vector<std::string> &s) {
   Source = std::move(s);
@@ -96,7 +96,11 @@ std::optional<Token> Lexer::LexIdentifier() {
   unsigned StartColumnIndex = ColumnIndex;
   unsigned Length = 0;
 
-  while (isalpha(GetNextChar()) || GetNextChar() == '_') {
+  // Cannot start with a digit
+  if (isdigit(GetNextChar()))
+    return std::nullopt;
+
+  while (isalnum(GetNextChar()) || GetNextChar() == '_') {
     Length++;
     EatNextChar();
   }
