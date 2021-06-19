@@ -20,6 +20,8 @@ public:
 
   Token Lex() { return lexer.Lex(); }
 
+  Token GetCurrentToken() { return lexer.GetCurrentToken(); }
+
   Token::TokenKind GetCurrentTokenKind() {
     return lexer.GetCurrentToken().GetKind();
   }
@@ -31,9 +33,10 @@ public:
   void InsertToSymTable(const std::string &SymName, Type SymType,
                         const bool ToGlobal, ValueType SymValue);
 
+  unsigned ParseQualifiers();
   Type ParseType(Token::TokenKind tk);
-  bool IsTypeSpecifier(Token::TokenKind tk);
-  bool IsReturnTypeSpecifier(Token::TokenKind tk);
+  bool IsTypeSpecifier(Token T);
+  bool IsReturnTypeSpecifier(Token T);
 
   std::unique_ptr<Node> ParseTranslationUnit();
   std::unique_ptr<Node> ParseExternalDeclaration();
@@ -41,7 +44,7 @@ public:
   ParseFunctionDeclaration(const Type &ReturnType, const Token &Name);
   std::unique_ptr<VariableDeclaration> ParseVariableDeclaration();
   std::unique_ptr<MemberDeclaration> ParseMemberDeclaration();
-  std::unique_ptr<StructDeclaration> ParseStructDeclaration();
+  std::unique_ptr<StructDeclaration> ParseStructDeclaration(unsigned Qualifiers);
   std::unique_ptr<EnumDeclaration> ParseEnumDeclaration();
   Node ParseReturnTypeSpecifier();
   std::vector<std::unique_ptr<FunctionParameterDeclaration>>
@@ -77,8 +80,11 @@ private:
   SymbolTableStack SymTabStack;
   IRFactory *IRF;
 
-  // Type name to type, and the list of names for the struct field
+  /// Type name to type, and the list of names for the struct field
   std::map<std::string, std::tuple<Type, std::vector<std::string>>> UserDefinedTypes;
+
+  /// Mapping identifiers to types. Eg: "typedef int i32" -> {"i32", Type::Int}
+  std::map<std::string, Type> TypeDefinitions;
 
   /// Used for determining if implicit cast need or not in return statements
   Type CurrentFuncRetType = Type::Invalid;

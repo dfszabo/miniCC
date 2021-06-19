@@ -71,6 +71,7 @@ public:
     Void,
     Struct,
     Enum,
+    Typedef,
   };
 
   Token() : Kind(Invalid) {}
@@ -196,6 +197,8 @@ public:
       return "struct";
     case Enum:
       return "enum";
+    case Typedef:
+      return "typedef";
     default:
       assert(false && "Unhandled token type.");
       break;

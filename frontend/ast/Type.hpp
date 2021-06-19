@@ -10,6 +10,7 @@ public:
   /// Basic type variants. Numerical ones are ordered by conversion rank.
   enum VariantKind { Invalid, Composite, Void, Char, Int, Double };
   enum TypeKind { Simple, Array, Struct };
+  enum TypeQualifier : unsigned { None, Typedef };
 
   std::string GetName() const { return Name; }
   void SetName(std::string &n) { Name = n; }
@@ -189,6 +190,7 @@ private:
   uint8_t PointerLevel = 0;
 
   TypeKind Kind;
+  unsigned Qualifiers = None;
   // TODO: revisit the use of union, deleted from here since
   // it just made things complicated
   std::vector<Type> TypeList;
