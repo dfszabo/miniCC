@@ -636,6 +636,7 @@ class UnaryExpression : public Expression {
 
 public:
   enum UnaryOperation {
+    ADDRESS,
     DEREF,
     POST_INCREMENT,
     POST_DECREMENT,
@@ -643,6 +644,8 @@ public:
 
   UnaryOperation GetOperationKind() {
     switch (Operation.GetKind()) {
+    case Token::And:
+      return ADDRESS;
     case Token::Astrix:
       return DEREF;
     case Token::PlusPlus:
@@ -666,6 +669,10 @@ public:
     Expr = std::move(E);
 
     switch (GetOperationKind()) {
+    case ADDRESS:
+      ResultType = Expr->GetResultType();
+      ResultType.IncrementPointerLevel();
+      break;
     case DEREF:
       ResultType = Expr->GetResultType();
       ResultType.DecrementPointerLevel();

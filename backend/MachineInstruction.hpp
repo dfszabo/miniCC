@@ -47,6 +47,7 @@ public:
     // Moves and constant materializations
     LOAD_IMM,
     MOV,
+    INVALID_OP,
   };
 
   enum CMPRelation { INVALID, EQ, NE, LT, GT, LE, GE };
@@ -151,11 +152,12 @@ public:
   }
   bool IsLoadOrStore() const { return IsLoad() || IsStore(); }
   bool IsAlreadySelected() const { return Opcode < 65536; }
+  bool IsInvalid() const { return  Opcode == INVALID_OP; }
 
   void Print(TargetMachine *TM) const;
 
 private:
-  unsigned Opcode = 0;
+  unsigned Opcode = INVALID_OP;
 
   // Capture things like the relation for compare instructions
   unsigned Attributes = 0;
