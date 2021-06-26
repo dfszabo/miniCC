@@ -13,9 +13,17 @@ public:
   IRtoLLIR(Module &IRModule, MachineIRModule *TranslUnit, TargetMachine *TM)
       : IRM(IRModule), TU(TranslUnit), TM(TM) {}
 
+  MachineOperand GetMachineOperandFromValue(Value *Val, MachineFunction *MF);
+
   void GenerateLLIRFromIR();
 
   MachineIRModule *GetMachIRMod() { return TU; }
+
+  void Reset() {
+    StructToRegMap.clear();
+    StructByIDToRegMap.clear();
+    IRVregToLLIRVreg.clear();
+  }
 
 private:
   void HandleFunctionParams(Function &F, MachineFunction *Func);
@@ -27,6 +35,14 @@ private:
   TargetMachine *TM;
 
   std::map<std::string, std::vector<unsigned>> StructToRegMap;
+
+  /// to keep track in which registers the struct is currently living
+  std::map<unsigned, std::vector<unsigned>> StructByIDToRegMap;
+
+  /// Keep track what IR virtual registers were mapped to what LLIR virtual
+  /// registers. This needed since while translating from IR to LLIR occasionally
+  /// new instructions are added with possible new virtual registers.
+  std::map<unsigned, unsigned> IRVregToLLIRVreg;
 };
 
 #endif

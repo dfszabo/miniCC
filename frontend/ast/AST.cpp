@@ -393,8 +393,15 @@ Value *EnumDeclaration::IRCodegen(IRFactory *IRF) {
 Value *CallExpression::IRCodegen(IRFactory *IRF) {
   std::vector<Value *> Args;
 
-  for (auto &Arg : Arguments)
-    Args.push_back(Arg->IRCodegen(IRF));
+  for (auto &Arg : Arguments) {
+    auto ArgIR = Arg->IRCodegen(IRF);
+    // if the generated IR result is a struct pointer, but the actual function
+    // expects a struct by value, then issue an extra load
+    if (ArgIR->GetTypeRef().IsStruct() && ArgIR->GetTypeRef().IsPTR() &&
+        Arg->GetResultType().IsStruct() && !Arg->GetResultType().IsPointerType())
+      ArgIR = IRF->CreateLD(ArgIR->GetType(), ArgIR);
+    Args.push_back(ArgIR);
+  }
 
   auto RetType = GetResultType().GetReturnType();
 

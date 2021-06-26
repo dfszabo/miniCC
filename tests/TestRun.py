@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+from os import path
 
 workdir = "/home/david/work/mini-c-compiler-cpp/tests"
 
@@ -56,9 +57,12 @@ def check_file(file_name):
 
         compile_ret = subprocess.run([arch + "-linux-gnu-gcc", "test_main.c", "test.s", "-o", "test", "-static"]).returncode
         if compile_ret != 0:
-            os.remove("test_main.c")
-            os.remove("test.s")
-            os.remove("test")
+            if path.exists("test_main.c"):
+                os.remove("test_main.c")
+            if path.exists("test.s"):
+                os.remove("test.s")
+            if path.exists("test"):
+                os.remove("test")
             return False, True
 
         ret_code = subprocess.run([run_command, "test"]).returncode
@@ -69,9 +73,12 @@ def check_file(file_name):
             os.remove("test")
             return False, True
 
-    os.remove("test_main.c")
-    os.remove("test.s")
-    os.remove("test")
+    if path.exists("test_main.c"):
+        os.remove("test_main.c")
+    if path.exists("test.s"):
+        os.remove("test.s")
+    if path.exists("test"):
+        os.remove("test")
     return True, True
 
 

@@ -9,10 +9,20 @@
 #include <cassert>
 #include "Support.hpp"
 
-MachineOperand GetMachineOperandFromValue(Value *Val, TargetMachine *TM) {
+MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
+                                                    MachineFunction *MF) {
   if (Val->IsRegister()) {
     auto BitWidth = Val->GetBitWidth();
-    auto VReg = MachineOperand::CreateVirtualRegister(Val->GetID());
+    unsigned NextVReg;
+
+    if (IRVregToLLIRVreg.count(Val->GetID()) > 0)
+      NextVReg = IRVregToLLIRVreg[Val->GetID()];
+    else {
+      NextVReg = MF->GetNextAvailableVReg();
+      IRVregToLLIRVreg[Val->GetID()] = NextVReg;
+    }
+
+    auto VReg = MachineOperand::CreateVirtualRegister(NextVReg);
 
     if (Val->GetTypeRef().IsPTR())
       VReg.SetType(LowLevelType::CreatePTR(TM->GetPointerSize()));
@@ -54,9 +64,9 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
 
   // Three address ALU instructions: INSTR Result, Op1, Op2
   if (auto I = dynamic_cast<BinaryInstruction *>(Instr); I != nullptr) {
-    auto Result = GetMachineOperandFromValue((Value *)I, TM);
-    auto FirstSrcOp = GetMachineOperandFromValue(I->GetLHS(), TM);
-    auto SecondSrcOp = GetMachineOperandFromValue(I->GetRHS(), TM);
+    auto Result = GetMachineOperandFromValue((Value *)I, ParentFunction);
+    auto FirstSrcOp = GetMachineOperandFromValue(I->GetLHS(), ParentFunction);
+    auto SecondSrcOp = GetMachineOperandFromValue(I->GetRHS(), ParentFunction);
 
     ResultMI.AddOperand(Result);
     ResultMI.AddOperand(FirstSrcOp);
@@ -64,8 +74,8 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
   }
   // Two address ALU instructions: INSTR Result, Op
   else if (auto I = dynamic_cast<UnaryInstruction *>(Instr); I != nullptr) {
-    auto Result = GetMachineOperandFromValue((Value *)I, TM);
-    auto Op = GetMachineOperandFromValue(I->GetOperand(), TM);
+    auto Result = GetMachineOperandFromValue((Value *)I, ParentFunction);
+    auto Op = GetMachineOperandFromValue(I->GetOperand(), ParentFunction);
 
     ResultMI.AddOperand(Result);
     ResultMI.AddOperand(Op);
@@ -86,8 +96,11 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       GlobalAddress.AddGlobalSymbol(((GlobalVariable*)I->GetMemoryLocation())->GetName());
       BB->InsertInstr(GlobalAddress);
       AddressReg = GlobAddrReg;
-    } else
+    } else {
       AddressReg = I->GetMemoryLocation()->GetID();
+      if (IRVregToLLIRVreg.count(AddressReg) > 0)
+        AddressReg = IRVregToLLIRVreg[AddressReg];
+    }
 
     ResultMI.AddAttribute(MachineInstruction::IS_STORE);
 
@@ -143,7 +156,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         }
       }
     } else
-      ResultMI.AddOperand(GetMachineOperandFromValue(I->GetSavedValue(), TM));
+      ResultMI.AddOperand(GetMachineOperandFromValue(I->GetSavedValue(), ParentFunction));
   }
   // Load instruction: LD Dest, [address]
   else if (auto I = dynamic_cast<LoadInstruction *>(Instr); I != nullptr) {
@@ -160,11 +173,14 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       GlobalAddress.AddGlobalSymbol(((GlobalVariable*)I->GetMemoryLocation())->GetName());
       BB->InsertInstr(GlobalAddress);
       AddressReg = GlobAddrReg;
-    } else
+    } else {
       AddressReg = I->GetMemoryLocation()->GetID();
+      if (IRVregToLLIRVreg.count(AddressReg) > 0)
+        AddressReg = IRVregToLLIRVreg[AddressReg];
+    }
 
     ResultMI.AddAttribute(MachineInstruction::IS_LOAD);
-    ResultMI.AddOperand(GetMachineOperandFromValue((Value *)I, TM));
+    ResultMI.AddOperand(GetMachineOperandFromValue((Value *)I, ParentFunction));
 
     // Check if the instruction accessing the stack
     if (ParentFunction->IsStackSlot(AddressReg))
@@ -172,6 +188,29 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       ResultMI.AddStackAccess(AddressReg);
     else // otherwise a normal memory access
       ResultMI.AddMemory(AddressReg);
+
+    // if the destination is a struct and not a struct pointer
+    if (I->GetTypeRef().IsStruct() && !I->GetTypeRef().IsPTR()) {
+      unsigned StructBitSize = (I->GetTypeRef().GetByteSize() * 8);
+      unsigned RegSize = TM->GetPointerSize();
+      unsigned RegsCount = GetNextAlignedValue(StructBitSize, RegSize) / RegSize;
+
+      // Create loads for the registers which holds the struct parts
+      for (size_t i = 0; i < RegsCount; i++) {
+        auto CurrentLoad = MachineInstruction(MachineInstruction::LOAD, BB);
+        auto NewVReg = ParentFunction->GetNextAvailableVReg();
+
+        CurrentLoad.AddVirtualRegister(NewVReg, RegSize);
+        StructByIDToRegMap[I->GetID()].push_back(NewVReg);
+        CurrentLoad.AddStackAccess(AddressReg, i * RegSize / 8);
+
+        // insert all the stores but the last one, that will be the return value
+        if (i + 1 < RegsCount)
+          BB->InsertInstr(CurrentLoad);
+        else
+          return CurrentLoad;
+      }
+    }
   }
   // GEP instruction: GEP Dest, Source, list of indexes
   // to
@@ -188,7 +227,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     else
       GoalInstr = MachineInstruction(MachineInstruction::STACK_ADDRESS, BB);
 
-    auto Dest = GetMachineOperandFromValue((Value *)I, TM);
+    auto Dest = GetMachineOperandFromValue((Value *)I, ParentFunction);
     GoalInstr.AddOperand(Dest);
 
     //assert(ParentFunction->IsStackSlot(AddressReg) && "Must be stack slot");
@@ -243,16 +282,16 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         LabelFalse = BB.GetName().c_str();
     }
 
-    ResultMI.AddOperand(GetMachineOperandFromValue(I->GetCondition(), TM));
+    ResultMI.AddOperand(GetMachineOperandFromValue(I->GetCondition(), ParentFunction));
     ResultMI.AddLabel(LabelTrue);
     if (I->HasFalseLabel())
       ResultMI.AddLabel(LabelTrue);
   }
   // Compare instruction: ret op
   else if (auto I = dynamic_cast<CompareInstruction *>(Instr); I != nullptr) {
-    auto Result = GetMachineOperandFromValue((Value *)I, TM);
-    auto FirstSrcOp = GetMachineOperandFromValue(I->GetLHS(), TM);
-    auto SecondSrcOp = GetMachineOperandFromValue(I->GetRHS(), TM);
+    auto Result = GetMachineOperandFromValue((Value *)I, ParentFunction);
+    auto FirstSrcOp = GetMachineOperandFromValue(I->GetLHS(), ParentFunction);
+    auto SecondSrcOp = GetMachineOperandFromValue(I->GetRHS(), ParentFunction);
 
     ResultMI.AddOperand(Result);
     ResultMI.AddOperand(FirstSrcOp);
@@ -274,16 +313,15 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       MachineInstruction Instr;
 
       if (Param->GetTypeRef().IsStruct()) {
-        // how many register are used to pass this struct
-        unsigned StructBitSize = (Param->GetTypeRef().GetByteSize() * 8);
-        unsigned MaxRegSize = TM->GetPointerSize();
-        unsigned RegsCount = GetNextAlignedValue(StructBitSize, MaxRegSize) / MaxRegSize;
+        assert(StructByIDToRegMap.count(Param->GetID()) > 0 &&
+               "The map does not know about this struct param");
+        for (auto VReg : StructByIDToRegMap[Param->GetID()]) {
+          Instr = MachineInstruction(MachineInstruction::MOV, BB);
 
-        for (size_t i = 0; i < RegsCount; i++) {
-          Instr = MachineInstruction(MachineInstruction::LOAD, BB);
           Instr.AddRegister(TargetArgRegs[ParamCounter]->GetID(),
                             TargetArgRegs[ParamCounter]->GetBitWidth());
-          Instr.AddStackAccess(Param->GetID(), i * (TM->GetPointerSize() / 8));
+
+          Instr.AddVirtualRegister(VReg, TM->GetPointerSize());
           BB->InsertInstr(Instr);
           ParamCounter++;
         }
@@ -293,7 +331,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         Instr.AddRegister(TargetArgRegs[ParamCounter]->GetID(),
                           TargetArgRegs[ParamCounter]->GetBitWidth());
 
-        Instr.AddOperand(GetMachineOperandFromValue(Param, TM));
+        Instr.AddOperand(GetMachineOperandFromValue(Param, ParentFunction));
         BB->InsertInstr(Instr);
         ParamCounter++;
       }
@@ -303,7 +341,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
   }
   // Ret instruction: ret op
   else if (auto I = dynamic_cast<ReturnInstruction *>(Instr); I != nullptr) {
-    auto Result = GetMachineOperandFromValue(I->GetRetVal(), TM);
+    auto Result = GetMachineOperandFromValue(I->GetRetVal(), ParentFunction);
     ResultMI.AddOperand(Result);
 
     // insert load to load in the return val to the return registers
@@ -327,7 +365,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
 
       auto LoadImm = MachineInstruction(MachineInstruction::LOAD_IMM, BB);
       LoadImm.AddRegister(RetRegs[0]->GetID(), RetRegs[0]->GetBitWidth());
-      LoadImm.AddOperand(GetMachineOperandFromValue(I->GetRetVal(), TM));
+      LoadImm.AddOperand(GetMachineOperandFromValue(I->GetRetVal(), ParentFunction));
       BB->InsertInstr(LoadImm);
     }
   }
@@ -370,7 +408,7 @@ void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
     auto ParamSize = Param->GetBitWidth();
 
     // Handle structs
-    if (Param->GetTypeRef().IsStruct()) {
+    if (Param->GetTypeRef().IsStruct() && !Param->GetTypeRef().IsPTR()) {
       auto StructName = Param->GetName();
       // Pointer size also represents the architecture bit size and more
       // importantly the largest bitwidth a general register can have for the
@@ -385,11 +423,9 @@ void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
       // ask the target for the right size.
       unsigned MaxStructSize = 128; // bit size
       for (size_t i = 0; i < MaxStructSize / TM->GetPointerSize(); i++) {
-        // FIXME: for now adding 1000000 is kind of arbitrary, the point is to
-        // create a surely unique ID. Should be done in a better way its ok
-        // for now.
-        StructToRegMap[StructName].push_back(ParamID + 1000000 + i);
-        Func->InsertParameter(ParamID + 1000000 + i,
+        auto NextVReg = Func->GetNextAvailableVReg();
+        StructToRegMap[StructName].push_back(NextVReg);
+        Func->InsertParameter(NextVReg,
                               LowLevelType::CreateINT(TM->GetPointerSize()));
       }
 
@@ -405,6 +441,9 @@ void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
 
 void IRtoLLIR::GenerateLLIRFromIR() {
   for (auto &Fun : IRM.GetFunctions()) {
+    // reset state
+    Reset();
+
     auto NewMachineFunc = MachineFunction{};
     std::vector<MachineBasicBlock> MBBs;
 
