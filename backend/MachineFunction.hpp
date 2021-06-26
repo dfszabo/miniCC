@@ -20,7 +20,12 @@ public:
   std::string &GetName() { return Name; }
   void SetName(std::string &Name) { this->Name = Name; }
 
+  unsigned GetNextVReg() const { return NextVReg; }
+  void SetNextVReg(const unsigned r) { NextVReg = r; }
+
   void InsertStackSlot(unsigned ID, unsigned Size) {
+    if (NextVReg < ID)
+      NextVReg = ID;
     SF.InsertStackSlot(ID, Size);
   }
 

@@ -28,7 +28,7 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[CSET] = {CSET, 32, "cset\t$1, $2, $3", {GPR, GPR, GPR}};
       ret[SXTB] = {SXTB, 32, "sxtb\t$1, $2", {GPR, GPR}};
       ret[MOV_rc] = {MOV_rc, 32, "mov\t$1, #$2", {GPR, UIMM16}};
-      ret[MOV_rr] = {MOV_rr, 32, "mov\t$1, #$2", {GPR, GPR}};
+      ret[MOV_rr] = {MOV_rr, 32, "mov\t$1, $2", {GPR, GPR}};
       ret[ADRP] = {ADRP, 32, "adrp\t$1, $2", {GPR, GPR}};
       ret[LDR] = {LDR,
                   32,

@@ -95,11 +95,16 @@ void RegisterAllocator::RunRA() {
     PreAllocateReturnRegister(Func, TM, AllocatedRegisters);
 
     // Remove the pre allocated registers from the register pool
-    for (const auto &AllocRegEntry : AllocatedRegisters) {
-      auto position = std::find(RegisterPool.begin(), RegisterPool.end(),
-                                AllocRegEntry.second);
-      if (position != RegisterPool.end())
-        RegisterPool.erase(position);
+    for (const auto [VirtReg, PhysReg] : AllocatedRegisters) {
+      auto RegsToCheck = TM->GetRegInfo()->GetRegisterByID(PhysReg)->GetSubRegs();
+      RegsToCheck.push_back(PhysReg);
+
+      for (auto Reg : RegsToCheck) {
+        auto position = std::find(RegisterPool.begin(), RegisterPool.end(),
+                                  Reg);
+        if (position != RegisterPool.end())
+          RegisterPool.erase(position);
+      }
     }
 
     // we want to keep track of how many consecutive renames happened since only

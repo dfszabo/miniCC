@@ -58,7 +58,18 @@ public:
 
   MachineInstruction() {}
   MachineInstruction(unsigned Opcode, MachineBasicBlock *Parent)
-      : Opcode(Opcode), Parent(Parent) {}
+      : Opcode(Opcode), Parent(Parent) {
+    switch (Opcode) {
+    case LOAD:
+      AddAttribute(IS_LOAD);
+      break;
+    case STORE:
+      AddAttribute(IS_STORE);
+      break;
+    default:
+      break;
+    }
+  }
 
   unsigned GetOpcode() const { return Opcode; }
   void SetOpcode(unsigned Opcode) { this->Opcode = Opcode; }
