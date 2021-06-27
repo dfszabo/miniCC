@@ -485,13 +485,15 @@ Value *ArrayExpression::IRCodegen(IRFactory *IRF) {
   assert(IndexExpression && "IndexExpression cannot be NULL");
   auto IndexValue = IndexExpression->IRCodegen(IRF);
 
-  auto ArrayBaseType = BaseValue->GetType().GetBaseType();
-  ArrayBaseType.IncrementPointerLevel();
+  auto ResultType = BaseValue->GetType();
+  ResultType.ReduceDimension();
+  if (ResultType.GetPointerLevel() == 0)
+    ResultType.IncrementPointerLevel();
 
-  auto GEP = IRF->CreateGEP(ArrayBaseType, BaseValue, IndexValue);
+  auto GEP = IRF->CreateGEP(ResultType, BaseValue, IndexValue);
 
-  if (!GetLValueness())
-    return IRF->CreateLD(ArrayBaseType, GEP);
+  if (!GetLValueness() && ResultType.GetDimensions().size() == 0)
+    return IRF->CreateLD(ResultType, GEP);
 
   return GEP;
 }
@@ -513,7 +515,9 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
   else if (SourceTypeVariant == Type::UnsignedChar &&
       (DestTypeVariant == Type::Int || DestTypeVariant == Type::UnsignedInt))
     return IRF->CreateZEXT(Val, 32);
-  else if (SourceTypeVariant == Type::Int && DestTypeVariant == Type::Char)
+  else if (SourceTypeVariant == Type::Int &&
+           (DestTypeVariant == Type::Char ||
+            DestTypeVariant == Type::UnsignedChar))
     return IRF->CreateTRUNC(Val, 8);
   else
     assert(!"Invaid conversion.");

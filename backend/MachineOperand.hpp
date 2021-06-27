@@ -46,6 +46,7 @@ public:
 
   void SetType(LowLevelType LLT) { this->LLT = LLT; }
   LowLevelType GetType() const { return LLT; }
+  LowLevelType &GetTypeRef() { return LLT; }
 
   const char *GetLabel() { return Label; }
   const char *GetFunctionName() { return Label; }
