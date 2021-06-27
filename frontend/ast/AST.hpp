@@ -571,10 +571,12 @@ public:
     Right = std::move(R);
     if (IsConditional())
       ResultType = Type(Type::Int);
-    else
+    else {
+      auto Strongest = Type::GetStrongestType(Left->GetResultType().GetTypeVariant(),
+                                              Right->GetResultType().GetTypeVariant());
       ResultType =
-          Type(Type::GetStrongestType(Left->GetResultType().GetTypeVariant(),
-                                      Right->GetResultType().GetTypeVariant()));
+          Type(Type::GetStrongestType(Strongest.GetTypeVariant(), Type::Int));
+    }
   }
 
   BinaryExpression() = default;

@@ -88,6 +88,17 @@ public:
     return InstPtr;
   }
 
+  UnaryInstruction *CreateZEXT(Value *Operand, uint8_t BitWidth = 32) {
+    auto Inst = std::make_unique<UnaryInstruction>(
+        Instruction::ZEXT, IRType::CreateInt(BitWidth), Operand,
+        GetCurrentBB());
+    Inst->SetID(ID++);
+    auto InstPtr = Inst.get();
+    Insert(std::move(Inst));
+
+    return InstPtr;
+  }
+
   UnaryInstruction *CreateTRUNC(Value *Operand, uint8_t BitWidth = 32) {
     auto Inst = std::make_unique<UnaryInstruction>(
         Instruction::TRUNC, IRType::CreateInt(BitWidth), Operand,

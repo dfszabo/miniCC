@@ -1,14 +1,12 @@
 #include "StackFrame.hpp"
+#include "Support.hpp"
 #include <cassert>
 #include <iostream>
 
 void StackFrame::InsertStackSlot(unsigned ID, unsigned Size) {
   assert(StackSlots.count(ID) == 0 && "Already existing object on the stack");
 
-  if (Size >= 4)
-    ObjectsSize += Size;
-  else
-    ObjectsSize += 4;
+  ObjectsSize += Size;
   
   StackSlots.insert({ID, Size});
 }
@@ -23,11 +21,8 @@ unsigned StackFrame::GetPosition(unsigned ID) {
     if (ObjectID == ID)
       return Position; // then return its position
 
-    // NOTE: Hard coded 4 byte alignment
-    if (ObjectSize >= 4)
-      Position += ObjectSize;
-    else
-      Position += 4;
+    Position = GetNextAlignedValue(Position, ObjectSize);
+    Position += ObjectSize;
   }
 
   return ~0; // Error

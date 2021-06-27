@@ -38,6 +38,9 @@ void MachineInstruction::Print(TargetMachine *TM) const {
   case TRUNC:
     OpcodeStr = "TRUNC";
     break;
+  case ZEXT_LOAD:
+    OpcodeStr = "ZEXT_LOAD";
+    break;
   case STACK_ADDRESS:
     OpcodeStr = "STACK_ADDRESS";
     break;

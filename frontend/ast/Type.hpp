@@ -8,7 +8,8 @@
 class Type {
 public:
   /// Basic type variants. Numerical ones are ordered by conversion rank.
-  enum VariantKind { Invalid, Composite, Void, Char, Int, Double };
+  enum VariantKind { Invalid, Composite, Void, Char,
+                     UnsignedChar, Int, UnsignedInt, Double };
   enum TypeKind { Simple, Array, Struct };
   enum TypeQualifier : unsigned { None, Typedef, Const };
 
@@ -41,8 +42,12 @@ public:
       return "double";
     case Char:
       return "char";
+    case UnsignedChar:
+      return "unsigned char";
     case Int:
       return "int";
+    case UnsignedInt:
+      return "unsigned int";
     case Void:
       return "void";
     case Composite:
@@ -70,6 +75,25 @@ public:
                                    const Type::VariantKind to) {
     return (from == Int && to == Double) || (from == Double && to == Int) ||
            (from == Char && to == Int) || (from == Int && to == Char);
+  }
+
+  static bool IsSmallerThanInt(const Type::VariantKind v) {
+    switch (v) {
+    case Char:
+    case UnsignedChar:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  static bool OnlySigndnessDifference(const Type::VariantKind v1,
+                                      const Type::VariantKind v2) {
+    if ((v1 == Int && v2 == UnsignedInt) || (v2 == Int && v1 == UnsignedInt) ||
+        (v1 == Char && v2 == UnsignedChar) || (v2 == Char && v1 == UnsignedChar))
+      return true;
+
+    return false;
   }
 
   Type() : Kind(Simple), Ty(Invalid) {}
@@ -121,7 +145,17 @@ public:
   bool IsArray() const { return Kind == Array; }
   bool IsFunction() const { return ParameterList.size() > 0; }
   bool IsStruct() const { return Kind == Struct; }
-  bool IsIntegerType() const { return Ty == Char || Ty == Int; }
+  bool IsIntegerType() const {
+    switch (Ty) {
+    case Char:
+    case UnsignedChar:
+    case Int:
+    case UnsignedInt:
+      return true;
+    default:
+      return false;
+    }
+  }
 
   bool IsConst() const { return Qualifiers & Const; }
 

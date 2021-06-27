@@ -10,8 +10,12 @@ static IRType GetIRTypeFromVK(Type::VariantKind VK) {
   switch (VK) {
   case Type::Char:
     return IRType(IRType::SINT, 8);
+  case Type::UnsignedChar:
+    return IRType(IRType::UINT, 8);
   case Type::Int:
     return IRType(IRType::SINT);
+  case Type::UnsignedInt:
+    return IRType(IRType::UINT);
   case Type::Double:
     return IRType(IRType::FP, 64);
   case Type::Composite:
@@ -297,8 +301,14 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   case Type::Char:
     RetType = IRType(IRType::SINT, 8);
     break;
+  case Type::UnsignedChar:
+    RetType = IRType(IRType::UINT, 8);
+    break;
   case Type::Int:
     RetType = IRType(IRType::SINT);
+    break;
+  case Type::UnsignedInt:
+    RetType = IRType(IRType::UINT);
     break;
   case Type::Double:
     RetType = IRType(IRType::FP, 64);
@@ -491,12 +501,18 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
   auto DestTypeVariant = GetResultType().GetTypeVariant();
   auto Val = CastableExpression->IRCodegen(IRF);
 
+  if (Type::OnlySigndnessDifference(SourceTypeVariant, DestTypeVariant))
+    return Val;
+
   if (SourceTypeVariant == Type::Int && DestTypeVariant == Type::Double)
     return IRF->CreateITOF(Val, 32);
   else if (SourceTypeVariant == Type::Double && DestTypeVariant == Type::Int)
     return IRF->CreateFTOI(Val, 64);
   else if (SourceTypeVariant == Type::Char && DestTypeVariant == Type::Int)
     return IRF->CreateSEXT(Val, 32);
+  else if (SourceTypeVariant == Type::UnsignedChar &&
+      (DestTypeVariant == Type::Int || DestTypeVariant == Type::UnsignedInt))
+    return IRF->CreateZEXT(Val, 32);
   else if (SourceTypeVariant == Type::Int && DestTypeVariant == Type::Char)
     return IRF->CreateTRUNC(Val, 8);
   else

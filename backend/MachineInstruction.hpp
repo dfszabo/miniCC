@@ -47,6 +47,11 @@ public:
     // Moves and constant materializations
     LOAD_IMM,
     MOV,
+
+    // combined load and sign/zero extension
+    SEXT_LOAD,
+    ZEXT_LOAD,
+
     INVALID_OP,
   };
 
@@ -62,6 +67,8 @@ public:
       : Opcode(Opcode), Parent(Parent) {
     switch (Opcode) {
     case LOAD:
+    case SEXT_LOAD:
+    case ZEXT_LOAD:
       AddAttribute(IS_LOAD);
       break;
     case STORE:
@@ -81,6 +88,10 @@ public:
   OperandList &GetOperands() { return Operands; }
 
   void AddOperand(MachineOperand MO) { Operands.push_back(MO); }
+  void ReplaceOperand(MachineOperand MO, size_t index) {
+    assert(index < Operands.size());
+    Operands[index] = MO;
+  }
   void SetAttributes(unsigned A) { Attributes = A; }
 
   unsigned GetRelation() const { return Attributes; }

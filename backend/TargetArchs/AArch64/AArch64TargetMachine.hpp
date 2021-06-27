@@ -29,6 +29,7 @@ public:
   bool SelectCMP(MachineInstruction *MI) override;
   bool SelectSEXT(MachineInstruction *MI) override;
   bool SelectTRUNC(MachineInstruction *MI) override;
+  bool SelectZEXT_LOAD(MachineInstruction *MI) override;
   bool SelectLOAD_IMM(MachineInstruction *MI) override;
   bool SelectMOV(MachineInstruction *MI) override;
   bool SelectLOAD(MachineInstruction *MI) override;

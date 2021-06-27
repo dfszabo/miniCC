@@ -75,6 +75,7 @@ bool Parser::IsTypeSpecifier(Token T) {
   switch (T.GetKind()) {
   case Token::Char:
   case Token::Int:
+  case Token::Unsigned:
   case Token::Double:
   case Token::Struct:
     return true;
@@ -153,6 +154,34 @@ Type Parser::ParseType(Token::TokenKind tk) {
   case Token::Int:
     Result.SetTypeVariant(Type::Int);
     break;
+  case Token::Unsigned: {
+    auto NextTokenKind = lexer.LookAhead(2).GetKind();
+    if (NextTokenKind == Token::Int || NextTokenKind == Token::Char)
+      Lex(); // eat 'unsigned'
+    // if bare the 'unsigned' is not followed by other type then its an
+    // 'unsigned int' by default
+    // TODO: Investigate what else token could follow unsigned which would
+    // certainly mean that the unsigned is alone AND valid
+    else if (NextTokenKind == Token::Identifier) {
+      Result.SetTypeVariant(Type::UnsignedInt);
+      return Result;
+    } else
+      assert(!"Error: Unexpected token after 'unsigned'");
+
+    auto CurrToken = lexer.GetCurrentToken();
+
+    switch (CurrToken.GetKind()) {
+    case Token::Char:
+      Result.SetTypeVariant(Type::UnsignedChar);
+      break;
+    case Token::Int:
+      Result.SetTypeVariant(Type::UnsignedInt);
+      break;
+    default:
+      assert(!"Unreachable");
+    }
+    break;
+  }
   case Token::Double:
     Result.SetTypeVariant(Type::Double);
     break;
@@ -864,6 +893,30 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
 
     auto RightExpression = ParseUnaryExpression();
 
+    bool IsArithmetic = false;
+    switch (BinaryOperator.GetKind()) {
+    case Token::Plus:
+    case Token::Minus:
+    case Token::Astrix:
+    case Token::ForwardSlash:
+      IsArithmetic = true;
+      break;
+    default:
+      break;
+    }
+
+    if (IsArithmetic &&
+        Type::IsSmallerThanInt(LeftExpression->GetResultType().GetTypeVariant())) {
+      LeftExpression = std::make_unique<ImplicitCastExpression>(
+          std::move(LeftExpression), Type(Type::Int));
+    }
+
+    if (IsArithmetic &&
+        Type::IsSmallerThanInt(RightExpression->GetResultType().GetTypeVariant())) {
+      RightExpression = std::make_unique<ImplicitCastExpression>(
+          std::move(RightExpression), Type(Type::Int));
+    }
+
     // In case of an assignment check if the left operand since it should be an
     // lvalue. Which is either an identifier reference or an array expression.
     if (BinaryOperator.GetKind() == Token::Equal &&
@@ -914,7 +967,8 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
                   BinaryOperator);
     }
     // Having different types.
-    else if (LeftType != RightType) {
+    else if (LeftType != RightType &&
+             !Type::OnlySigndnessDifference(LeftType, RightType)) {
       // if an assingment, then try to cast the right hand side to type of the
       // left hand side
       if (BinaryOperator.GetKind() == Token::Equal) {

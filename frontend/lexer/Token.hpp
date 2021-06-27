@@ -70,6 +70,7 @@ public:
     Char,
     Int,
     Double,
+    Unsigned,
     Void,
     Struct,
     Enum,
@@ -199,6 +200,8 @@ public:
       return "double";
     case Void:
       return "void";
+    case Unsigned:
+      return "unsigned";
     case Struct:
       return "struct";
     case Enum:

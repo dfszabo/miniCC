@@ -41,6 +41,11 @@ public:
   InstructionList::iterator ReplaceInstr(MachineInstruction MI,
                                          MachineInstruction *Replacable);
 
+  /// Return the instruction before MI
+  MachineInstruction *GetPrecedingInstr(MachineInstruction *MI);
+
+  void Erase(MachineInstruction *MI);
+
   void Print(TargetMachine *TM) const;
 
 private:
