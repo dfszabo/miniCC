@@ -146,8 +146,21 @@ bool AArch64TargetMachine::SelectTRUNC(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 2 && "TRUNC must have 2 operands");
 
   if (MI->GetOperand(0)->GetType().GetBitWidth() == 8) {
-    MI->SetOpcode(AND_rri);
-    MI->AddImmediate(0xFFu);
+    // if the operand is an immediate
+    if (MI->GetOperand(1)->IsImmediate()) {
+      // then calculate the truncated immediate value and issue a MOV
+      int64_t ResultImm = MI->GetOperand(1)->GetImmediate() & 0xFFu;
+      MI->GetOperand(1)->SetValue(ResultImm);
+      MI->SetOpcode(MOV_rc);
+    } else { // else issue an AND with the mask of 0xFF
+      MI->SetOpcode(AND_rri);
+      MI->AddImmediate(0xFFu);
+    }
+    // For now set the result's bitwidth to 32 if its less than that, otherwise
+    // no register could be selected for it.
+    // FIXME: Enforce this in the legalizer maybe (check LLVM for clues)
+    if (MI->GetOperand(0)->GetSize() < 32)
+      MI->GetOperand(0)->GetTypeRef().SetBitWidth(32);
     return true;
   }
 
