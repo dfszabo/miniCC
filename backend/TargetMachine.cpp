@@ -20,8 +20,12 @@ bool TargetMachine::SelectInstruction(MachineInstruction *MI) {
     return SelectMOD(MI);
   case MachineInstruction::SEXT:
     return SelectSEXT(MI);
+  case MachineInstruction::ZEXT:
+    return SelectZEXT(MI);
   case MachineInstruction::TRUNC:
     return SelectTRUNC(MI);
+  case MachineInstruction::ZEXT_LOAD:
+    return SelectZEXT_LOAD(MI);
   case MachineInstruction::LOAD_IMM:
     return SelectLOAD_IMM(MI);
   case MachineInstruction::MOV:

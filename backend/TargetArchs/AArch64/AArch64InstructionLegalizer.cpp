@@ -16,6 +16,7 @@ bool AArch64InstructionLegalizer::Check(MachineInstruction *MI) {
     if (MI->GetOperand(1)->IsImmediate())
       return false;
     break;
+  case MachineInstruction::ZEXT:
   case MachineInstruction::GLOBAL_ADDRESS:
     return false;
   default:
@@ -29,6 +30,7 @@ bool AArch64InstructionLegalizer::IsExpandable(const MachineInstruction *MI) {
   switch (MI->GetOpcode()) {
   case MachineInstruction::MOD:
   case MachineInstruction::STORE:
+  case MachineInstruction::ZEXT:
   case MachineInstruction::GLOBAL_ADDRESS:
     return true;
 
@@ -37,6 +39,24 @@ bool AArch64InstructionLegalizer::IsExpandable(const MachineInstruction *MI) {
   }
 
   return false;
+}
+
+bool AArch64InstructionLegalizer::ExpandZEXT(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 2 && "ZEXT must have exactly 2 operands");
+  auto ParentBB = MI->GetParent();
+
+  auto PrevInst = ParentBB->GetPrecedingInstr(MI);
+
+  // If not a LOAD then do nothing
+  if (!(PrevInst->GetOpcode() == MachineInstruction::LOAD))
+    return true;
+
+  auto ZEXTDest = *MI->GetOperand(0);
+  PrevInst->ReplaceOperand(ZEXTDest, 0);
+  PrevInst->SetOpcode(MachineInstruction::ZEXT_LOAD);
+  ParentBB->Erase(MI);
+
+  return true;
 }
 
 bool AArch64InstructionLegalizer::ExpandGLOBAL_ADDRESS(MachineInstruction *MI) {

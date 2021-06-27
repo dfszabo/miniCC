@@ -14,6 +14,11 @@ public:
   bool Check(MachineInstruction *MI) override;
   bool IsExpandable(const MachineInstruction *MI) override;
 
+  /// Since AArch64 do sign extension when loading therefore if the ZEXT is
+  /// used only to zero extend a load result then it can be merged with the
+  /// previous load into a ZEXT_LOAD.
+  bool ExpandZEXT(MachineInstruction *MI) override;
+
   /// The global address materialization happens in two steps on arm. Example:
   ///   adrp x0, global_var
   ///   add  x0, x0, :lo12:global_var

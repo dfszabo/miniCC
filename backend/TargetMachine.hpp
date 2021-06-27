@@ -32,7 +32,9 @@ public:
   virtual bool SelectMOD(MachineInstruction *MI) { return false; }
   virtual bool SelectCMP(MachineInstruction *MI) { return false; }
   virtual bool SelectSEXT(MachineInstruction *MI) { return false; }
+  virtual bool SelectZEXT(MachineInstruction *MI) { return false; }
   virtual bool SelectTRUNC(MachineInstruction *MI) { return false; }
+  virtual bool SelectZEXT_LOAD(MachineInstruction *MI) { return false; }
   virtual bool SelectLOAD(MachineInstruction *MI) { return false; }
   virtual bool SelectLOAD_IMM(MachineInstruction *MI) { return false; }
   virtual bool SelectMOV(MachineInstruction *MI) { return false; }

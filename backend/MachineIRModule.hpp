@@ -12,9 +12,12 @@ class MachineIRModule {
 public:
   MachineIRModule() {}
 
-  void AddFunction(MachineFunction &F) { Functions.push_back(F); }
+  void AddNewFunction() { Functions.push_back(MachineFunction()); }
+
   FunctionList &GetFunctions() { return Functions; }
   MachineFunction *GetCurrentFunction() {
+    if (Functions.size() == 0)
+      return nullptr;
     return &Functions[Functions.size() - 1];
   }
 

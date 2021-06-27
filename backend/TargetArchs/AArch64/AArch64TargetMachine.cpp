@@ -1,5 +1,6 @@
 #include "AArch64TargetMachine.hpp"
 #include "../../MachineBasicBlock.hpp"
+#include "../../MachineFunction.hpp"
 #include "../../Support.hpp"
 #include "AArch64InstructionDefinitions.hpp"
 #include <cassert>
@@ -154,6 +155,10 @@ bool AArch64TargetMachine::SelectTRUNC(MachineInstruction *MI) {
   return false;
 }
 
+bool AArch64TargetMachine::SelectZEXT_LOAD(MachineInstruction *MI) {
+  return SelectLOAD(MI);
+}
+
 bool AArch64TargetMachine::SelectLOAD_IMM(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 2 &&
          "LOAD_IMM must have exactly 2 operands");
@@ -187,6 +192,22 @@ bool AArch64TargetMachine::SelectLOAD(MachineInstruction *MI) {
       !MI->GetOperand(0)->GetType().IsPointer()) {
     MI->SetOpcode(LDRB);
     return true;
+  }
+
+  if (MI->GetOperand(1)->IsStackAccess()) {
+    auto StackSlotID = MI->GetOperand(1)->GetSlot();
+    auto ParentFunc = MI->GetParent()->GetParent();
+    auto Size = ParentFunc->GetStackObjectSize(StackSlotID);
+    switch (Size) {
+    case 1:
+      MI->SetOpcode(LDRB);
+      return true;
+    case 4:
+      MI->SetOpcode(LDR);
+      return true;;
+    default:
+      break;
+    }
   }
 
   MI->SetOpcode(LDR);

@@ -20,6 +20,7 @@ public:
 
   virtual bool ExpandMOD(MachineInstruction *MI);
   virtual bool ExpandSTORE(MachineInstruction *MI);
+  virtual bool ExpandZEXT(MachineInstruction *MI) { return false; }
   virtual bool ExpandGLOBAL_ADDRESS(MachineInstruction *MI) { return false; }
 
   /// Expanding the instruction into other ones which are compute the same
