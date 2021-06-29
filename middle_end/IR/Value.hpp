@@ -50,7 +50,10 @@ public:
 
   bool IsFPConst() const { return ValueType.IsFP(); }
 
-  uint64_t GetIntValue() { return std::get<uint64_t>(Val); }
+  uint64_t GetIntValue() {
+    assert(ValueType.IsINT());
+    return std::get<uint64_t>(Val);
+  }
 
   std::string ValueString() const override {
     if (IsFPConst())

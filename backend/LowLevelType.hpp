@@ -16,7 +16,7 @@ public:
   LowLevelType(unsigned Type) : Type(Type) {}
 
   void SetBitWidth(unsigned BW) { BitWidth = BW; }
-  unsigned GetBitWidth() { return BitWidth; }
+  unsigned GetBitWidth() const { return BitWidth; }
 
   static LowLevelType CreateINT(unsigned BitWidth) {
     LowLevelType LLT(INTEGER);

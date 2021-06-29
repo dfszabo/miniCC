@@ -71,6 +71,9 @@ void MachineInstruction::Print(TargetMachine *TM) const {
   case RET:
     OpcodeStr = "RET";
     break;
+  case INVALID_OP:
+    OpcodeStr = "INVALID_OP";
+    break;
   default:
     OpcodeStr = TM->GetInstrDefs()->GetInstrString(Opcode);
     break;

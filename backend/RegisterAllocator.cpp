@@ -76,11 +76,31 @@ PhysicalReg GetNextAvailableReg(uint8_t BitSize, std::vector<PhysicalReg> &Pool,
   return 0;
 }
 
+PhysicalReg GetMatchingSizedRegFromSubRegs(PhysicalReg PhysReg, uint8_t BitSize,
+                                           TargetMachine *TM) {
+  auto PhysRegInfo = TM->GetRegInfo()->GetRegisterByID(PhysReg);
+
+  // if the register size is not matching the actual operand size
+  // in bits then search for the subregisters as well for actual
+  // matching one
+  if (PhysRegInfo->GetBitWidth() == BitSize)
+    return PhysReg;
+
+  for (auto SubReg : PhysRegInfo->GetSubRegs()) {
+    auto PhysSubRegInfo = TM->GetRegInfo()->GetRegisterByID(SubReg);
+
+    if (PhysSubRegInfo->GetBitWidth() == BitSize)
+      return SubReg;
+  }
+
+  return ~0u;
+}
+
 void RegisterAllocator::RunRA() {
   // mapping from virtual reg to physical
   std::map<VirtualReg, PhysicalReg> AllocatedRegisters;
   std::vector<PhysicalReg> RegisterPool;  // available registers
-  std::set<VirtualReg> RegistersToSpill; // register require spilling
+  std::set<MachineOperand> RegistersToSpill; // register require spilling
 
   for (auto &Func : MIRM->GetFunctions()) {
     AllocatedRegisters.clear();
@@ -125,7 +145,7 @@ void RegisterAllocator::RunRA() {
               // if the instruction is NOT a load, then spill it
               if (!Instr.IsLoadOrStore()) {
                 ConsecutiveLoadRenames = ConsecutiveStoreRenames = 0;
-                RegistersToSpill.insert(UsedReg);
+                RegistersToSpill.insert(Operand);
                 continue;
               }
 
@@ -133,11 +153,18 @@ void RegisterAllocator::RunRA() {
               // (allocating essentially)
               if (Instr.IsLoad()) {
                 // Note that the last 2 register is used for this purpose
-                AllocatedRegisters[UsedReg] =
-                    RegisterPool.rbegin()[1 - ConsecutiveLoadRenames];
+                auto PhysReg = RegisterPool.rbegin()[1 - ConsecutiveLoadRenames];
+                auto FoundPhysReg =
+                    GetMatchingSizedRegFromSubRegs(PhysReg, Operand.GetSize(), TM);
+                assert(FoundPhysReg != ~0u && "Cannot found matching sized register");
+                AllocatedRegisters[UsedReg] = FoundPhysReg;
                 ConsecutiveLoadRenames++;
               } else {
-                AllocatedRegisters[UsedReg] = RegisterPool.rbegin()[2];
+                auto PhysReg = RegisterPool.rbegin()[2];
+                auto FoundPhysReg =
+                    GetMatchingSizedRegFromSubRegs(PhysReg, Operand.GetSize(), TM);
+                assert(FoundPhysReg != ~0u && "Cannot found matching sized register");
+                AllocatedRegisters[UsedReg] = FoundPhysReg;
                 ConsecutiveStoreRenames++;
               }
 
@@ -168,38 +195,56 @@ void RegisterAllocator::RunRA() {
 
     ///////////// Handle Spills
 
-    // if there is nothing to spill then nothing todo
+    // if there is nothing to spill then nothing to do
     if (RegistersToSpill.size() != 0) {
-
-      for (auto Reg : RegistersToSpill)
-        // TODO: Size should be the spilled register size, not hardcoded
-        Func.InsertStackSlot(Reg, 4);
+      for (auto &Reg : RegistersToSpill)
+        Func.InsertStackSlot(Reg.GetReg(), Reg.GetSize() / 8);
 
       for (auto &BB : Func.GetBasicBlocks()) {
         auto &Instructions = BB.GetInstructions();
 
         for (size_t i = 0; i < Instructions.size(); i++) {
 
-          // Check operands which use the register (the first operand defining the reg the rest uses regs)
+          // Check operands which use the register
+          // (the first operand defining the reg the rest uses regs)
           for (size_t OpIndex = 1;
                OpIndex < Instructions[i].GetOperands().size(); OpIndex++) {
             auto &Operand = Instructions[i].GetOperands()[OpIndex];
+
+            // only check register operands
+            if (!(Operand.IsRegister() || Operand.IsMemory()))
+              continue;
+
             auto UsedReg = Operand.GetReg();
 
             // if the used register is not spilled, then nothing to do
-            if (RegistersToSpill.count(UsedReg) == 0)
+            if (RegistersToSpill.count(Operand) == 0)
               continue;
 
             ////// Insert a LOAD
 
-            // First make the operand into a physical register which using
+            auto FoundReg =
+                GetMatchingSizedRegFromSubRegs(RegisterPool[OpIndex],
+                                               Operand.GetSize(), TM);
+            assert(FoundReg != ~0u && "Cannot found matching sized register");
+
+            Operand.SetReg(FoundReg);
+
+            // Saving the original Operand to be able to use its information
+            // when creating the LOAD
+            auto OperandSave = Operand;
+
+            // Make the operand into a physical register which using
             // the register used for the spilling
-            Operand.SetToRegister();
-            Operand.SetReg(RegisterPool[OpIndex]);
+            if (!Operand.IsMemory())
+              Operand.SetToRegister();
+            else
+              Operand.SetVirtual(false);
 
             auto Load = MachineInstruction(MachineInstruction::LOAD, &BB);
             /// NOTE: 3 register left in pool using the 2nd and 3rd for uses
-            Load.AddRegister(RegisterPool[OpIndex]);
+            OperandSave.SetToRegister();
+            Load.AddOperand(OperandSave);
             Load.AddStackAccess(UsedReg);
             TM->SelectInstruction(&Load);
 
@@ -210,17 +255,28 @@ void RegisterAllocator::RunRA() {
           auto &Operand = Instructions[i].GetOperands()[0];
           auto DefReg = Operand.GetReg();
 
-          if (RegistersToSpill.count(DefReg) == 0)
+          if (RegistersToSpill.count(Operand) == 0)
             continue;
 
-          Operand.SetToRegister();
-          Operand.SetReg(RegisterPool[0]);
+          auto FoundReg =
+              GetMatchingSizedRegFromSubRegs(RegisterPool[0],
+                                             Operand.GetSize(), TM);
+          assert(FoundReg != ~0u && "Cannot found matching sized register");
+
+          Operand.SetReg(FoundReg);
+
+          auto OperandSave = Operand;
+
+          if (!Operand.IsMemory())
+            Operand.SetToRegister();
+          else
+            Operand.SetVirtual(false);
 
           auto Store = MachineInstruction(MachineInstruction::STORE, &BB);
-
           Store.AddStackAccess(DefReg);
           /// NOTE: 3 register left in pool using the 1st for def
-          Store.AddRegister(RegisterPool[0]);
+          OperandSave.SetToRegister();
+          Store.AddOperand(OperandSave);
           TM->SelectInstruction(&Store);
 
           BB.InsertInstr(std::move(Store), ++i);
@@ -257,9 +313,12 @@ void RegisterAllocator::RunRA() {
             // TODO: Investigate when exactly this should be other then 0
             auto Offset = 0;
 
-            auto RegSize = TM->GetRegInfo()->GetRegister(AllocatedRegisters[BaseReg])->GetBitWidth();
+            unsigned Reg =
+                Operand.IsVirtual() ? AllocatedRegisters[BaseReg] : BaseReg;
+
+            auto RegSize = TM->GetRegInfo()->GetRegister(Reg)->GetBitWidth();
             Instr.RemoveMemOperand();
-            Instr.AddRegister(AllocatedRegisters[BaseReg], RegSize);
+            Instr.AddRegister(Reg, RegSize);
             Instr.AddImmediate(Offset);
           }
 

@@ -23,6 +23,7 @@ enum Opcodes : unsigned {
   CMP_rr,
   CSET,
   SXTB,
+  SXTW,
   MOV_rc,
   MOV_rr,
   ADRP,

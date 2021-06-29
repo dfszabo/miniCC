@@ -31,10 +31,7 @@ public:
     PointerLevel--;
   }
 
-  void ReduceDimension() {
-    if (Dimensions.size() > 0)
-      Dimensions.erase(Dimensions.begin() + (Dimensions.size() - 1u));
-  }
+  void ReduceDimension();
 
   static IRType CreateBool() { return IRType(SINT, 1); }
   static IRType CreateFloat(uint8_t BitWidht = 32) {

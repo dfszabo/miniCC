@@ -84,7 +84,10 @@ public:
 
   size_t GetOperandsNumber() const { return Operands.size(); }
 
-  MachineOperand *GetOperand(size_t Index) { return &Operands[Index]; }
+  MachineOperand *GetOperand(size_t Index) {
+    assert(Index < Operands.size());
+    return &Operands[Index];
+  }
   OperandList &GetOperands() { return Operands; }
 
   void AddOperand(MachineOperand MO) { Operands.push_back(MO); }
@@ -134,7 +137,9 @@ public:
     AddOperand(I);
   }
 
-  void AddMemory(uint64_t Id) { AddOperand(MachineOperand::CreateMemory(Id)); }
+  void AddMemory(uint64_t Id, unsigned BitWidth = 32) {
+    AddOperand(MachineOperand::CreateMemory(Id, BitWidth));
+  }
 
   void AddStackAccess(uint64_t Slot, unsigned Offset = 0) {
     AddOperand(MachineOperand::CreateStackAccess(Slot, Offset));

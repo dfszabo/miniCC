@@ -5,7 +5,9 @@
 void MachineOperand::Print(TargetMachine *TM) const {
   switch (Type) {
   case REGISTER:
-    if (TM) {
+    if (Virtual)
+      std::cout << "%vreg" << Value;
+    else if (!Virtual && TM) {
       TargetRegister *Reg =
           TM->GetRegInfo()->GetRegisterByID(GetReg());
       std::string RegStr;
@@ -18,9 +20,6 @@ void MachineOperand::Print(TargetMachine *TM) const {
     }
     else
       std::cout << "%" << Value;
-    break;
-  case VIRTUAL_REGISTER:
-    std::cout << "%vreg" << Value;
     break;
   case MEMORY_ADDRESS:
     std::cout << "%ptr_vreg" << Value;

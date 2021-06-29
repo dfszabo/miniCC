@@ -136,6 +136,9 @@ bool AArch64TargetMachine::SelectSEXT(MachineInstruction *MI) {
   if (MI->GetOperand(1)->GetType().GetBitWidth() == 8) {
     MI->SetOpcode(SXTB);
     return true;
+  } else if (MI->GetOperand(1)->GetType().GetBitWidth() == 32) {
+    MI->SetOpcode(SXTW);
+    return true;
   }
 
   assert(!"Unimplemented!");
@@ -169,7 +172,18 @@ bool AArch64TargetMachine::SelectTRUNC(MachineInstruction *MI) {
 }
 
 bool AArch64TargetMachine::SelectZEXT_LOAD(MachineInstruction *MI) {
-  return SelectLOAD(MI);
+  assert((MI->GetOperandsNumber() == 3) && "ZEXT_LOAD must have 3 operands");
+
+  auto SourceSize = MI->GetOperand(1)->GetType().GetBitWidth();
+  MI->RemoveOperand(1);
+
+  if (SourceSize == 8) {
+    MI->SetOpcode(LDRB);
+    return true;
+  }
+
+  MI->SetOpcode(LDR);
+  return true;
 }
 
 bool AArch64TargetMachine::SelectLOAD_IMM(MachineInstruction *MI) {
@@ -204,6 +218,8 @@ bool AArch64TargetMachine::SelectLOAD(MachineInstruction *MI) {
   if (MI->GetOperand(0)->GetType().GetBitWidth() == 8 &&
       !MI->GetOperand(0)->GetType().IsPointer()) {
     MI->SetOpcode(LDRB);
+    if (MI->GetOperand(0)->GetSize() < 32)
+      MI->GetOperand(0)->GetTypeRef().SetBitWidth(32);
     return true;
   }
 
@@ -214,6 +230,8 @@ bool AArch64TargetMachine::SelectLOAD(MachineInstruction *MI) {
     switch (Size) {
     case 1:
       MI->SetOpcode(LDRB);
+      if (MI->GetOperand(0)->GetSize() < 32)
+        MI->GetOperand(0)->GetTypeRef().SetBitWidth(32);
       return true;
     case 4:
       MI->SetOpcode(LDR);
