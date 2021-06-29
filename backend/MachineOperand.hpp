@@ -13,7 +13,6 @@ public:
   enum MOKind : unsigned {
     NONE,
     REGISTER,
-    VIRTUAL_REGISTER,
     INT_IMMEDIATE,
     MEMORY_ADDRESS,
     STACK_ACCESS,
@@ -25,10 +24,10 @@ public:
 
   MachineOperand() {}
 
-  void SetToVirtualRegister() { Type = VIRTUAL_REGISTER; }
-  void SetToRegister() { Type = REGISTER; }
+  void SetToVirtualRegister() { Type = REGISTER; Virtual = true; }
+  void SetToRegister() { Type = REGISTER; Virtual = false; }
   void SetToIntImm() { Type = INT_IMMEDIATE; }
-  void SetToMemAddr() { Type = MEMORY_ADDRESS; }
+  void SetToMemAddr() { Type = MEMORY_ADDRESS; Virtual = true; }
   void SetToStackAccess() { Type = STACK_ACCESS; }
   void SetToParameter() { Type = PARAMETER; }
   void SetToLabel() { Type = LABEL; }
@@ -54,8 +53,11 @@ public:
   void SetLabel(const char *L) { Label = L; }
   void SetGlobalSymbol(const std::string &GS) { GlobalSymbol = GS; }
 
+  bool IsVirtual() const { return Virtual; }
+  void SetVirtual(bool v) { Virtual = v; }
+
   bool IsRegister() const { return Type == REGISTER; }
-  bool IsVirtualReg() const { return Type == VIRTUAL_REGISTER; }
+  bool IsVirtualReg() const { return IsRegister() && Virtual; }
   bool IsImmediate() const { return Type == INT_IMMEDIATE; }
   bool IsMemory() const { return Type == MEMORY_ADDRESS; }
   bool IsStackAccess() const { return Type == STACK_ACCESS; }
@@ -64,7 +66,13 @@ public:
   bool IsFunctionName() const { return Type == FUNCTION_NAME; }
   bool IsGlobalSymbol() const { return Type == GLOBAL_SYMBOL; }
 
-  unsigned GetSize() { return LLT.GetBitWidth(); }
+
+  unsigned GetSize() const { return LLT.GetBitWidth(); }
+
+  /// To be able to use this class in a set
+  bool operator<(const MachineOperand& rhs) const {
+    return Value < rhs.Value;
+  }
 
   static MachineOperand CreateRegister(uint64_t Reg, unsigned BitWidth = 32) {
     MachineOperand MO;
@@ -90,10 +98,11 @@ public:
     return MO;
   }
 
-  static MachineOperand CreateMemory(uint64_t Id) {
+  static MachineOperand CreateMemory(uint64_t Id, unsigned BitWidth = 32) {
     MachineOperand MO;
     MO.SetToMemAddr();
     MO.SetValue(Id);
+    MO.SetType(LowLevelType::CreatePTR(BitWidth));
     return MO;
   }
 
@@ -142,6 +151,7 @@ private:
   LowLevelType LLT;
   const char *Label = nullptr;
   std::string GlobalSymbol;
+  bool Virtual = false;
 };
 
 #endif

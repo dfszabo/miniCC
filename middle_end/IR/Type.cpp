@@ -1,5 +1,10 @@
 #include "Type.hpp"
 
+void IRType::ReduceDimension() {
+  if (Dimensions.size() > 0)
+    Dimensions.erase(Dimensions.begin());
+}
+
 size_t IRType::GetByteSize() const {
   unsigned NumberOfElements = 1;
 
@@ -47,9 +52,8 @@ std::string IRType::AsString() const {
     Str += std::to_string(BitWidth);
 
   if (Dimensions.size() > 0) {
-    //Str = "[" + Str + " x " + std::to_string(NumberOfElements) + "]";
-    for (auto CurrentDim : Dimensions)
-      Str = "[" + Str + " x " + std::to_string(CurrentDim) + "]";
+    for (int i = Dimensions.size() - 1; i >= 0; i--)
+      Str = "[" + std::to_string(Dimensions[i])  + " x " + Str + "]";
   }
 
   std::string PtrStr;

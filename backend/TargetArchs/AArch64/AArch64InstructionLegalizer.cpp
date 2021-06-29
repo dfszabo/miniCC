@@ -52,7 +52,7 @@ bool AArch64InstructionLegalizer::ExpandZEXT(MachineInstruction *MI) {
     return true;
 
   auto ZEXTDest = *MI->GetOperand(0);
-  PrevInst->ReplaceOperand(ZEXTDest, 0);
+  PrevInst->InsertOperand(0, ZEXTDest);
   PrevInst->SetOpcode(MachineInstruction::ZEXT_LOAD);
   ParentBB->Erase(MI);
 

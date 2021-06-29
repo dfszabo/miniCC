@@ -3,10 +3,13 @@
 using namespace AArch64;
 
 AArch64InstructionDefinitions::AArch64InstructionDefinitions() {
-    InstrEnumStrings = {"ADD_rrr", "ADD_rri",  "AND_rri",  "SUB_rrr", "SUB_rri", "SUBS", "MUL_rri",
-    "MUL_rrr", "SDIV_rri", "SDIV_rrr", "CMP_ri",  "CMP_rr",  "CSET", "SXTB",
-    "MOV_rc",  "MOV_rr",   "ADRP",     "LDR",      "LDRB",     "STR",     "STRB",    "BEQ",  "BNE",
-    "BGE",     "BGT",      "BLE",      "BLT",     "B",       "BL", "RET"};
+  InstrEnumStrings = {"ADD_rrr", "ADD_rri", "AND_rri", "SUB_rrr",  "SUB_rri",
+                      "SUBS",    "MUL_rri", "MUL_rrr", "SDIV_rri", "SDIV_rrr",
+                      "CMP_ri",  "CMP_rr",  "CSET",    "SXTB",     "SXTW",
+                      "MOV_rc",  "MOV_rr",  "ADRP",    "LDR",      "LDRB",
+                      "STR",     "STRB",    "BEQ",     "BNE",      "BGE",
+                      "BGT",     "BLE",     "BLT",     "B",        "BL",
+                      "RET"};
 }
 
 AArch64InstructionDefinitions::IRToTargetInstrMap
@@ -27,6 +30,7 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[CMP_ri] = {CMP_ri, 32, "cmp\t$1, #$2", {GPR, UIMM12}};
       ret[CSET] = {CSET, 32, "cset\t$1, $2, $3", {GPR, GPR, GPR}};
       ret[SXTB] = {SXTB, 32, "sxtb\t$1, $2", {GPR, GPR}};
+      ret[SXTW] = {SXTW, 32, "sxtw\t$1, $2", {GPR, GPR}};
       ret[MOV_rc] = {MOV_rc, 32, "mov\t$1, #$2", {GPR, UIMM16}};
       ret[MOV_rr] = {MOV_rr, 32, "mov\t$1, $2", {GPR, GPR}};
       ret[ADRP] = {ADRP, 32, "adrp\t$1, $2", {GPR, GPR}};
