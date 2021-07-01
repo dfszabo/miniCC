@@ -633,6 +633,40 @@ private:
   size_t MemberIndex;
 };
 
+class StructInitExpression : public Expression {
+public:
+  using StrList = std::vector<std::string>;
+  using ExprPtrList = std::vector<std::unique_ptr<Expression>>;
+
+  StrList &GetMemberId() { return MemberIdentifiers; }
+  void SetMemberId(StrList l) { MemberIdentifiers = l; }
+
+  ExprPtrList &GetInitList() { return InitValues; }
+  void SetInitList(ExprPtrList &e) { InitValues = std::move(e); }
+
+  StructInitExpression(Type ResultType, ExprPtrList InitList,
+                       StrList MemberNames) :
+  InitValues(std::move(InitList)), MemberIdentifiers(std::move(MemberNames)) {
+    this->ResultType = ResultType;
+  }
+
+  StructInitExpression() {}
+
+  void ASTDump(unsigned tab = 0) override {
+    Print("StructInitExpression ", tab);
+    auto Str = "'" + ResultType.ToString() + "' ";
+    PrintLn(Str.c_str());
+    for (auto &InitValue : InitValues)
+      InitValue->ASTDump(tab + 2);
+  }
+
+  Value *IRCodegen(IRFactory *IRF) override;
+
+private:
+  StrList MemberIdentifiers;
+  ExprPtrList InitValues;
+};
+
 class UnaryExpression : public Expression {
   using ExprPtr = std::unique_ptr<Expression>;
 

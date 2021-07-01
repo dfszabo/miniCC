@@ -37,6 +37,9 @@ static IRType GetIRTypeFromASTType(Type &CT) {
     for (auto &MemberASTType : CT.GetTypeList())
       Result.GetMemberTypes().push_back(GetIRTypeFromASTType(MemberASTType));
   }
+  if (CT.IsArray()) {
+    Result.SetDimensions(CT.GetDimensions());
+  }
 
   Result.SetPointerLevel(CT.GetPointerLevel());
   return Result;
@@ -556,6 +559,28 @@ Value *StructMemberReference::IRCodegen(IRFactory *IRF) {
   auto ResultIRType = GetIRTypeFromASTType(this->GetResultType());
 
   return IRF->CreateLD(ResultIRType, GEP);
+}
+
+Value *StructInitExpression::IRCodegen(IRFactory *IRF) {
+  // allocate stack for the struct first
+  auto IRResultType = GetIRTypeFromASTType(ResultType);
+  // TODO: make sure the name will be unique
+  auto StructTemp = IRF->CreateSA(ResultType.GetName() + ".temp", IRResultType);
+
+  unsigned CurrentMemberIndex = 0;
+  for (auto &InitExpr : InitValues) {
+    auto InitExprCode = InitExpr->IRCodegen(IRF);
+
+    auto ResultType = IRResultType.GetMemberTypes()[CurrentMemberIndex];
+    ResultType.IncrementPointerLevel();
+
+    auto MemberPtr = IRF->CreateGEP(ResultType, StructTemp,
+                                IRF->GetConstant((uint64_t)CurrentMemberIndex));
+    IRF->CreateSTR(InitExprCode, MemberPtr);
+    CurrentMemberIndex++;
+  }
+
+  return StructTemp;
 }
 
 Value *UnaryExpression::IRCodegen(IRFactory *IRF) {

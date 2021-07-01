@@ -12,8 +12,7 @@ bool AArch64InstructionLegalizer::Check(MachineInstruction *MI) {
   case MachineInstruction::MOD:
     return false;
   case MachineInstruction::STORE:
-    assert(MI->GetOperandsNumber() == 2 && "Must have 2 operands");
-    if (MI->GetOperand(1)->IsImmediate())
+    if (MI->GetOperands().back().IsImmediate())
       return false;
     break;
   case MachineInstruction::ZEXT:
