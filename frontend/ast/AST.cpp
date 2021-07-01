@@ -367,16 +367,25 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
   std::vector<uint64_t> InitList;
   if (IRF->IsGlobalScope()) {
     // if the initialization is done by an initializer
-    // FIXME: assuming 1 dimensional init list like "{ 1, 2 }", add support
-    // for more complex case like "{ { 1, 2 }, { 3, 4 } }"
+    // FIXME: assuming max 2 dimensional init list like "{ { 1, 2 }, { 3, 4 } }"
+    // add support for arbitrary dimension
     if (auto InitListExpr = dynamic_cast<InitializerListExpression*>(Init.get());
         InitListExpr != nullptr) {
       for (auto &Expr : InitListExpr->GetExprList())
         if (auto ConstExpr = dynamic_cast<IntegerLiteralExpression*>(Expr.get());
-            ConstExpr != nullptr)
+            ConstExpr != nullptr) {
           InitList.push_back(ConstExpr->GetUIntValue());
-        else
-          assert(!"Other types unhandled yet");
+        } else if (auto InitListExpr =
+                     dynamic_cast<InitializerListExpression*>(Expr.get());
+                 InitListExpr != nullptr) {
+          for (auto &Expr : InitListExpr->GetExprList())
+            if (auto ConstExpr =
+                    dynamic_cast<IntegerLiteralExpression *>(Expr.get());
+                ConstExpr != nullptr)
+              InitList.push_back(ConstExpr->GetUIntValue());
+            else
+              assert(!"Other types unhandled yet");
+          }
     }
     // initialized by const expression
     // FIXME: for now only IntegerLiteralExpression, add support for const
