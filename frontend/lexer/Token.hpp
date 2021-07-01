@@ -64,6 +64,7 @@ public:
     Case,
     Default,
     Break,
+    Continue,
     Else,
     Return,
     Const,
@@ -186,6 +187,8 @@ public:
       return "default";
     case Break:
       return "break";
+    case Continue:
+      return "continue";
     case Else:
       return "else";
     case Return:

@@ -603,6 +603,8 @@ std::unique_ptr<Statement> Parser::ParseStatement() {
     return ParseCompoundStatement();
   if (lexer.Is(Token::Break))
     return ParseBreakStatement();
+  if (lexer.Is(Token::Continue))
+    return ParseContinueStatement();
   if (lexer.Is(Token::Return))
     return ParseReturnStatement();
   return ParseExpressionStatement();
@@ -733,6 +735,13 @@ std::unique_ptr<BreakStatement> Parser::ParseBreakStatement() {
   Expect(Token::Break);
   Expect(Token::SemiColon);
   return std::make_unique<BreakStatement>();
+}
+
+// <ContinueStatement> ::= 'continue' ';'
+std::unique_ptr<ContinueStatement> Parser::ParseContinueStatement() {
+  Expect(Token::Continue);
+  Expect(Token::SemiColon);
+  return std::make_unique<ContinueStatement>();
 }
 
 // <ReturnStatement> ::= return <Expression>? ';'

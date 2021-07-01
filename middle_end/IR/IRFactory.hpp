@@ -317,6 +317,10 @@ public:
     return FPConstantPool[C].get();
   }
 
+  std::vector<BasicBlock*> &GetLoopIncrementBBsTable() {
+    return LoopIncrementBBsTable;
+  }
+
 private:
   Module &CurrentModule;
 
@@ -340,6 +344,10 @@ private:
   /// To keep track how many times each label were defined. This number
   /// can be used to concatenate it to the label to make it unique.
   std::map<std::string, unsigned> LabelTable;
+
+  /// For context information for "continue" statements. Containing the pointer
+  /// to the basic block which will be the target of the generated jump.
+  std::vector<BasicBlock*> LoopIncrementBBsTable;
 };
 
 #endif
