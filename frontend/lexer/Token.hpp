@@ -70,6 +70,7 @@ public:
     Const,
     Char,
     Int,
+    Long,
     Double,
     Unsigned,
     Void,
@@ -199,6 +200,8 @@ public:
       return "char";
     case Int:
       return "int";
+    case Long:
+      return "long";
     case Double:
       return "double";
     case Void:

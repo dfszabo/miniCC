@@ -9,7 +9,8 @@ class Type {
 public:
   /// Basic type variants. Numerical ones are ordered by conversion rank.
   enum VariantKind { Invalid, Composite, Void, Char,
-                     UnsignedChar, Int, UnsignedInt, Double };
+                     UnsignedChar, Int, UnsignedInt, Long, UnsignedLong,
+                     LongLong, UnsignedLongLong, Double };
   enum TypeKind { Simple, Array, Struct };
   enum TypeQualifier : unsigned { None, Typedef, Const };
 
@@ -48,6 +49,14 @@ public:
       return "int";
     case UnsignedInt:
       return "unsigned int";
+    case Long:
+      return "long";
+    case UnsignedLong:
+      return "unsigned long";
+    case LongLong:
+      return "long long";
+    case UnsignedLongLong:
+      return "unsigned long long";
     case Void:
       return "void";
     case Composite:
@@ -74,8 +83,8 @@ public:
   static bool IsImplicitlyCastable(const Type::VariantKind from,
                                    const Type::VariantKind to) {
     return (from == Int && to == Double) || (from == Double && to == Int) ||
-           ((from == Char || from == UnsignedChar) && to == Int) ||
-           (from == Int && (to == Char || to == UnsignedChar));
+           ((from == Char || from == UnsignedChar) && (to == Int || to == UnsignedInt)) ||
+           ((from == Int || from == UnsignedInt) && (to == Char || to == UnsignedChar));
   }
 
   static bool IsSmallerThanInt(const Type::VariantKind v) {
@@ -90,8 +99,18 @@ public:
 
   static bool OnlySigndnessDifference(const Type::VariantKind v1,
                                       const Type::VariantKind v2) {
-    if ((v1 == Int && v2 == UnsignedInt) || (v2 == Int && v1 == UnsignedInt) ||
-        (v1 == Char && v2 == UnsignedChar) || (v2 == Char && v1 == UnsignedChar))
+    if ((v1 == Int && v2 == UnsignedInt) ||
+        (v2 == Int && v1 == UnsignedInt) ||
+        (v1 == Char && v2 == UnsignedChar) ||
+        (v2 == Char && v1 == UnsignedChar) ||
+        ((v1 == Long || v1 == LongLong) &&
+         (v2 == UnsignedLong || v2 == UnsignedLongLong)) ||
+        ((v2 == Long || v2 == LongLong) &&
+         (v1 == UnsignedLong || v1 == UnsignedLongLong)))
+      return true;
+
+    // special case, not really sign difference, rather just same size
+    if ((v1 == Long && v2 == LongLong) || (v2 == Long && v1 == LongLong))
       return true;
 
     return false;
@@ -152,6 +171,10 @@ public:
     case UnsignedChar:
     case Int:
     case UnsignedInt:
+    case Long:
+    case UnsignedLong:
+    case LongLong:
+    case UnsignedLongLong:
       return true;
     default:
       return false;
