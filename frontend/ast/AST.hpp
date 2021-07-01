@@ -408,6 +408,17 @@ public:
   Value *IRCodegen(IRFactory *IRF) override { return nullptr; }
 };
 
+class ContinueStatement : public Statement {
+public:
+  ContinueStatement() = default;
+
+  void ASTDump(unsigned tab = 0) override {
+    PrintLn("ContinueStatement", tab);
+  }
+
+  Value *IRCodegen(IRFactory *IRF) override;
+};
+
 class FunctionParameterDeclaration : public Statement {
 public:
   std::string &GetName() { return Name; }

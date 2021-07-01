@@ -57,6 +57,7 @@ public:
   std::unique_ptr<CompoundStatement> ParseCompoundStatement();
   std::unique_ptr<ReturnStatement> ParseReturnStatement();
   std::unique_ptr<BreakStatement> ParseBreakStatement();
+  std::unique_ptr<ContinueStatement> ParseContinueStatement();
   std::unique_ptr<Statement> ParseStatement();
   std::unique_ptr<ExpressionStatement> ParseExpressionStatement();
   std::unique_ptr<Expression> ParseExpression();

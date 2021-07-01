@@ -12,7 +12,9 @@ std::unordered_map<std::string, Token::TokenKind> Lexer::Keywords =
         {"break", Token::Break},   {"else", Token::Else},
         {"for", Token::For},       {"while", Token::While},
         {"return", Token::Return}, {"struct", Token::Struct},
-        {"enum", Token::Enum},     {"typedef", Token::Typedef}};
+        {"enum", Token::Enum},     {"typedef", Token::Typedef},
+        {"continue", Token::Continue},
+    };
 
 Lexer::Lexer(std::vector<std::string> &s) {
   Source = std::move(s);
