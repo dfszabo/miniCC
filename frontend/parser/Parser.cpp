@@ -88,6 +88,7 @@ bool Parser::IsTypeSpecifier(Token T) {
   switch (T.GetKind()) {
   case Token::Char:
   case Token::Int:
+  case Token::Long:
   case Token::Unsigned:
   case Token::Double:
   case Token::Struct:
@@ -167,9 +168,20 @@ Type Parser::ParseType(Token::TokenKind tk) {
   case Token::Int:
     Result.SetTypeVariant(Type::Int);
     break;
+  case Token::Long: {
+    auto NextTokenKind = lexer.LookAhead(2).GetKind();
+    if (NextTokenKind == Token::Long) {
+      Lex(); // eat 'long'
+      Result.SetTypeVariant(Type::LongLong);
+      break;
+    }
+    Result.SetTypeVariant(Type::Long);
+    break;
+  }
   case Token::Unsigned: {
     auto NextTokenKind = lexer.LookAhead(2).GetKind();
-    if (NextTokenKind == Token::Int || NextTokenKind == Token::Char)
+    if (NextTokenKind == Token::Int || NextTokenKind == Token::Char ||
+        NextTokenKind == Token::Long)
       Lex(); // eat 'unsigned'
     // if bare the 'unsigned' is not followed by other type then its an
     // 'unsigned int' by default
@@ -190,6 +202,16 @@ Type Parser::ParseType(Token::TokenKind tk) {
     case Token::Int:
       Result.SetTypeVariant(Type::UnsignedInt);
       break;
+    case Token::Long: {
+      auto NextTokenKind = lexer.LookAhead(2).GetKind();
+      if (NextTokenKind == Token::Long) {
+        Lex(); // eat 'long'
+        Result.SetTypeVariant(Type::UnsignedLongLong);
+        break;
+      }
+      Result.SetTypeVariant(Type::UnsignedLong);
+      break;
+    }
     default:
       assert(!"Unreachable");
     }
