@@ -153,17 +153,21 @@ void RegisterAllocator::RunRA() {
               // (allocating essentially)
               if (Instr.IsLoad()) {
                 // Note that the last 2 register is used for this purpose
-                auto PhysReg = RegisterPool.rbegin()[1 - ConsecutiveLoadRenames];
-                auto FoundPhysReg =
-                    GetMatchingSizedRegFromSubRegs(PhysReg, Operand.GetSize(), TM);
-                assert(FoundPhysReg != ~0u && "Cannot found matching sized register");
+                assert(ConsecutiveLoadRenames < 2);
+                auto PhysReg =
+                    RegisterPool.rbegin()[1 - ConsecutiveLoadRenames];
+                auto FoundPhysReg = GetMatchingSizedRegFromSubRegs(
+                    PhysReg, Operand.GetSize(), TM);
+                assert(FoundPhysReg != ~0u &&
+                       "Cannot found matching sized register");
                 AllocatedRegisters[UsedReg] = FoundPhysReg;
                 ConsecutiveLoadRenames++;
               } else {
                 auto PhysReg = RegisterPool.rbegin()[2];
-                auto FoundPhysReg =
-                    GetMatchingSizedRegFromSubRegs(PhysReg, Operand.GetSize(), TM);
-                assert(FoundPhysReg != ~0u && "Cannot found matching sized register");
+                auto FoundPhysReg = GetMatchingSizedRegFromSubRegs(
+                    PhysReg, Operand.GetSize(), TM);
+                assert(FoundPhysReg != ~0u &&
+                       "Cannot found matching sized register");
                 AllocatedRegisters[UsedReg] = FoundPhysReg;
                 ConsecutiveStoreRenames++;
               }
@@ -181,7 +185,8 @@ void RegisterAllocator::RunRA() {
             // if not allocated yet
             if (!AlreadyAllocated) {
               // then allocate it
-              auto Reg = GetNextAvailableReg(Operand.GetSize(), RegisterPool, TM);
+              auto Reg =
+                  GetNextAvailableReg(Operand.GetSize(), RegisterPool, TM);
               AllocatedRegisters[UsedReg] = Reg;
               Operand.SetToRegister();
               Operand.SetReg(Reg);
@@ -311,7 +316,7 @@ void RegisterAllocator::RunRA() {
           else {
             auto BaseReg = Operand.GetReg();
             // TODO: Investigate when exactly this should be other then 0
-            auto Offset = 0;
+            auto Offset = Operand.GetOffset();
 
             unsigned Reg =
                 Operand.IsVirtual() ? AllocatedRegisters[BaseReg] : BaseReg;

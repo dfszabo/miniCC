@@ -33,6 +33,9 @@ public:
   void InsertToSymTable(const std::string &SymName, Type SymType,
                         const bool ToGlobal, ValueType SymValue);
 
+  bool IsUserDefined(std::string Name);
+  Type GetUserDefinedType(std::string Name);
+
   unsigned ParseQualifiers();
   Type ParseType(Token::TokenKind tk);
   bool IsTypeSpecifier(Token T);

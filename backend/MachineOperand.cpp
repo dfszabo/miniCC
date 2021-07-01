@@ -23,6 +23,8 @@ void MachineOperand::Print(TargetMachine *TM) const {
     break;
   case MEMORY_ADDRESS:
     std::cout << "%ptr_vreg" << Value;
+    if (Offset > 0)
+      std::cout << "+" << Offset;
     break;
   case INT_IMMEDIATE:
     std::cout << (int64_t)Value;

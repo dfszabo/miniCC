@@ -117,7 +117,7 @@ public:
 
   Type(Type t, std::vector<unsigned> d) : Type(t) {
     if (d.empty()) {
-      Kind = Simple;
+      Kind = t.Kind;
     } else {
       Kind = Array;
       Dimensions = std::move(d);

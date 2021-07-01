@@ -254,6 +254,13 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       // If there is nothing to add, then exit now
       if (ConstantIndexPart == 0 && !GoalInstr.IsInvalid())
         return GoalInstr;
+
+      // rather then issue an addition, it more effective to set the
+      // StackAccess operand's offset to the index value
+      if (IsStack) {
+        GoalInstr.GetOperands()[1].SetOffset(ConstantIndexPart);
+        return GoalInstr;
+      }
     }
     // If the index resides in a register
     else {
@@ -479,13 +486,19 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     for (size_t i = 0; i < (I->GetSize() / /* TODO: use alignment here */ 4); i++) {
       auto Load = MachineInstruction(MachineInstruction::LOAD, BB);
       auto NewVReg = ParentFunction->GetNextAvailableVReg();
-      Load.AddRegister(NewVReg, /* TODO: use alignment here */ 32);
+      Load.AddVirtualRegister(NewVReg, /* TODO: use alignment here */ 32);
       Load.AddStackAccess(I->GetSource()->GetID(), i * /* TODO: use alignment here */ 4);
       BB->InsertInstr(Load);
 
       auto Store = MachineInstruction(MachineInstruction::STORE, BB);
-      Store.AddStackAccess(I->GetDestination()->GetID(), i * /* TODO: use alignment here */ 4);
-      Store.AddRegister(NewVReg, /* TODO: use alignment here */ 32);
+      if (ParentFunction->IsStackSlot(I->GetDestination()->GetID()))
+        Store.AddStackAccess(I->GetDestination()->GetID(),
+                             i * /* TODO: use alignment here */ 4);
+      else {
+        Store.AddMemory(I->GetDestination()->GetID(), TM->GetPointerSize());
+        Store.GetOperands()[0].SetOffset(i * /* TODO: use alignment here */ 4);
+      }
+      Store.AddVirtualRegister(NewVReg, /* TODO: use alignment here */ 32);
       // TODO: Change the function so it does not return the instruction but
       // insert it in the function so don't have to do these annoying returns
       if (i == ((I->GetSize() / /* TODO: use alignment here */ 4) - 1))

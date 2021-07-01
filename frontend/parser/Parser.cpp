@@ -71,6 +71,19 @@ void static EmitError(const std::string &msg, Lexer &L, Token &T) {
             << std::endl;
 }
 
+bool Parser::IsUserDefined(std::string Name) {
+  return UserDefinedTypes.count(Name) > 0 || TypeDefinitions.count(Name);
+}
+
+Type Parser::GetUserDefinedType(std::string Name) {
+  assert(IsUserDefined(Name));
+
+  if (UserDefinedTypes.count(Name) > 0)
+    return std::get<0>(UserDefinedTypes[Name]);
+  else
+    return TypeDefinitions[Name];
+}
+
 bool Parser::IsTypeSpecifier(Token T) {
   switch (T.GetKind()) {
   case Token::Char:
@@ -771,8 +784,46 @@ static bool IsPostfixOperator(Token tk) {
 //                       | <PostFixExpression> '[' <Expression> ']'
 //                       | <PostFixExpression> '.' <Identifier>
 //                       | <PostFixExpression> '->' <Identifier>
+//                       | ( TypeName ) '{' <Initializer-List> '}'
 std::unique_ptr<Expression> Parser::ParsePostFixExpression() {
   auto CurrentToken = lexer.GetCurrentToken();
+
+  // Struct initializing case
+  if (lexer.Is(Token::LeftParen) &&
+      lexer.LookAhead(2).GetKind() == Token::Identifier &&
+      IsUserDefined(lexer.LookAhead(2).GetString())) {
+    Expect(Token::LeftParen);
+    auto TypeName = Expect(Token::Identifier).GetString();
+    Expect(Token::RightParen);
+
+    Expect(Token::LeftCurly);
+
+    StructInitExpression::StrList MemberList;
+    StructInitExpression::ExprPtrList InitList;
+    while (lexer.Is(Token::Dot) || lexer.Is(Token::Identifier)) {
+      std::string Member = "";
+      if (lexer.Is(Token::Dot)) {
+        Lex(); // eat '.'
+        Member = Expect(Token::Identifier).GetString();
+        Expect(Token::Equal);
+      }
+
+      MemberList.push_back(Member);
+      InitList.push_back(ParseConstantExpression());
+
+      if (!lexer.Is(Token::Comma))
+        break;
+
+      Lex(); // eat ','
+    }
+    Expect(Token::RightCurly);
+
+    // TODO: do semantic check that the member names are valid
+    return std::make_unique<StructInitExpression>(
+        GetUserDefinedType(TypeName), std::move(InitList),
+        std::move(MemberList));
+  }
+
   auto Expr = ParsePrimaryExpression();
   assert(Expr && "Cannot be NULL");
 
@@ -815,6 +866,8 @@ std::unique_ptr<Expression> Parser::ParsePostFixExpression() {
 
       Expr = std::make_unique<StructMemberReference>(std::move(Expr),
                                                      MemberIdStr, i);
+      if (Expr->GetResultType().IsStruct() || Expr->GetResultType().IsArray())
+        Expr->SetLValueness(true);
     }
   }
 
