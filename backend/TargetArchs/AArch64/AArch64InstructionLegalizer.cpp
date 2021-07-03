@@ -15,6 +15,10 @@ bool AArch64InstructionLegalizer::Check(MachineInstruction *MI) {
     if (MI->GetOperands().back().IsImmediate())
       return false;
     break;
+  case MachineInstruction::SUB:
+    if (MI->GetOperand(1)->IsImmediate())
+      return false;
+    break;
   case MachineInstruction::ZEXT:
   case MachineInstruction::GLOBAL_ADDRESS:
     return false;
@@ -29,6 +33,7 @@ bool AArch64InstructionLegalizer::IsExpandable(const MachineInstruction *MI) {
   switch (MI->GetOpcode()) {
   case MachineInstruction::MOD:
   case MachineInstruction::STORE:
+  case MachineInstruction::SUB:
   case MachineInstruction::ZEXT:
   case MachineInstruction::GLOBAL_ADDRESS:
     return true;
@@ -38,6 +43,26 @@ bool AArch64InstructionLegalizer::IsExpandable(const MachineInstruction *MI) {
   }
 
   return false;
+}
+
+bool AArch64InstructionLegalizer::ExpandSUB(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "SUB must have exactly 3 operands");
+  auto ParentBB = MI->GetParent();
+
+  auto MOV = MachineInstruction(MachineInstruction::LOAD_IMM, nullptr);
+  auto DestReg = ParentBB->GetParent()->GetNextAvailableVReg();
+  MOV.AddVirtualRegister(DestReg, MI->GetOperand(1)->GetSize());
+  MOV.AddOperand(*MI->GetOperand(1));
+
+  // replace the immediate operand with the destination of the immediate load
+  MI->RemoveOperand(1);
+  MI->InsertOperand(1,MachineOperand::CreateVirtualRegister(
+                           DestReg,MI->GetOperand(0)->GetSize()));
+
+  // insert after modifying SUB, otherwise MI would became invalid
+  ParentBB->InsertBefore(std::move(MOV), MI);
+
+  return true;
 }
 
 bool AArch64InstructionLegalizer::ExpandZEXT(MachineInstruction *MI) {

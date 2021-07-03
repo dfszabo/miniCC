@@ -93,6 +93,8 @@ bool TargetInstructionLegalizer::Expand(MachineInstruction *MI) {
     return ExpandMOD(MI);
   case MachineInstruction::STORE:
     return ExpandSTORE(MI);
+  case MachineInstruction::SUB:
+    return ExpandSUB(MI);
   case MachineInstruction::ZEXT:
     return ExpandZEXT(MI);
   case MachineInstruction::GLOBAL_ADDRESS:

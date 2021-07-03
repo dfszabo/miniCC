@@ -108,6 +108,7 @@ static bool IsUnaryOperator(Token::TokenKind tk) {
   switch (tk) {
   case Token::And:
   case Token::Astrix:
+  case Token::Minus:
     return true;
 
   default:

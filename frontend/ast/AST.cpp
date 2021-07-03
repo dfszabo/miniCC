@@ -689,7 +689,7 @@ Value *StructInitExpression::IRCodegen(IRFactory *IRF) {
 Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
   Value* E = nullptr;
 
-  if (GetOperationKind() != ADDRESS)
+  if (GetOperationKind() != ADDRESS && GetOperationKind() != MINUS)
     E = Expr->IRCodegen(IRF);
 
   switch (GetOperationKind()) {
@@ -707,6 +707,16 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
   case DEREF: {
     auto ResultType = E->GetType();
     return IRF->CreateLD(ResultType, E);
+  }
+  case MINUS: {
+    if (auto ConstE = dynamic_cast<IntegerLiteralExpression*>(Expr.get());
+        ConstE != nullptr) {
+      ConstE->SetValue(-ConstE->GetSIntValue());
+      return Expr->IRCodegen(IRF);
+    }
+
+    E = Expr->IRCodegen(IRF);
+    return IRF->CreateSUB(IRF->GetConstant((uint64_t)0), E);
   }
   case POST_DECREMENT:
   case POST_INCREMENT: {
