@@ -692,6 +692,7 @@ public:
   enum UnaryOperation {
     ADDRESS,
     DEREF,
+    MINUS,
     POST_INCREMENT,
     POST_DECREMENT,
   };
@@ -702,6 +703,8 @@ public:
       return ADDRESS;
     case Token::Astrix:
       return DEREF;
+    case Token::Minus:
+      return MINUS;
     case Token::PlusPlus:
       return POST_INCREMENT;
     case Token::MinusMinus:
@@ -731,6 +734,7 @@ public:
       ResultType = Expr->GetResultType();
       ResultType.DecrementPointerLevel();
       break;
+    case MINUS:
     case POST_DECREMENT:
     case POST_INCREMENT:
       ResultType = Expr->GetResultType();

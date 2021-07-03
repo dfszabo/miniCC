@@ -76,6 +76,17 @@ AArch64RegisterInfo::AArch64RegisterInfo() {
   Registers[66] = TargetRegister::Create(PC, 64, "pc", "");
 }
 
+TargetRegister *AArch64RegisterInfo::GetParentReg(unsigned ID) {
+  assert(ID > INVALID && ID <= PC && "Out of bound access");
+  for (size_t i = 0; i < sizeof Registers / sizeof Registers[0]; i++)
+    if (!Registers[i].GetSubRegs().empty())
+      for (auto SubReg : Registers[i].GetSubRegs())
+        if (SubReg == ID)
+          return &Registers[i];
+
+  return nullptr;
+}
+
 TargetRegister *AArch64RegisterInfo::GetRegister(unsigned i) {
   assert(i < 67 && "Out of bound access");
   return &Registers[i];

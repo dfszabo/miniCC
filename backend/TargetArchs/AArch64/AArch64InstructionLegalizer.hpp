@@ -14,6 +14,12 @@ public:
   bool Check(MachineInstruction *MI) override;
   bool IsExpandable(const MachineInstruction *MI) override;
 
+  /// Since AArch64 does not support for immediate operand as 1st source operand
+  /// for SUB (and for all arithmetic instruction as well), there for it has to
+  /// be materialized first into a register
+  /// TODO: expand the implementation for all arithmetic instruction
+  bool ExpandSUB(MachineInstruction *MI) override;
+
   /// Since AArch64 do sign extension when loading therefore if the ZEXT is
   /// used only to zero extend a load result then it can be merged with the
   /// previous load into a ZEXT_LOAD.
