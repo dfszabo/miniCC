@@ -18,7 +18,7 @@ unsigned MachineFunction::GetNextAvailableVReg() {
           NextVReg = Operand.GetReg();
 
   // The next one is 1 more then the found highest
-  return NextVReg + 1;
+  return NextVReg++;
 }
 
 void MachineFunction::Print(TargetMachine *TM) const {

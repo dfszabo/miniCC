@@ -24,8 +24,8 @@ public:
   void SetNextVReg(const unsigned r) { NextVReg = r; }
 
   void InsertStackSlot(unsigned ID, unsigned Size) {
-    if (NextVReg < ID)
-      NextVReg = ID;
+    if (NextVReg <= ID)
+      NextVReg = ID + 1;
     SF.InsertStackSlot(ID, Size);
   }
 
