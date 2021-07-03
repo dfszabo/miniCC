@@ -15,8 +15,23 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
     auto BitWidth = Val->GetBitWidth();
     unsigned NextVReg;
 
-    if (IRVregToLLIRVreg.count(Val->GetID()) > 0)
+    // If the register were spilled, (example: function return values are
+    // spilled to the stack) then load the value in first into a VReg
+    // and return this VReg as LLIR VReg.
+    // TODO: Investigate if this is the appropriate place and way to do this
+    if (MF->IsStackSlot(Val->GetID())) {
+      auto Instr = MachineInstruction(MachineInstruction::LOAD,
+                                      &MF->GetBasicBlocks().back());
+      NextVReg = MF->GetNextAvailableVReg();
+      Instr.AddVirtualRegister(NextVReg);
+      Instr.AddStackAccess(Val->GetID());
+      MF->GetBasicBlocks().back().InsertInstr(Instr);
+      IRVregToLLIRVreg[Val->GetID()] = NextVReg;
+    }
+    // If the IR VReg is mapped already to an LLIR VReg then use that
+    else if (IRVregToLLIRVreg.count(Val->GetID()) > 0)
       NextVReg = IRVregToLLIRVreg[Val->GetID()];
+    // Otherwise get the next available LLIR VReg and create a mapping entry
     else {
       NextVReg = MF->GetNextAvailableVReg();
       IRVregToLLIRVreg[Val->GetID()] = NextVReg;
@@ -397,7 +412,9 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     for (auto *Param : I->GetArgs()) {
       MachineInstruction Instr;
 
-      // In case if its a struct by value param
+      // In case if its a struct by value param, then it is already loaded
+      // in into registers, so issue move instructions to move these into
+      // the parameter registers
       if (Param->GetTypeRef().IsStruct() && !Param->GetTypeRef().IsPTR()) {
         assert(StructByIDToRegMap.count(Param->GetID()) > 0 &&
                "The map does not know about this struct param");
@@ -411,7 +428,9 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
           BB->InsertInstr(Instr);
           ParamCounter++;
         }
-      } if (Param->GetTypeRef().IsPTR() && (Param->IsGlobalVar() ||
+      }
+      // Handle pointer case for both local and global objects
+      else if (Param->GetTypeRef().IsPTR() && (Param->IsGlobalVar() ||
           ParentFunction->IsStackSlot(Param->GetID()))) {
         if (Param->IsGlobalVar()) {
           Instr = MachineInstruction(MachineInstruction::GLOBAL_ADDRESS, BB);
@@ -434,6 +453,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
           ParamCounter++;
         }
       }
+      // default case is to just move into the right parameter register
       else {
         Instr = MachineInstruction(MachineInstruction::MOV, BB);
 
@@ -447,6 +467,48 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     }
 
     ResultMI.AddFunctionName(I->GetName().c_str());
+
+    // if no return value then we are done
+    if (I->GetTypeRef().IsVoid())
+      return ResultMI;
+
+    /// Handle the case when there are returned values and spill them to the
+    /// stack
+    BB->InsertInstr(ResultMI);
+
+    unsigned RetBitSize = I->GetTypeRef().GetByteSize() * 8;
+    const unsigned MaxRegSize = TM->GetPointerSize();
+    const unsigned RegsCount = GetNextAlignedValue(RetBitSize, MaxRegSize)
+                               / MaxRegSize;
+    assert(RegsCount > 0);
+    auto &RetRegs = TM->GetABI()->GetReturnRegisters();
+
+    for (size_t i = 0; i < RegsCount; i++) {
+      // FIXME: actual its not a vreg, but this make sure it will be a unique ID
+      auto StackSlot = ParentFunction->GetNextAvailableVReg();
+      ParentFunction->InsertStackSlot(StackSlot,
+                                      std::min(RetBitSize, MaxRegSize) / 8);
+      auto Store = MachineInstruction(MachineInstruction::STORE, BB);
+      Store.AddStackAccess(StackSlot);
+
+      // find the appropriate return register for the size
+      unsigned TargetRetReg;
+
+      // if the return value can use the return register
+      if (std::min(RetBitSize, MaxRegSize) >= TM->GetPointerSize())
+        TargetRetReg = RetRegs[i]->GetID();
+      // need to find an appropriate sized subregister of the actual return reg
+      else
+        // FIXME: Temporary solution, only work for AArch64
+        TargetRetReg = RetRegs[i]->GetSubRegs()[0];
+
+      Store.AddRegister(TargetRetReg, std::min(RetBitSize, MaxRegSize));
+      // TODO: ...
+      if (i + 1 == RegsCount)
+        return Store;
+      BB->InsertInstr(Store);
+      RetBitSize -= MaxRegSize;
+    }
   }
   // Ret instruction: ret op
   else if (auto I = dynamic_cast<ReturnInstruction *>(Instr); I != nullptr) {
