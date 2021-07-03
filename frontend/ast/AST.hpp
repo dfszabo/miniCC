@@ -342,6 +342,9 @@ private:
 
 class ForStatement : public Statement {
 public:
+  std::unique_ptr<Statement> &GetVarDecl() { return VarDecl; }
+  void SetVarDecl(std::unique_ptr<Statement> v) { VarDecl = std::move(v); }
+
   std::unique_ptr<Expression> &GetInit() { return Init; }
   void SetInit(std::unique_ptr<Expression> c) { Init = std::move(c); }
 
@@ -356,7 +359,10 @@ public:
 
   void ASTDump(unsigned tab = 0) override {
     PrintLn("ForStatement", tab);
-    Init->ASTDump(tab + 2);
+    if (Init)
+      Init->ASTDump(tab + 2);
+    else
+      VarDecl->ASTDump(tab + 2);
     Condition->ASTDump(tab + 2);
     Increment->ASTDump(tab + 2);
     Body->ASTDump(tab + 2);
@@ -365,7 +371,8 @@ public:
   Value *IRCodegen(IRFactory *IRF) override;
 
 private:
-  std::unique_ptr<Expression> Init;
+  std::unique_ptr<Statement> VarDecl = nullptr;
+  std::unique_ptr<Expression> Init = nullptr;
   std::unique_ptr<Expression> Condition;
   std::unique_ptr<Expression> Increment;
   std::unique_ptr<Statement> Body;
