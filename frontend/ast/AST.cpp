@@ -244,9 +244,12 @@ Value *ForStatement::IRCodegen(IRFactory *IRF) {
   auto LoopEnd = std::make_unique<BasicBlock>("loop_end", FuncPtr);
   auto HeaderPtr = Header.get();
 
-  // Generating code for the initializing expression and adding and explicit
-  // unconditional jump to the loop header basic block
-  Init->IRCodegen(IRF);
+  // Generating code for the initializing expression or the variable declaration
+  // and adding and explicit unconditional jump to the loop header basic block
+  if (Init)
+    Init->IRCodegen(IRF);
+  else
+    VarDecl->IRCodegen(IRF);
   IRF->CreateJUMP(Header.get());
 
   // Inserting the loop header basicblock and generating the code for the
