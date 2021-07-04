@@ -1,9 +1,6 @@
-// RRUN: AArch64
-// FFUNC-DECL: unsigned new_tetris()
-// TTEST-CASE: new_tetris() -> 16
-// FIXME: Disabled this test temporary, since the main reason for failing must
-// be the register allocator
-// TODO: Enable it after register allocator fixed or improved
+// RUN: AArch64
+// FUNC-DECL: unsigned new_tetris()
+// TEST-CASE: new_tetris() -> 16
 
 typedef unsigned uint;
 

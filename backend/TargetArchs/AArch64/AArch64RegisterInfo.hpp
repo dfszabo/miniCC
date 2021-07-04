@@ -23,6 +23,7 @@ public:
   unsigned GetFrameRegister() override;
   unsigned GetLinkRegister() override;
   unsigned GetStackRegister() override;
+  unsigned GetZeroRegister() override;
 
 private:
   TargetRegister Registers[67];

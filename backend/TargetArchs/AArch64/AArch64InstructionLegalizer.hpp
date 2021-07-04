@@ -14,6 +14,9 @@ public:
   bool Check(MachineInstruction *MI) override;
   bool IsExpandable(const MachineInstruction *MI) override;
 
+  /// Use wzr register if the stored immediate is 0
+  bool ExpandSTORE(MachineInstruction *MI) override;
+
   /// Since AArch64 does not support for immediate operand as 1st source operand
   /// for SUB (and for all arithmetic instruction as well), there for it has to
   /// be materialized first into a register
