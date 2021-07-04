@@ -2,6 +2,7 @@
 #include "AArch64InstructionDefinitions.hpp"
 #include "../../MachineBasicBlock.hpp"
 #include "../../MachineFunction.hpp"
+#include "../../TargetMachine.hpp"
 #include <cassert>
 
 using namespace AArch64;
@@ -43,6 +44,40 @@ bool AArch64InstructionLegalizer::IsExpandable(const MachineInstruction *MI) {
   }
 
   return false;
+}
+
+bool AArch64InstructionLegalizer::ExpandSTORE(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 2 && "STORE must have exactly 2 operands");
+  auto ParentBB = MI->GetParent();
+  auto ParentFunc = ParentBB->GetParent();
+
+  auto Immediate = *MI->GetOperand(1);
+
+  assert(Immediate.IsImmediate() && "Operand #2 must be an immediate");
+
+  if (Immediate.GetImmediate() == 0) {
+    MI->RemoveOperand(1);
+    auto WZR = TM->GetRegInfo()->GetZeroRegister();
+    MI->AddRegister(WZR, TM->GetRegInfo()->GetRegisterByID(WZR)->GetBitWidth());
+    return true;
+  }
+
+  // Create the result register where the immediate will be loaded
+  auto LOAD_IMMResult = ParentFunc->GetNextAvailableVReg();
+  auto LOAD_IMMResultVReg =
+      MachineOperand::CreateVirtualRegister(LOAD_IMMResult);
+
+  // Replace the immediate operand with the result register
+  MI->RemoveOperand(1);
+  MI->AddOperand(LOAD_IMMResultVReg);
+
+  MachineInstruction LOAD_IMM;
+  LOAD_IMM.SetOpcode(MachineInstruction::LOAD_IMM);
+  LOAD_IMM.AddOperand(LOAD_IMMResultVReg);
+  LOAD_IMM.AddOperand(Immediate);
+  ParentBB->InsertBefore(std::move(LOAD_IMM), MI);
+
+  return true;
 }
 
 bool AArch64InstructionLegalizer::ExpandSUB(MachineInstruction *MI) {
