@@ -77,7 +77,6 @@ AArch64RegisterInfo::AArch64RegisterInfo() {
 }
 
 TargetRegister *AArch64RegisterInfo::GetParentReg(unsigned ID) {
-  assert(ID > INVALID && ID <= PC && "Out of bound access");
   for (size_t i = 0; i < sizeof Registers / sizeof Registers[0]; i++)
     if (!Registers[i].GetSubRegs().empty())
       for (auto SubReg : Registers[i].GetSubRegs())
