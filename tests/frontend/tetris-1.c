@@ -1,6 +1,6 @@
 // RUN: AArch64
 // FUNC-DECL: unsigned new_tetris()
-// TEST-CASE: new_tetris() -> 16
+// TEST-CASE: new_tetris() -> 5
 
 typedef unsigned uint;
 
@@ -20,19 +20,17 @@ typedef struct tetris {
 } Tetris;
 
 uint new_tetris() {
-  unsigned char board[20][10];
-  int row;
-  int col;
+  Tetris tetris;
 
-  for (row = 0; row < 20; row++)
-    for (col = 0; col < 10; col++)
-      board[row][col] = row * col;
+  for (int row = 0; row < 20; row++)
+    for (int col = 0; col < 10; col++)
+      tetris.board[row][col] = row * col;
 
-//  tetris.score = 0;
-//  tetris.curr_piece = (Piece){.kind = 0, .x = 0, .y = 5, .rotation = 0};
-//  tetris.next_piece_kind = 1;
-//  tetris.bot_target_piece =
-//      (Piece){.kind = 100, .x = 100, .y = 100, .rotation = 100};
+  tetris.score = 0;
+  tetris.curr_piece = (Piece){.kind = 0, .x = 0, .y = 5, .rotation = 0};
+  tetris.next_piece_kind = 1;
+  tetris.bot_target_piece =
+      (Piece){.kind = 100, .x = 100, .y = 100, .rotation = 100};
 
-  return board[4][4];
+  return tetris.curr_piece.y;
 }
