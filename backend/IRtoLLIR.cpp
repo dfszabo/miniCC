@@ -557,7 +557,11 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         Store.AddStackAccess(I->GetDestination()->GetID(),
                              i * /* TODO: use alignment here */ 4);
       else {
-        Store.AddMemory(I->GetDestination()->GetID(), TM->GetPointerSize());
+        auto MemVReg = I->GetDestination()->GetID();
+        // if the IR VReg is mapped to an LLIR VReg, then use that instead
+        if (IRVregToLLIRVreg.count(MemVReg) > 0)
+          MemVReg = IRVregToLLIRVreg[MemVReg];
+        Store.AddMemory(MemVReg, TM->GetPointerSize());
         Store.GetOperands()[0].SetOffset(i * /* TODO: use alignment here */ 4);
       }
       Store.AddVirtualRegister(NewVReg, /* TODO: use alignment here */ 32);
