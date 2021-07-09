@@ -89,8 +89,15 @@ int main(int argc, char *argv[]) {
   std::vector<std::string> src;
   getFileContent(FilePath.c_str(), src);
 
+  std::unique_ptr<TargetMachine> TM;
+
+  if (TargetArch == "riscv")
+    TM = std::make_unique<RISCV::RISCVTargetMachine>();
+  else
+    TM = std::make_unique<AArch64::AArch64TargetMachine>();
+
   Module IRModule;
-  IRFactory IRF(IRModule);
+  IRFactory IRF(IRModule, TM.get());
   Parser parser(src, &IRF);
   auto AST = parser.Parse();
 
@@ -102,12 +109,7 @@ int main(int argc, char *argv[]) {
     IRModule.Print();
 
 
-  std::unique_ptr<TargetMachine> TM;
 
-  if (TargetArch == "riscv")
-    TM = std::make_unique<RISCV::RISCVTargetMachine>();
-  else
-    TM = std::make_unique<AArch64::AArch64TargetMachine>();
 
   MachineIRModule LLIRModule;
   IRtoLLIR I2LLIR(IRModule, &LLIRModule, TM.get());

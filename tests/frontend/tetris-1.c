@@ -19,12 +19,12 @@ typedef struct tetris {
   Piece bot_target_piece;
 } Tetris;
 
-uint new_tetris() {
+Tetris new_tetris() {
   Tetris tetris;
 
   for (int row = 0; row < 20; row++)
     for (int col = 0; col < 10; col++)
-      tetris.board[row][col] = row * col;
+      tetris.board[row][col] = 0;
 
   tetris.score = 0;
   tetris.curr_piece = (Piece){.kind = 0, .x = 0, .y = 5, .rotation = 0};
@@ -32,5 +32,5 @@ uint new_tetris() {
   tetris.bot_target_piece =
       (Piece){.kind = 100, .x = 100, .y = 100, .rotation = 100};
 
-  return tetris.curr_piece.y;
+  return tetris;
 }

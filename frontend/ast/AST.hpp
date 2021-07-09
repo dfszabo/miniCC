@@ -38,7 +38,19 @@ public:
 
 class Statement : public Node {
 public:
+  enum StmtInfo {
+    NONE = 0,
+    RETURN = 1,
+  };
+
+  void AddInfo(unsigned Bit) { InfoBits |= Bit;}
+
   void ASTDump(unsigned tab = 0) override { PrintLn("Statement", tab); }
+
+  bool IsRet() { return !!(InfoBits & RETURN); }
+
+private:
+  unsigned InfoBits = 0;
 };
 
 class Expression : public Node {
@@ -380,17 +392,21 @@ private:
 
 class ReturnStatement : public Statement {
 public:
-  std::unique_ptr<Expression> &GetCondition() {
+  std::unique_ptr<Expression> &GetRetVal() {
     assert(HasValue() && "Must have a value to return it.");
     return ReturnValue.value();
   }
-  void SetCondition(std::unique_ptr<Expression> v) {
+  void SetRetVal(std::unique_ptr<Expression> v) {
     ReturnValue = std::move(v);
   }
   bool HasValue() { return ReturnValue.has_value(); }
 
-  ReturnStatement() = default;
-  ReturnStatement(std::unique_ptr<Expression> e) : ReturnValue(std::move(e)) {}
+  ReturnStatement() {
+    AddInfo(Statement::RETURN);
+  }
+  ReturnStatement(std::unique_ptr<Expression> e) : ReturnValue(std::move(e)) {
+    AddInfo(Statement::RETURN);
+  }
 
   void ASTDump(unsigned tab = 0) override {
     PrintLn("ReturnStatement", tab);

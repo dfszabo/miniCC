@@ -296,7 +296,7 @@ Value *ExpressionStatement::IRCodegen(IRFactory *IRF) {
 }
 
 Value *ReturnStatement::IRCodegen(IRFactory *IRF) {
-  if (!ReturnValue.has_value())
+  if (!ReturnValue.has_value() || IRF->GetCurrentFunction()->IsRetTypeVoid())
     return IRF->CreateRET(nullptr);
 
   auto RetVal = ReturnValue.value()->IRCodegen(IRF);
@@ -311,11 +311,31 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   IRF->SetGlobalScope(false);
 
   IRType RetType;
+  IRType ParamType;
+  std::unique_ptr<FunctionParameter> ImplicitStructPtr = nullptr;
+  bool NeedIgnore = false;
 
   switch (T.GetReturnType()) {
   case Type::Composite:
     if (T.IsStruct()) {
       RetType = GetIRTypeFromASTType(T);
+
+      // in case the struct is to big to pass by value
+      if (!RetType.IsPTR() &&
+          (RetType.GetByteSize() * 8) > IRF->GetTargetMachine()->GetABI()->
+                                        GetMaxStructSizePassedByValue()) {
+        NeedIgnore = true;
+        ParamType = RetType;
+        ParamType.IncrementPointerLevel();
+        // then the return type is void and the struct to be returned will be
+        // allocated by the callers and a pointer is passed to the function
+        // as an extra argument
+        RetType = IRType(IRType::NONE);
+
+        // on the same note create the extra struct pointer operand
+        auto ParamName = "struct." + ParamType.GetStructName();
+        ImplicitStructPtr = std::make_unique<FunctionParameter>(ParamName, ParamType);
+      }
     } else
       assert(!"Other cases unhandled");
     break;
@@ -356,8 +376,28 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
 
   IRF->CreateNewFunction(Name, RetType);
 
+  if (ImplicitStructPtr) {
+    IRF->AddToSymbolTable(ImplicitStructPtr->GetName(), ImplicitStructPtr.get());
+    IRF->Insert(std::move(ImplicitStructPtr));
+  }
+
   for (auto &Argument : Arguments)
     Argument->IRCodegen(IRF);
+
+  // iterate over the statements and find returns
+  if (NeedIgnore) {
+    auto CS = dynamic_cast<CompoundStatement *>(Body.get());
+    assert(CS);
+    for (auto &Stmt : CS->GetStatements())
+      if (Stmt->IsRet()) {
+        auto RetStmt = dynamic_cast<ReturnStatement *>(Stmt.get());
+        auto RefExpr =
+            dynamic_cast<ReferenceExpression *>(RetStmt->GetRetVal().get());
+        if (RefExpr)
+          IRF->GetCurrentFunction()->SetIgnorableStructVarName(
+              RefExpr->GetIdentifier());
+      }
+  }
 
   Body->IRCodegen(IRF);
   return nullptr;
@@ -369,6 +409,14 @@ Value *ContinueStatement::IRCodegen(IRFactory *IRF) {
 
 Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {
   auto ParamType = GetIRTypeFromASTType(Ty);
+
+  // if the param is a struct and too big to passed by value then change it
+  // to a struct pointer, because that is how it will be passed by callers
+  if (ParamType.IsStruct() && !ParamType.IsPTR() &&
+      (ParamType.GetByteSize() * 8) > IRF->GetTargetMachine()->GetABI()->
+          GetMaxStructSizePassedByValue())
+    ParamType.IncrementPointerLevel();
+
   auto Param = std::make_unique<FunctionParameter>(Name, ParamType);
 
   auto SA = IRF->CreateSA(Name, ParamType);
@@ -422,6 +470,16 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
     return IRF->CreateGlobalVar(Name, Type, std::move(InitList));
   }
 
+  if (IRF->GetCurrentFunction()->GetIgnorableStructVarName() == Name) {
+    auto ParamValue =
+        IRF->GetCurrentFunction()
+            ->GetParameters()
+                [IRF->GetCurrentFunction()->GetParameters().size() - 1]
+            .get();
+    IRF->AddToSymbolTable(Name, ParamValue);
+    return ParamValue;
+  }
+
   // Otherwise we are in a local scope of a function. Allocate space on
   // stack and update the local symbol table.
   auto SA = IRF->CreateSA(Name, Type);
@@ -454,8 +512,15 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
     // if the generated IR result is a struct pointer, but the actual function
     // expects a struct by value, then issue an extra load
     if (ArgIR->GetTypeRef().IsStruct() && ArgIR->GetTypeRef().IsPTR() &&
-        Arg->GetResultType().IsStruct() && !Arg->GetResultType().IsPointerType())
-      ArgIR = IRF->CreateLD(ArgIR->GetType(), ArgIR);
+        Arg->GetResultType().IsStruct() && !Arg->GetResultType().IsPointerType()) {
+      // if it possible to pass it by value then issue a load first otherwise
+      // it passed by pointer which already is
+      if (!((ArgIR->GetTypeRef().GetByteSize() * 8) >
+              IRF->GetTargetMachine()
+                  ->GetABI()
+                  ->GetMaxStructSizePassedByValue()))
+        ArgIR = IRF->CreateLD(ArgIR->GetType(), ArgIR);
+    }
     Args.push_back(ArgIR);
   }
 
@@ -463,6 +528,7 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
 
   IRType IRRetType;
   StackAllocationInstruction* StructTemp = nullptr;
+  bool IsRetChanged = false;
 
   switch (RetType) {
   case Type::Int:
@@ -481,6 +547,30 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
     // to use that as a temporary, where the result would be copied to after
     // the call
     StructTemp = IRF->CreateSA(Name + ".temp", IRRetType);
+
+    // check if the call expression is returning a non pointer struct which is
+    // to big to be returned back. In this case the called function were already
+    // changed to expect an extra struct pointer parameter and use that and
+    // also its no longer returning anything, it returns type now void
+    // In this case we need to
+    //  -allocating space for the struct, which actually do not needed since
+    //   at this point its already done above (StructTemp)
+    //  -adding extra parameter which is a pointer to this allocated struct
+    //  -change the returned value to this newly allocated struct pointer
+    //  (even though nothing is returned, doing this so subsequent instructions
+    //  can use this struct instead)
+    //
+    //  FIXME: maybe an extra load will required since its now a struct pointer
+    // but originally the return is a struct (not a pointer)
+    if (!(!IRRetType.IsPTR() &&
+        (IRRetType.GetByteSize() * 8) > IRF->GetTargetMachine()->GetABI()->
+            GetMaxStructSizePassedByValue()))
+      break; // actually checking the opposite and break if its true
+
+    IsRetChanged = true;
+    Args.push_back(StructTemp);
+    //IRRetType.IncrementPointerLevel();
+    IRRetType = IRType::NONE;
     break;
   }
   default:
@@ -491,8 +581,10 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
   if (StructTemp) {
     // make the call
     auto CallRes = IRF->CreateCALL(Name, Args, IRRetType);
-    // issue a store using the freshly allocated temporary StructTemp
-    IRF->CreateSTR(CallRes, StructTemp);
+    // issue a store using the freshly allocated temporary StructTemp if
+    // needed
+    if (!IsRetChanged)
+      IRF->CreateSTR(CallRes, StructTemp);
     return StructTemp;
   }
 

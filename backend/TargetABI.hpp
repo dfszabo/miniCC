@@ -13,6 +13,9 @@ public:
   unsigned GetStackAlignment() const { return StackAlignment; }
   void SetStackAlignment(unsigned Alignment) { StackAlignment = Alignment; }
 
+  unsigned GetMaxStructSizePassedByValue() const { return MaxStructSize; }
+  void SetMaxStructSizePassedByValue(unsigned S) { MaxStructSize = S; }
+
   RegList &GetArgumentRegisters() { return ArgumentRegisters; }
   void SetArgumentRegisters(RegList ArgRegs) { ArgumentRegisters = ArgRegs; }
 
@@ -25,7 +28,8 @@ public:
   void SetReturnRegisters(RegList ReturnRegs) { ReturnRegisters = ReturnRegs; }
 
 protected:
-  unsigned StackAlignment;
+  unsigned StackAlignment = ~0;
+  unsigned MaxStructSize = ~0;
   RegList ArgumentRegisters;
   RegList CalleSavedRegisters;
   RegList CallerSavedRegisters;
