@@ -45,6 +45,11 @@ void PreAllocateReturnRegister(
     auto Opcode = It->GetOpcode();
     if (auto TargetInstr = TM->GetInstrDefs()->GetTargetInstr(Opcode);
         TargetInstr->IsReturn()) {
+      // if the ret has no operands it means the function ret type is void and
+      // therefore does not need allocation for return registers
+      if (It->GetOperandsNumber() == 0)
+        continue;
+
       auto RetValSize = It->GetOperands()[0].GetSize();
 
       if (RetValSize == RetRegs[0]->GetBitWidth())
@@ -154,6 +159,7 @@ void RegisterAllocator::RunRA() {
       std::cout << "VReg: " << VReg << ", LiveRange(" << DefLine << ", "
                 << KillLine << ")" << std::endl;
     }
+    std::cout << std::endl;
 #endif
 
     // make a sorted vector from the map where the element ordered by the
@@ -170,10 +176,10 @@ void RegisterAllocator::RunRA() {
                 auto [LVReg, LDef, LKill] = Left;
                 auto [RVReg, RDef, RKill] = Right;
 
-                if (LKill < RKill)
+                if (LDef < RDef)
                   return true;
-                else if (LKill == RKill)
-                  return LDef < RDef;
+                else if (LDef == RDef)
+                  return LKill < RKill;
                 else
                   return false;
     });
@@ -186,30 +192,29 @@ void RegisterAllocator::RunRA() {
     std::cout << std::endl;
 #endif
 
-    // Where to start the search from registers to be freed. Entries with
-    // smaller indexes were already freed, therefore don't have to check them.
-    unsigned StartIndex = 0;
-    unsigned CurrentIdx = 0;
+    // To keep track the already allocated, but not yet freed live ranges
+    std::vector<std::tuple<unsigned, unsigned, unsigned>> FreeAbleWorkList;
     for (const auto &[VReg, DefLine, KillLine] : SortedLiveRanges) {
       // if not allocated yet, then allocate it
-      if (AllocatedRegisters.count(VReg) == 0)
+      if (AllocatedRegisters.count(VReg) == 0) {
         AllocatedRegisters[VReg] =
             GetNextAvailableReg(VRegToMOMap[VReg]->GetSize(), RegisterPool, TM);
+        FreeAbleWorkList.push_back({VReg, DefLine, KillLine});
+      }
+#ifdef DEBUG
+      std::cout << "VReg " << VReg << " allocated to "
+                << TM->GetRegInfo()->GetRegisterByID(AllocatedRegisters[VReg])->GetName()
+                << std::endl;
+#endif
 
       // free registers which are already killed
-      unsigned CheckCurrentIdx = 0;
-      for (const auto [CheckVReg, CheckDefLine, CheckKillLine] :
-           SortedLiveRanges) {
-        // only check for the current and the previous entries
-        if (CheckCurrentIdx >= CurrentIdx)
-          break;
-
-        // only start doing something when the start index of the non freed
-        // entries reached first and the above checked entry definitions line
+      for (int i = 0; i < (int)FreeAbleWorkList.size(); i++) {
+        auto [CheckVReg, CheckDefLine, CheckKillLine] = FreeAbleWorkList[i];
+        // the above checked entry definitions line
         // is greater then this entry kill line. Meaning the register assigned
         // to this entry can be freed, since we already passed the line where it
         // was last used (killed)
-        if (CheckCurrentIdx >= StartIndex && CheckKillLine < DefLine) {
+        if (CheckKillLine < DefLine) {
           // Freeing the register allocated to this live range's register
           // If its a subregister then we have to find its parent first and then
           // put that back to the allocatable register's RegisterPool
@@ -225,18 +230,17 @@ void RegisterAllocator::RunRA() {
                     << std::endl;
 #endif
           RegisterPool.insert(RegisterPool.begin(), FreeAbleReg);
-          StartIndex++;
+          FreeAbleWorkList.erase(FreeAbleWorkList.begin() + i);
+          i--; // to correct the index i, because of the erase
         }
-        CheckCurrentIdx++;
       }
-      CurrentIdx++;
     }
 
 #ifdef DEBUG
     std::cout << std::endl << std :: endl << "AllocatedRegisters" << std::endl;
     for (auto [VReg, PhysReg] : AllocatedRegisters)
-      std::cout << "VReg: " << VReg << " to " <
-          < TM->GetRegInfo()->GetRegisterByID(PhysReg)->GetName() << std::endl;
+      std::cout << "VReg: " << VReg << " to " <<
+          TM->GetRegInfo()->GetRegisterByID(PhysReg)->GetName() << std::endl;
     std::cout << std::endl << std::endl;
 #endif
 
