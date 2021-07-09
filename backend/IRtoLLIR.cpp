@@ -11,6 +11,8 @@
 
 MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
                                                     MachineFunction *MF) {
+  assert(Val);
+  assert(MF);
   if (Val->IsRegister()) {
     auto BitWidth = Val->GetBitWidth();
     unsigned NextVReg;
@@ -19,7 +21,8 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
     // spilled to the stack) then load the value in first into a VReg
     // and return this VReg as LLIR VReg.
     // TODO: Investigate if this is the appropriate place and way to do this
-    if (MF->IsStackSlot(Val->GetID())) {
+    if (IRVregToLLIRVreg.count(Val->GetID()) == 0 &&
+        MF->IsStackSlot(Val->GetID())) {
       auto Instr = MachineInstruction(MachineInstruction::LOAD,
                                       &MF->GetBasicBlocks().back());
       NextVReg = MF->GetNextAvailableVReg();
@@ -29,8 +32,17 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
       IRVregToLLIRVreg[Val->GetID()] = NextVReg;
     }
     // If the IR VReg is mapped already to an LLIR VReg then use that
-    else if (IRVregToLLIRVreg.count(Val->GetID()) > 0)
-      NextVReg = IRVregToLLIRVreg[Val->GetID()];
+    else if (IRVregToLLIRVreg.count(Val->GetID()) > 0) {
+      if (MF->IsStackSlot(IRVregToLLIRVreg[Val->GetID()])) {
+        auto Instr = MachineInstruction(MachineInstruction::LOAD,
+                                        &MF->GetBasicBlocks().back());
+        NextVReg = MF->GetNextAvailableVReg();
+        Instr.AddVirtualRegister(NextVReg);
+        Instr.AddStackAccess(IRVregToLLIRVreg[Val->GetID()]);
+        MF->GetBasicBlocks().back().InsertInstr(Instr);
+      } else
+        NextVReg = IRVregToLLIRVreg[Val->GetID()];
+    }
     // Otherwise get the next available LLIR VReg and create a mapping entry
     else {
       NextVReg = MF->GetNextAvailableVReg();
@@ -486,6 +498,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     for (size_t i = 0; i < RegsCount; i++) {
       // FIXME: actual its not a vreg, but this make sure it will be a unique ID
       auto StackSlot = ParentFunction->GetNextAvailableVReg();
+      IRVregToLLIRVreg[I->GetID()] = StackSlot;
       ParentFunction->InsertStackSlot(StackSlot,
                                       std::min(RetBitSize, MaxRegSize) / 8);
       auto Store = MachineInstruction(MachineInstruction::STORE, BB);
@@ -512,6 +525,10 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
   }
   // Ret instruction: ret op
   else if (auto I = dynamic_cast<ReturnInstruction *>(Instr); I != nullptr) {
+    // If return is void
+    if (I->GetRetVal() == nullptr)
+      return ResultMI;
+
     auto Result = GetMachineOperandFromValue(I->GetRetVal(), ParentFunction);
     ResultMI.AddOperand(Result);
 

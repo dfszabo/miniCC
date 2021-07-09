@@ -29,6 +29,13 @@ public:
 
   ParameterList &GetParameters() { return Parameters; }
 
+  std::string &GetIgnorableStructVarName() { return IgnorableStructVarName; }
+  void SetIgnorableStructVarName(std::string &Name) {
+    IgnorableStructVarName = Name;
+  }
+
+  bool IsRetTypeVoid() { return ReturnType.IsVoid(); }
+
   void CreateBasicBlock();
 
   void Insert(std::unique_ptr<BasicBlock> BB);
@@ -41,6 +48,8 @@ private:
   IRType ReturnType;
   ParameterList Parameters;
   BasicBlockList BasicBlocks;
+
+  std::string IgnorableStructVarName = "";
 };
 
 #endif

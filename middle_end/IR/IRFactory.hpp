@@ -6,6 +6,7 @@
 #include "Instructions.hpp"
 #include "Module.hpp"
 #include "Value.hpp"
+#include "../../backend/TargetMachine.hpp"
 #include <map>
 #include <memory>
 
@@ -30,6 +31,7 @@ private:
 public:
   IRFactory() = delete;
   IRFactory(Module &M) : CurrentModule(M), ID(0) {}
+  IRFactory(Module &M, TargetMachine *T) : TM(T), CurrentModule(M), ID(0) {}
 
   Instruction *CreateAND(Value *LHS, Value *RHS) {
     return CreateBinaryInstruction(Instruction::AND, LHS, RHS);
@@ -321,7 +323,11 @@ public:
     return LoopIncrementBBsTable;
   }
 
+  TargetMachine *GetTargetMachine() { return TM; }
+
 private:
+  TargetMachine *TM;
+
   Module &CurrentModule;
 
   /// A counter essentially, which used to give Values a uniq ID.

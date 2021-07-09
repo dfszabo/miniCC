@@ -4,6 +4,7 @@ using namespace AArch64;
 
 AArch64TargetABI::AArch64TargetABI(RegisterInfo *RI) {
   StackAlignment = 16;
+  MaxStructSize = 128;
 
   // x0-x7
   for (int i = 32; i <= 39; i++)

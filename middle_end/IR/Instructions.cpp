@@ -160,7 +160,8 @@ void BranchInstruction::Print() const {
 
 void ReturnInstruction::Print() const {
   std::cout << "\t" << AsString(InstKind) << "\t";
-  std::cout << RetVal->ValueString() << std::endl;
+  if (RetVal)
+    std::cout << RetVal->ValueString() << std::endl;
 }
 
 void StackAllocationInstruction::Print() const {

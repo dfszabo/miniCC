@@ -177,7 +177,8 @@ private:
 class ReturnInstruction : public Instruction {
 public:
   ReturnInstruction(Value *RV, BasicBlock *P)
-      : Instruction(Instruction::RET, P, RV->GetType()), RetVal(RV) {
+      : Instruction(Instruction::RET, P,
+                    RV ? RV->GetType() :IRType::NONE), RetVal(RV) {
     BasicBlockTerminator = true;
   }
 
