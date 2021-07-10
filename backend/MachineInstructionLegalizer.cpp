@@ -22,9 +22,9 @@ void MachineInstructionLegalizer::Run() {
         if (!Legalizer->Check(MI)) {
           // but if it is expandable to hopefully legal ones, then do it
           if (Legalizer->IsExpandable(MI)) {
-            if (Legalizer->Expand(MI))
+            if (Legalizer->Expand(MI)) {
               InstrIndex--;
-            else
+            } else
               assert(!"Expandable instruction should be expandable");
             continue;
           } else {

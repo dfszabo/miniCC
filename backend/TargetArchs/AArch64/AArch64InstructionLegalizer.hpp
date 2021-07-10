@@ -17,11 +17,17 @@ public:
   /// Use wzr register if the stored immediate is 0
   bool ExpandSTORE(MachineInstruction *MI) override;
 
-  /// Since AArch64 does not support for immediate operand as 1st source operand
-  /// for SUB (and for all arithmetic instruction as well), there for it has to
-  /// be materialized first into a register
-  /// TODO: expand the implementation for all arithmetic instruction
+  /// Since AArch64 does not support for immediate operand as first source
+  /// operand for SUB (and for other arithmetic instruction as well), therefore
+  /// it has to be materialized first into a register
   bool ExpandSUB(MachineInstruction *MI) override;
+
+  /// Since AArch64 does not support for immediate operand as last source
+  /// operand for some arithmetic instruction, therefore it has to be
+  /// materialized first into a register
+  bool ExpandMUL(MachineInstruction *MI) override;
+  bool ExpandDIV(MachineInstruction *MI) override;
+  bool ExpandDIVU(MachineInstruction *MI) override;
 
   /// Since AArch64 do sign extension when loading therefore if the ZEXT is
   /// used only to zero extend a load result then it can be merged with the

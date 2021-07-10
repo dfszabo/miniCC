@@ -11,6 +11,7 @@ using namespace AArch64;
 bool AArch64InstructionLegalizer::Check(MachineInstruction *MI) {
   switch (MI->GetOpcode()) {
   case MachineInstruction::MOD:
+  case MachineInstruction::MODU:
     return false;
   case MachineInstruction::STORE:
     if (MI->GetOperands().back().IsImmediate())
@@ -18,6 +19,12 @@ bool AArch64InstructionLegalizer::Check(MachineInstruction *MI) {
     break;
   case MachineInstruction::SUB:
     if (MI->GetOperand(1)->IsImmediate())
+      return false;
+    break;
+  case MachineInstruction::MUL:
+  case MachineInstruction::DIV:
+  case MachineInstruction::DIVU:
+    if (MI->GetOperand(2)->IsImmediate())
       return false;
     break;
   case MachineInstruction::ZEXT:
@@ -33,8 +40,12 @@ bool AArch64InstructionLegalizer::Check(MachineInstruction *MI) {
 bool AArch64InstructionLegalizer::IsExpandable(const MachineInstruction *MI) {
   switch (MI->GetOpcode()) {
   case MachineInstruction::MOD:
+  case MachineInstruction::MODU:
   case MachineInstruction::STORE:
   case MachineInstruction::SUB:
+  case MachineInstruction::MUL:
+  case MachineInstruction::DIV:
+  case MachineInstruction::DIVU:
   case MachineInstruction::ZEXT:
   case MachineInstruction::GLOBAL_ADDRESS:
     return true;
@@ -80,24 +91,45 @@ bool AArch64InstructionLegalizer::ExpandSTORE(MachineInstruction *MI) {
   return true;
 }
 
-bool AArch64InstructionLegalizer::ExpandSUB(MachineInstruction *MI) {
+bool ExpandArithmeticInstWithImm(MachineInstruction *MI, size_t Index) {
   assert(MI->GetOperandsNumber() == 3 && "SUB must have exactly 3 operands");
+  assert(Index < MI->GetOperandsNumber());
   auto ParentBB = MI->GetParent();
 
   auto MOV = MachineInstruction(MachineInstruction::LOAD_IMM, nullptr);
   auto DestReg = ParentBB->GetParent()->GetNextAvailableVReg();
-  MOV.AddVirtualRegister(DestReg, MI->GetOperand(1)->GetSize());
-  MOV.AddOperand(*MI->GetOperand(1));
+  MOV.AddVirtualRegister(DestReg, MI->GetOperand(Index)->GetSize());
+  MOV.AddOperand(*MI->GetOperand(Index));
 
   // replace the immediate operand with the destination of the immediate load
-  MI->RemoveOperand(1);
-  MI->InsertOperand(1,MachineOperand::CreateVirtualRegister(
-                           DestReg,MI->GetOperand(0)->GetSize()));
+  MI->RemoveOperand(Index);
+  MI->InsertOperand(Index,MachineOperand::CreateVirtualRegister(
+      DestReg,MI->GetOperand(0)->GetSize()));
 
   // insert after modifying SUB, otherwise MI would became invalid
   ParentBB->InsertBefore(std::move(MOV), MI);
 
   return true;
+}
+
+bool AArch64InstructionLegalizer::ExpandSUB(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "SUB must have exactly 3 operands");
+  return ExpandArithmeticInstWithImm(MI, 1);
+}
+
+bool AArch64InstructionLegalizer::ExpandMUL(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "MUL must have exactly 3 operands");
+  return ExpandArithmeticInstWithImm(MI, 2);
+}
+
+bool AArch64InstructionLegalizer::ExpandDIV(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "DIV must have exactly 3 operands");
+  return ExpandArithmeticInstWithImm(MI, 2);
+}
+
+bool AArch64InstructionLegalizer::ExpandDIVU(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "DIVU must have exactly 3 operands");
+  return ExpandArithmeticInstWithImm(MI, 2);
 }
 
 bool AArch64InstructionLegalizer::ExpandZEXT(MachineInstruction *MI) {

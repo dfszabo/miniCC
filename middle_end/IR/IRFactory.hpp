@@ -62,8 +62,16 @@ public:
     return CreateBinaryInstruction(Instruction::DIV, LHS, RHS);
   }
 
+  Instruction *CreateDIVU(Value *LHS, Value *RHS) {
+    return CreateBinaryInstruction(Instruction::DIVU, LHS, RHS);
+  }
+
   Instruction *CreateMOD(Value *LHS, Value *RHS) {
     return CreateBinaryInstruction(Instruction::MOD, LHS, RHS);
+  }
+
+  Instruction *CreateMODU(Value *LHS, Value *RHS) {
+    return CreateBinaryInstruction(Instruction::MODU, LHS, RHS);
   }
 
   // FIXME: revisit this, it may be better to make a unique instruction variant

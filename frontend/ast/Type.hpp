@@ -181,6 +181,18 @@ public:
     }
   }
 
+  bool IsUnsigned() const {
+    switch (Ty) {
+    case UnsignedChar:
+    case UnsignedInt:
+    case UnsignedLong:
+    case UnsignedLongLong:
+      return true;
+    default:
+      return false;
+    }
+  }
+
   bool IsConst() const { return Qualifiers & Const; }
 
   std::vector<Type> &GetTypeList() { return TypeList; }

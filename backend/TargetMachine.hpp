@@ -29,7 +29,9 @@ public:
   virtual bool SelectSUB(MachineInstruction *MI) { return false; }
   virtual bool SelectMUL(MachineInstruction *MI) { return false; }
   virtual bool SelectDIV(MachineInstruction *MI) { return false; }
+  virtual bool SelectDIVU(MachineInstruction *MI) { return false; }
   virtual bool SelectMOD(MachineInstruction *MI) { return false; }
+  virtual bool SelectMODU(MachineInstruction *MI) { return false; }
   virtual bool SelectCMP(MachineInstruction *MI) { return false; }
   virtual bool SelectSEXT(MachineInstruction *MI) { return false; }
   virtual bool SelectZEXT(MachineInstruction *MI) { return false; }

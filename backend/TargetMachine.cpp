@@ -14,10 +14,14 @@ bool TargetMachine::SelectInstruction(MachineInstruction *MI) {
     return SelectMUL(MI);
   case MachineInstruction::DIV:
     return SelectDIV(MI);
+  case MachineInstruction::DIVU:
+    return SelectDIVU(MI);
   case MachineInstruction::CMP:
     return SelectCMP(MI);
   case MachineInstruction::MOD:
     return SelectMOD(MI);
+  case MachineInstruction::MODU:
+    return SelectMODU(MI);
   case MachineInstruction::SEXT:
     return SelectSEXT(MI);
   case MachineInstruction::ZEXT:

@@ -18,9 +18,12 @@ public:
   /// Predicate to decide whether the instruction is expandable or not.
   virtual bool IsExpandable(const MachineInstruction *MI) { return false; }
 
-  virtual bool ExpandMOD(MachineInstruction *MI);
+  virtual bool ExpandMOD(MachineInstruction *MI, bool IsUnsigned);
   virtual bool ExpandSTORE(MachineInstruction *MI);
   virtual bool ExpandSUB(MachineInstruction *MI) { return false; }
+  virtual bool ExpandMUL(MachineInstruction *MI) { return false; }
+  virtual bool ExpandDIV(MachineInstruction *MI) { return false; }
+  virtual bool ExpandDIVU(MachineInstruction *MI) { return false; }
   virtual bool ExpandZEXT(MachineInstruction *MI) { return false; }
   virtual bool ExpandGLOBAL_ADDRESS(MachineInstruction *MI) { return false; }
 

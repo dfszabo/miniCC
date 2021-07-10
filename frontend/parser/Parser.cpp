@@ -1059,8 +1059,9 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
     if (BinaryOperator.GetKind() == Token::Percent) {
       // then both side should be an integer type without a casting
       if (LeftType != Type::Int || RightType != Type::Int)
-        EmitError("Modulo operator can only operate on integers", lexer,
-                  BinaryOperator);
+        // TODO: fix this semantic check
+        ;//EmitError("Modulo operator can only operate on integers", lexer,
+         //         BinaryOperator);
     }
     // Having different types.
     else if (LeftType != RightType &&

@@ -536,7 +536,9 @@ public:
     SUB,
     MUL,
     DIV,
+    DIVU,
     MOD,
+    MODU,
     AND,
     Not,
     EQ,
@@ -565,8 +567,12 @@ public:
     case Token::Astrix:
       return MUL;
     case Token::ForwardSlash:
+      if (GetResultType().IsUnsigned())
+        return DIVU;
       return DIV;
     case Token::Percent:
+      if (GetResultType().IsUnsigned())
+        return MODU;
       return MOD;
     case Token::And:
       return AND;

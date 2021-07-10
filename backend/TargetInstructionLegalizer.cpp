@@ -11,8 +11,9 @@
 ///     DIV %div_res, %num, %mod
 ///     MUL %mul_res, %div_res, %mod
 ///     SUB %res, %num, %mul_res
-bool TargetInstructionLegalizer::ExpandMOD(MachineInstruction *MI) {
-  assert(MI->GetOperandsNumber() == 3 && "MOD must have exactly 3 operands");
+bool TargetInstructionLegalizer::ExpandMOD(MachineInstruction *MI,
+                                           bool IsUnsigned) {
+  assert(MI->GetOperandsNumber() == 3 && "MOD{U} must have exactly 3 operands");
   auto ParentBB = MI->GetParent();
   auto ParentFunc = ParentBB->GetParent();
 
@@ -26,23 +27,21 @@ bool TargetInstructionLegalizer::ExpandMOD(MachineInstruction *MI) {
          "Operand #2 must be a virtual register or an immediate");
 
   auto DIVResult = ParentFunc->GetNextAvailableVReg();
-  MachineInstruction DIV;
-  DIV.SetOpcode(MachineInstruction::DIV);
+  auto DIV = MachineInstruction(IsUnsigned ? MachineInstruction::DIVU :
+                                           MachineInstruction::DIV, ParentBB);
   DIV.AddOperand(MachineOperand::CreateVirtualRegister(DIVResult));
   DIV.AddOperand(NumVReg);
   DIV.AddOperand(ModVReg);
   auto DIVIter = ParentBB->ReplaceInstr(std::move(DIV), MI);
 
   auto MULResult = ParentFunc->GetNextAvailableVReg();
-  MachineInstruction MUL;
-  MUL.SetOpcode(MachineInstruction::MUL);
+  auto MUL = MachineInstruction(MachineInstruction::MUL, ParentBB);
   MUL.AddOperand(MachineOperand::CreateVirtualRegister(MULResult));
   MUL.AddOperand(MachineOperand::CreateVirtualRegister(DIVResult));
   MUL.AddOperand(ModVReg);
   auto MULIter = ParentBB->InsertAfter(std::move(MUL), &*DIVIter);
 
-  MachineInstruction SUB;
-  SUB.SetOpcode(MachineInstruction::SUB);
+  auto SUB = MachineInstruction(MachineInstruction::SUB, ParentBB);
   SUB.AddOperand(ResVReg);
   SUB.AddOperand(NumVReg);
   SUB.AddOperand(MachineOperand::CreateVirtualRegister(MULResult));
@@ -90,11 +89,18 @@ bool TargetInstructionLegalizer::ExpandSTORE(MachineInstruction *MI) {
 bool TargetInstructionLegalizer::Expand(MachineInstruction *MI) {
   switch (MI->GetOpcode()) {
   case MachineInstruction::MOD:
-    return ExpandMOD(MI);
+  case MachineInstruction::MODU:
+    return ExpandMOD(MI, MI->GetOpcode() == MachineInstruction::MODU);
   case MachineInstruction::STORE:
     return ExpandSTORE(MI);
   case MachineInstruction::SUB:
     return ExpandSUB(MI);
+  case MachineInstruction::MUL:
+    return ExpandMUL(MI);
+  case MachineInstruction::DIV:
+    return ExpandDIV(MI);
+  case MachineInstruction::DIVU:
+    return ExpandDIVU(MI);
   case MachineInstruction::ZEXT:
     return ExpandZEXT(MI);
   case MachineInstruction::GLOBAL_ADDRESS:

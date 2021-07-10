@@ -19,7 +19,9 @@ public:
     SUB,
     MUL,
     DIV,
+    DIVU,
     MOD,
+    MODU,
     CMP, // Logical comparison
 
     // Conversions

@@ -15,8 +15,12 @@ std::string Instruction::AsString(IKind IK) {
     return "mul";
   case DIV:
     return "div";
+  case DIVU:
+    return "divu";
   case MOD:
     return "mod";
+  case MODU:
+    return "modu";
   case SEXT:
     return "sext";
   case ZEXT:

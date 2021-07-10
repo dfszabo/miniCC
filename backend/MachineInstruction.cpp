@@ -23,8 +23,14 @@ void MachineInstruction::Print(TargetMachine *TM) const {
   case DIV:
     OpcodeStr = "DIV";
     break;
+  case DIVU:
+    OpcodeStr = "DIVU";
+    break;
   case MOD:
     OpcodeStr = "MOD";
+    break;
+  case MODU:
+    OpcodeStr = "MODU";
     break;
   case CMP:
     OpcodeStr = "CMP";
