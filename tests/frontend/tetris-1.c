@@ -2,6 +2,9 @@
 // FUNC-DECL: unsigned new_tetris()
 // TEST-CASE: new_tetris() -> 5
 
+#define BOARD_HEIGHT 20
+#define BOARD_WIDTH 10
+
 typedef unsigned uint;
 
 typedef struct piece {
@@ -22,8 +25,8 @@ typedef struct tetris {
 Tetris new_tetris() {
   Tetris tetris;
 
-  for (int row = 0; row < 20; row++)
-    for (int col = 0; col < 10; col++)
+  for (int row = 0; row < BOARD_HEIGHT; row++)
+    for (int col = 0; col < BOARD_WIDTH; col++)
       tetris.board[row][col] = 0;
 
   tetris.score = 0;

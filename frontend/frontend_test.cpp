@@ -9,7 +9,7 @@
 #include "../middle_end/IR/IRFactory.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
-#include "parser/SymbolTable.hpp"
+#include "PreProcessor.hpp"
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -42,6 +42,7 @@ bool getFileContent(std::string fileName, std::vector<std::string> &vecOfStrs) {
 /// TODO: Make a proper driver
 int main(int argc, char *argv[]) {
   std::string FilePath = "tests/test.txt";
+  bool DumpPreProcessedFile = false;
   bool DumpTokens = false;
   bool DumpAST = false;
   bool DumpIR = false;
@@ -52,7 +53,10 @@ int main(int argc, char *argv[]) {
     if (argv[i][0] != '-')
       FilePath = std::string(argv[i]);
     else {
-      if (!std::string(&argv[i][1]).compare("dump-tokens")) {
+      if (!std::string(&argv[i][1]).compare("E")) {
+        DumpPreProcessedFile = true;
+        continue;
+      } else if (!std::string(&argv[i][1]).compare("dump-tokens")) {
         DumpTokens = true;
         continue;
       } else if (!std::string(&argv[i][1]).compare("dump-ast")) {
@@ -88,6 +92,14 @@ int main(int argc, char *argv[]) {
 
   std::vector<std::string> src;
   getFileContent(FilePath.c_str(), src);
+
+  PreProcessor(src).Run();
+
+  if (DumpPreProcessedFile) {
+    for (auto &Line : src)
+      std::cout << Line << std::endl;
+    std::cout << std::endl;
+  }
 
   std::unique_ptr<TargetMachine> TM;
 
