@@ -510,7 +510,8 @@ public:
     PrintLn(NameStr.c_str());
     for (size_t i = 0; i < Arguments.size(); i++)
       Arguments[i]->ASTDump(tab + 2);
-    Body->ASTDump(tab + 2);
+    if (Body)
+      Body->ASTDump(tab + 2);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;

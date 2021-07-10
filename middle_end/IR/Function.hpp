@@ -34,6 +34,9 @@ public:
     IgnorableStructVarName = Name;
   }
 
+  void SetToDeclarationOnly() { DeclarationOnly = true; }
+  bool IsDeclarationOnly() const { return DeclarationOnly; }
+
   bool IsRetTypeVoid() { return ReturnType.IsVoid(); }
 
   void CreateBasicBlock();
@@ -50,6 +53,7 @@ private:
   BasicBlockList BasicBlocks;
 
   std::string IgnorableStructVarName = "";
+  bool DeclarationOnly = false;
 };
 
 #endif
