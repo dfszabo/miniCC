@@ -322,8 +322,9 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
 
       // in case the struct is to big to pass by value
       if (!RetType.IsPTR() &&
-          (RetType.GetByteSize() * 8) > IRF->GetTargetMachine()->GetABI()->
-                                        GetMaxStructSizePassedByValue()) {
+          (RetType.GetByteSize() * 8) > IRF->GetTargetMachine()
+                                            ->GetABI()
+                                            ->GetMaxStructSizePassedByValue()) {
         NeedIgnore = true;
         ParamType = RetType;
         ParamType.IncrementPointerLevel();
@@ -334,7 +335,8 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
 
         // on the same note create the extra struct pointer operand
         auto ParamName = "struct." + ParamType.GetStructName();
-        ImplicitStructPtr = std::make_unique<FunctionParameter>(ParamName, ParamType);
+        ImplicitStructPtr =
+            std::make_unique<FunctionParameter>(ParamName, ParamType);
       }
     } else
       assert(!"Other cases unhandled");
@@ -375,6 +377,11 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   }
 
   IRF->CreateNewFunction(Name, RetType);
+
+  if (Body == nullptr) {
+    IRF->GetCurrentFunction()->SetToDeclarationOnly();
+    return nullptr;
+  }
 
   if (ImplicitStructPtr) {
     IRF->AddToSymbolTable(ImplicitStructPtr->GetName(), ImplicitStructPtr.get());

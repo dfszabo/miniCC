@@ -653,6 +653,10 @@ void IRtoLLIR::GenerateLLIRFromIR() {
     // reset state
     Reset();
 
+    // function declarations does not need any LLIR code
+    if (Fun.IsDeclarationOnly())
+      continue;
+
     TU->AddNewFunction();
     MachineFunction *MFunction = TU->GetCurrentFunction();
     assert(MFunction);

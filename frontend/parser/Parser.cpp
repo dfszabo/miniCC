@@ -344,9 +344,11 @@ Parser::ParseFunctionDeclaration(const Type &ReturnType, const Token &Name) {
   auto NameStr = Name.GetString();
   InsertToSymTable(NameStr, FuncType, true);
 
-  // For now assume that a function is defined always not just declared
-  // TODO: was it planed to have function declaration?
-  auto Body = ParseCompoundStatement();
+  std::unique_ptr<CompoundStatement> Body = nullptr;
+  if (lexer.Is(Token::SemiColon))
+    Lex(); // eat ';'
+  else
+    Body = ParseCompoundStatement();
 
   // Removing the function's scope since we done with its parsing
   SymTabStack.PopSymTable();

@@ -37,6 +37,8 @@ void Function::Insert(std::unique_ptr<FunctionParameter> FP) {
 }
 
 void Function::Print() const {
+  if (DeclarationOnly)
+    std::cout << "declare ";
   std::cout << "func " << Name << " (";
 
   auto size = Parameters.size();
@@ -53,10 +55,16 @@ void Function::Print() const {
   if (!ReturnType.IsVoid()) {
     std::cout << " -> " << ReturnType.AsString();
   }
-  std::cout << ":" << std::endl;
 
-  for (auto &BB : BasicBlocks)
-    BB->Print();
+  if (DeclarationOnly)
+    std::cout << ";";
+  else
+    std::cout << ":";
+  std::cout << std::endl;
+
+  if (!DeclarationOnly)
+    for (auto &BB : BasicBlocks)
+      BB->Print();
 
   std::cout << std::endl;
 }
