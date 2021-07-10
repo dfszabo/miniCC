@@ -25,7 +25,9 @@ public:
   bool SelectSUB(MachineInstruction *MI) override;
   bool SelectMUL(MachineInstruction *MI) override;
   bool SelectDIV(MachineInstruction *MI) override;
+  bool SelectDIVU(MachineInstruction *MI) override;
   bool SelectMOD(MachineInstruction *MI) override;
+  bool SelectMODU(MachineInstruction *MI) override;
   bool SelectCMP(MachineInstruction *MI) override;
   bool SelectSEXT(MachineInstruction *MI) override;
   bool SelectTRUNC(MachineInstruction *MI) override;

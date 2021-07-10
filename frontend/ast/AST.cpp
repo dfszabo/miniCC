@@ -990,8 +990,12 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     return IRF->CreateMUL(L, R);
   case DIV:
     return IRF->CreateDIV(L, R);
+  case DIVU:
+    return IRF->CreateDIVU(L, R);
   case MOD:
     return IRF->CreateMOD(L, R);
+  case MODU:
+    return IRF->CreateMODU(L, R);
   case AND:
     return IRF->CreateAND(L, R);
   case EQ:

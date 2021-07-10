@@ -105,8 +105,28 @@ bool AArch64TargetMachine::SelectDIV(MachineInstruction *MI) {
   return false;
 }
 
+bool AArch64TargetMachine::SelectDIVU(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "DIVU must have 3 operands");
+
+  // If last operand is an immediate then select "addi"
+  if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
+    assert(!"Immediate not supported");
+  }
+  else {
+    MI->SetOpcode(UDIV_rrr);
+    return true;
+  }
+
+  return false;
+}
+
 bool AArch64TargetMachine::SelectMOD(MachineInstruction *MI) {
   assert(!"MOD not supported");
+  return false;
+}
+
+bool AArch64TargetMachine::SelectMODU(MachineInstruction *MI) {
+  assert(!"MODU not supported");
   return false;
 }
 

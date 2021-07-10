@@ -5,6 +5,7 @@ using namespace AArch64;
 AArch64InstructionDefinitions::AArch64InstructionDefinitions() {
   InstrEnumStrings = {"ADD_rrr", "ADD_rri", "AND_rri", "SUB_rrr",  "SUB_rri",
                       "SUBS",    "MUL_rri", "MUL_rrr", "SDIV_rri", "SDIV_rrr",
+                      "UDIV_rrr",
                       "CMP_ri",  "CMP_rr",  "CSET",    "SXTB",     "SXTW",
                       "MOV_rc",  "MOV_rr",  "ADRP",    "LDR",      "LDRB",
                       "STR",     "STRB",    "BEQ",     "BNE",      "BGE",
@@ -24,6 +25,7 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[SUBS] = {SUBS, 32, "subs\t$1, $2, $3", {GPR, GPR, GPR}};
       ret[SDIV_rrr] = {SDIV_rrr, 32, "sdiv\t$1, $2, $3", {GPR, GPR, GPR}};
       ret[SDIV_rri] = {SDIV_rri, 32, "sdiv\t$1, $2, #$3", {GPR, GPR, UIMM12}};
+      ret[UDIV_rrr] = {UDIV_rrr, 32, "udiv\t$1, $2, $3", {GPR, GPR, GPR}};
       ret[MUL_rrr] = {MUL_rri, 32, "mul\t$1, $2, $3", {GPR, GPR, GPR}};
       ret[MUL_rri] = {MUL_rrr, 32, "mul\t$1, $2, #$3", {GPR, GPR, UIMM12}};
       ret[CMP_rr] = {CMP_rr, 32, "cmp\t$1, $2", {GPR, GPR}};
