@@ -43,7 +43,7 @@ void PreProcessor::ParseDirective(std::string &Line) {
 
 void PreProcessor::SubstituteMacros(std::string &Line) {
   for (auto &[MacroID, MacroBody] : DefinedMacros)
-    if (Line.find(MacroID) != std::string::npos)
+    while (Line.find(MacroID) != std::string::npos)
       Line.replace(Line.find(MacroID), MacroID.length(), MacroBody);
 }
 
