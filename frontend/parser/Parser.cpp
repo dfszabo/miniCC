@@ -254,7 +254,7 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
   auto Token = GetCurrentToken();
 
   while (IsReturnTypeSpecifier(Token) || lexer.Is(Token::Struct) ||
-      lexer.Is(Token::Enum) || lexer.Is(Token::Typedef)) {
+      lexer.Is(Token::Enum) || IsQualifier(Token.GetKind())) {
     auto Qualifiers = ParseQualifiers();
     Token = GetCurrentToken();
 
@@ -344,6 +344,7 @@ Parser::ParseFunctionDeclaration(const Type &ReturnType, const Token &Name) {
   auto NameStr = Name.GetString();
   InsertToSymTable(NameStr, FuncType, true);
 
+  ReturnsNumber = 0;
   std::unique_ptr<CompoundStatement> Body = nullptr;
   if (lexer.Is(Token::SemiColon))
     Lex(); // eat ';'
@@ -353,7 +354,8 @@ Parser::ParseFunctionDeclaration(const Type &ReturnType, const Token &Name) {
   // Removing the function's scope since we done with its parsing
   SymTabStack.PopSymTable();
 
-  return std::make_unique<FunctionDeclaration>(FuncType, NameStr, PL, Body);
+  return std::make_unique<FunctionDeclaration>(FuncType, NameStr, PL, Body,
+                                               ReturnsNumber);
 }
 
 // <ParameterList> ::= <ParameterDeclaration>? {',' <ParameterDeclaration>}*
@@ -407,10 +409,18 @@ Parser::ParseParameterDeclaration() {
 Type Parser::ParseTypeSpecifier() {
   auto Token = GetCurrentToken();
 
-  if (!IsTypeSpecifier(Token))
+  unsigned Qualifiers = 0;
+  if (IsQualifier(Token.GetKind())) {
+    Qualifiers = ParseQualifiers();
+    Token = GetCurrentToken();
+  }
+
+  if (!IsTypeSpecifier(Token) || (Qualifiers & Type::Typedef))
     assert(!"Invalid type");
 
-  return ParseType(Token.GetKind());
+  auto ParsedType = ParseType(Token.GetKind());
+  ParsedType.SetQualifiers(Qualifiers);
+  return ParsedType;
 }
 
 // <CompoundStatement> ::= '{' <VariableDeclaration>* <Statement>* '}'
@@ -419,7 +429,8 @@ std::unique_ptr<CompoundStatement> Parser::ParseCompoundStatement() {
 
   std::vector<std::unique_ptr<VariableDeclaration>> Declarations;
 
-  while (IsTypeSpecifier(GetCurrentToken()))
+  while (IsTypeSpecifier(GetCurrentToken()) ||
+         IsQualifier(GetCurrentTokenKind()))
     Declarations.push_back(std::move(ParseVariableDeclaration()));
 
   std::vector<std::unique_ptr<Statement>> Statements;
@@ -783,6 +794,8 @@ std::unique_ptr<ContinueStatement> Parser::ParseContinueStatement() {
 // <ReturnStatement> ::= return <Expression>? ';'
 // TODO: we need explicit type conversions here as well
 std::unique_ptr<ReturnStatement> Parser::ParseReturnStatement() {
+  ReturnsNumber++;
+
   Expect(Token::Return);
   auto Expr = ParseExpression();
   auto LeftType = CurrentFuncRetType.GetTypeVariant();
@@ -953,6 +966,8 @@ static int GetBinOpPrecedence(Token::TokenKind TK) {
     return 30;
   case Token::DoubleEqual:
   case Token::BangEqual:
+  case Token::GreaterEqual:
+  case Token::LessEqual:
     return 40;
   case Token::LessThan:
   case Token::GreaterThan:
@@ -1178,7 +1193,7 @@ std::unique_ptr<Expression> Parser::ParseCallExpression(Token Id) {
           CallArgs[i] = std::make_unique<ImplicitCastExpression>(
               std::move(CallArgs[i]), FuncArgTypes[i]);
         else // otherwise its an error
-          EmitError("argument type mismatch", lexer);
+          ;//EmitError("argument type mismatch", lexer);
       }
     }
   }

@@ -13,7 +13,7 @@ public:
   IRtoLLIR(Module &IRModule, MachineIRModule *TranslUnit, TargetMachine *TM)
       : IRM(IRModule), TU(TranslUnit), TM(TM) {}
 
-  MachineOperand GetMachineOperandFromValue(Value *Val, MachineFunction *MF);
+  MachineOperand GetMachineOperandFromValue(Value *Val, MachineBasicBlock *MBB);
 
   void GenerateLLIRFromIR();
 

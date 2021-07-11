@@ -296,14 +296,19 @@ Value *ExpressionStatement::IRCodegen(IRFactory *IRF) {
 }
 
 Value *ReturnStatement::IRCodegen(IRFactory *IRF) {
-  if (!ReturnValue.has_value() || IRF->GetCurrentFunction()->IsRetTypeVoid())
-    return IRF->CreateRET(nullptr);
+  auto RetNum = IRF->GetCurrentFunction()->GetReturnsNumber();
+  IRF->GetCurrentFunction()->SetReturnsNumber(RetNum - 1);
 
-  auto RetVal = ReturnValue.value()->IRCodegen(IRF);
+  bool HasRetVal = ReturnValue.has_value() &&
+                   !IRF->GetCurrentFunction()->IsRetTypeVoid();
 
-  if (RetVal == nullptr)
-    return nullptr;
+  Value* RetVal = HasRetVal ? ReturnValue.value()->IRCodegen(IRF) : nullptr;
 
+  if (IRF->GetCurrentFunction()->HasMultipleReturn()) {
+    if (HasRetVal)
+      IRF->CreateSTR(RetVal, IRF->GetCurrentFunction()->GetReturnValue());
+    return IRF->CreateJUMP(nullptr);
+  }
   return IRF->CreateRET(RetVal);
 }
 
@@ -377,6 +382,7 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   }
 
   IRF->CreateNewFunction(Name, RetType);
+  IRF->GetCurrentFunction()->SetReturnsNumber(ReturnsNumber);
 
   if (Body == nullptr) {
     IRF->GetCurrentFunction()->SetToDeclarationOnly();
@@ -406,7 +412,32 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
       }
   }
 
+  // if there are multiple returns, then create a local variable on the stack
+  // which will hold the different return values
+  auto HasMultipleReturn = ReturnsNumber > 1 && !RetType.IsVoid();
+  if (HasMultipleReturn)
+    IRF->GetCurrentFunction()->SetReturnValue(IRF->CreateSA(Name + ".return",
+                                                       RetType));
+
   Body->IRCodegen(IRF);
+
+  // patching JUMP -s with nullptr destination to make them point to the last BB
+  if (HasMultipleReturn) {
+    auto BBName = Name + "_end";
+    auto RetBB = std::make_unique<BasicBlock>(BBName, IRF->GetCurrentFunction());
+    auto RetBBPtr = RetBB.get();
+    IRF->InsertBB(std::move(RetBB));
+    auto RetVal = IRF->GetCurrentFunction()->GetReturnValue();
+    auto LD = IRF->CreateLD(RetVal->GetType(), RetVal);
+    IRF->CreateRET(LD);
+
+    for (auto &BB : IRF->GetCurrentFunction()->GetBasicBlocks())
+      for (auto &Instr : BB->GetInstructions())
+        if (auto Jump = dynamic_cast<JumpInstruction*>(Instr.get());
+            Jump && Jump->GetTargetBB() == nullptr)
+          Jump->SetTargetBB(RetBBPtr);
+  }
+
   return nullptr;
 }
 
@@ -540,6 +571,9 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
   switch (RetType) {
   case Type::Int:
     IRRetType = IRType(IRType::SINT);
+    break;
+  case Type::UnsignedInt:
+    IRRetType = IRType(IRType::UINT);
     break;
   case Type::Double:
     IRRetType = IRType(IRType::FP, 64);
@@ -842,6 +876,8 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
 }
 
 Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
+  // TODO: simplify this, specially in case if there are actually multiple
+  // logical operations like "a > 0 && a < 10 && a != 5"
   if (GetOperationKind() == ANDL) {
     // goal IR:
     //    # L generated here
@@ -1013,6 +1049,10 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     return IRF->CreateCMP(CompareInstruction::GT, L, R);
   case NE:
     return IRF->CreateCMP(CompareInstruction::NE, L, R);
+  case GE:
+    return IRF->CreateCMP(CompareInstruction::GE, L, R);
+  case LE:
+    return IRF->CreateCMP(CompareInstruction::LE, L, R);
   default:
     assert(!"Unhandled binary instruction type");
     break;

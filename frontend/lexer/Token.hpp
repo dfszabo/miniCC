@@ -39,6 +39,8 @@ public:
     AstrixEqual,
     ForwardSlashEqual,
     BangEqual,
+    GreaterEqual,
+    LessEqual,
     DoubleAnd,
     DoubleEqual,
     MinusGreaterThan,
@@ -148,6 +150,10 @@ public:
       return "/=";
     case BangEqual:
       return "!=";
+    case GreaterEqual:
+      return ">=";
+    case LessEqual:
+      return "<=";
     case And:
       return "&";
     case DoubleAnd:

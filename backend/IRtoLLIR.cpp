@@ -10,9 +10,12 @@
 #include "Support.hpp"
 
 MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
-                                                    MachineFunction *MF) {
+                                                    MachineBasicBlock *MBB) {
   assert(Val);
+  assert(MBB);
+  auto MF = MBB->GetParent();
   assert(MF);
+
   if (Val->IsRegister()) {
     auto BitWidth = Val->GetBitWidth();
     unsigned NextVReg;
@@ -28,8 +31,7 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
       NextVReg = MF->GetNextAvailableVReg();
       Instr.AddVirtualRegister(NextVReg);
       Instr.AddStackAccess(Val->GetID());
-      MF->GetBasicBlocks().back().InsertInstr(Instr);
-      IRVregToLLIRVreg[Val->GetID()] = NextVReg;
+      MBB->InsertInstr(Instr);
     }
     // If the IR VReg is mapped already to an LLIR VReg then use that
     else if (IRVregToLLIRVreg.count(Val->GetID()) > 0) {
@@ -39,7 +41,7 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
         NextVReg = MF->GetNextAvailableVReg();
         Instr.AddVirtualRegister(NextVReg);
         Instr.AddStackAccess(IRVregToLLIRVreg[Val->GetID()]);
-        MF->GetBasicBlocks().back().InsertInstr(Instr);
+        MBB->InsertInstr(Instr);
       } else
         NextVReg = IRVregToLLIRVreg[Val->GetID()];
     }
@@ -91,9 +93,9 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
 
   // Three address ALU instructions: INSTR Result, Op1, Op2
   if (auto I = dynamic_cast<BinaryInstruction *>(Instr); I != nullptr) {
-    auto Result = GetMachineOperandFromValue((Value *)I, ParentFunction);
-    auto FirstSrcOp = GetMachineOperandFromValue(I->GetLHS(), ParentFunction);
-    auto SecondSrcOp = GetMachineOperandFromValue(I->GetRHS(), ParentFunction);
+    auto Result = GetMachineOperandFromValue((Value *)I, BB);
+    auto FirstSrcOp = GetMachineOperandFromValue(I->GetLHS(), BB);
+    auto SecondSrcOp = GetMachineOperandFromValue(I->GetRHS(), BB);
 
     ResultMI.AddOperand(Result);
     ResultMI.AddOperand(FirstSrcOp);
@@ -101,8 +103,8 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
   }
   // Two address ALU instructions: INSTR Result, Op
   else if (auto I = dynamic_cast<UnaryInstruction *>(Instr); I != nullptr) {
-    auto Result = GetMachineOperandFromValue((Value *)I, ParentFunction);
-    auto Op = GetMachineOperandFromValue(I->GetOperand(), ParentFunction);
+    auto Result = GetMachineOperandFromValue((Value *)I, BB);
+    auto Op = GetMachineOperandFromValue(I->GetOperand(), BB);
 
     ResultMI.AddOperand(Result);
     ResultMI.AddOperand(Op);
@@ -183,7 +185,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         }
       }
     } else
-      ResultMI.AddOperand(GetMachineOperandFromValue(I->GetSavedValue(), ParentFunction));
+      ResultMI.AddOperand(GetMachineOperandFromValue(I->GetSavedValue(), BB));
   }
   // Load instruction: LD Dest, [address]
   else if (auto I = dynamic_cast<LoadInstruction *>(Instr); I != nullptr) {
@@ -207,7 +209,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     }
 
     ResultMI.AddAttribute(MachineInstruction::IS_LOAD);
-    ResultMI.AddOperand(GetMachineOperandFromValue((Value *)I, ParentFunction));
+    ResultMI.AddOperand(GetMachineOperandFromValue((Value *)I, BB));
 
     // Check if the instruction accessing the stack
     if (ParentFunction->IsStackSlot(AddressReg))
@@ -257,7 +259,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     else if (IsStack)
       GoalInstr = MachineInstruction(MachineInstruction::STACK_ADDRESS, BB);
 
-    auto Dest = GetMachineOperandFromValue((Value *)I, ParentFunction);
+    auto Dest = GetMachineOperandFromValue((Value *)I, BB);
     GoalInstr.AddOperand(Dest);
 
     if (IsGlobal)
@@ -269,7 +271,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     unsigned ConstantIndexPart = 0;
     bool IndexIsInReg = false;
     unsigned MULResVReg = 0;
-    auto IndexReg = GetMachineOperandFromValue(I->GetIndex(), ParentFunction);
+    auto IndexReg = GetMachineOperandFromValue(I->GetIndex(), BB);
     // If the index is a constant
     if (I->GetIndex()->IsConstant()) {
       auto Index = ((Constant*)I->GetIndex())->GetIntValue();
@@ -359,7 +361,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     // In case if the source is from a register (let say from a previous load)
     // then the second operand is simply this source reg
     if (IsReg)
-      ADD.AddOperand(GetMachineOperandFromValue(I->GetSource(), ParentFunction));
+      ADD.AddOperand(GetMachineOperandFromValue(I->GetSource(), BB));
     else
       // Otherwise (stack or global case) the base address is loaded in Dest by
       // the preceding STACK_ADDRESS or GLOBAL_ADDRESS instruction
@@ -394,16 +396,16 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         LabelFalse = BB.GetName().c_str();
     }
 
-    ResultMI.AddOperand(GetMachineOperandFromValue(I->GetCondition(), ParentFunction));
+    ResultMI.AddOperand(GetMachineOperandFromValue(I->GetCondition(), BB));
     ResultMI.AddLabel(LabelTrue);
     if (I->HasFalseLabel())
       ResultMI.AddLabel(LabelTrue);
   }
-  // Compare instruction: ret op
+  // Compare instruction: cmp dest, src1, src2
   else if (auto I = dynamic_cast<CompareInstruction *>(Instr); I != nullptr) {
-    auto Result = GetMachineOperandFromValue((Value *)I, ParentFunction);
-    auto FirstSrcOp = GetMachineOperandFromValue(I->GetLHS(), ParentFunction);
-    auto SecondSrcOp = GetMachineOperandFromValue(I->GetRHS(), ParentFunction);
+    auto Result = GetMachineOperandFromValue((Value *)I, BB);
+    auto FirstSrcOp = GetMachineOperandFromValue(I->GetLHS(), BB);
+    auto SecondSrcOp = GetMachineOperandFromValue(I->GetRHS(), BB);
 
     ResultMI.AddOperand(Result);
     ResultMI.AddOperand(FirstSrcOp);
@@ -469,10 +471,22 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       else {
         Instr = MachineInstruction(MachineInstruction::MOV, BB);
 
-        Instr.AddRegister(TargetArgRegs[ParamCounter]->GetID(),
-                          TargetArgRegs[ParamCounter]->GetBitWidth());
+        auto Src = GetMachineOperandFromValue(Param, BB);
+        auto ParamPhysReg = TargetArgRegs[ParamCounter]->GetID();
+        auto ParamPhysRegSize = TargetArgRegs[ParamCounter]->GetBitWidth();
 
-        Instr.AddOperand(GetMachineOperandFromValue(Param, ParentFunction));
+        if (Src.GetSize() < ParamPhysRegSize) {
+          ParamPhysReg = TargetArgRegs[ParamCounter]->GetSubRegs()[0];
+          ParamPhysRegSize =
+              TM->GetRegInfo()
+                  ->GetRegisterByID(
+                      TargetArgRegs[ParamCounter]->GetSubRegs()[0])
+                  ->GetBitWidth();
+        }
+
+        Instr.AddRegister(ParamPhysReg, ParamPhysRegSize);
+
+        Instr.AddOperand(Src);
         BB->InsertInstr(Instr);
         ParamCounter++;
       }
@@ -529,7 +543,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     if (I->GetRetVal() == nullptr)
       return ResultMI;
 
-    auto Result = GetMachineOperandFromValue(I->GetRetVal(), ParentFunction);
+    auto Result = GetMachineOperandFromValue(I->GetRetVal(), BB);
     ResultMI.AddOperand(Result);
 
     // insert load to load in the return val to the return registers
@@ -553,7 +567,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
 
       auto LoadImm = MachineInstruction(MachineInstruction::LOAD_IMM, BB);
       LoadImm.AddRegister(RetRegs[0]->GetID(), RetRegs[0]->GetBitWidth());
-      LoadImm.AddOperand(GetMachineOperandFromValue(I->GetRetVal(), ParentFunction));
+      LoadImm.AddOperand(GetMachineOperandFromValue(I->GetRetVal(), BB));
       BB->InsertInstr(LoadImm);
     }
   }
@@ -596,11 +610,13 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
 
 /// For each stack allocation instruction insert a new entry into the StackFrame
 void HandleStackAllocation(StackAllocationInstruction *Instr,
-                           MachineFunction *Func) {
+                           MachineFunction *Func, TargetMachine *TM) {
   auto ReferredType = Instr->GetType();
   assert(ReferredType.GetPointerLevel() > 0);
   ReferredType.DecrementPointerLevel();
-  Func->InsertStackSlot(Instr->GetID(), ReferredType.GetByteSize());
+  auto IsPTR = ReferredType.GetPointerLevel() > 0;
+  Func->InsertStackSlot(Instr->GetID(), IsPTR ? TM->GetPointerSize() / 8 :
+                                              ReferredType.GetByteSize());
 }
 
 void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
@@ -677,7 +693,7 @@ void IRtoLLIR::GenerateLLIRFromIR() {
 
         if (InstrPtr->IsStackAllocation()) {
           HandleStackAllocation((StackAllocationInstruction *)InstrPtr,
-                                MFunction);
+                                MFunction, TM);
           continue;
         }
         MFuncMBBs[BBCounter].InsertInstr(

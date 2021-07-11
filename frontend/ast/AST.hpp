@@ -499,8 +499,9 @@ public:
   FunctionDeclaration() = delete;
 
   FunctionDeclaration(Type FT, std::string Name, ParamVec &Args,
-                      std::unique_ptr<CompoundStatement> &Body)
-      : T(FT), Name(Name), Arguments(std::move(Args)), Body(std::move(Body)) {}
+                      std::unique_ptr<CompoundStatement> &Body, unsigned RetNum)
+      : T(FT), Name(Name), Arguments(std::move(Args)), Body(std::move(Body)),
+        ReturnsNumber(RetNum) {}
 
   void ASTDump(unsigned tab = 0) override {
     Print("FunctionDeclaration ", tab);
@@ -521,6 +522,7 @@ private:
   std::string Name;
   ParamVec Arguments;
   std::unique_ptr<CompoundStatement> Body;
+  unsigned ReturnsNumber;
 };
 
 class BinaryExpression : public Expression {
@@ -546,6 +548,8 @@ public:
     LT,
     GT,
     NE,
+    GE,
+    LE,
     ANDL
   };
 
@@ -587,6 +591,10 @@ public:
       return GT;
     case Token::BangEqual:
       return NE;
+    case Token::GreaterEqual:
+      return GE;
+    case Token::LessEqual:
+      return LE;
     case Token::DoubleAnd:
       return ANDL;
     default:

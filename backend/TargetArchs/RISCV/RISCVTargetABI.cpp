@@ -10,14 +10,14 @@ RISCVTargetABI::RISCVTargetABI(RegisterInfo *RI) {
     ArgumentRegisters.push_back(RI->GetRegister(i));
 
   // sp
-  CalleSavedRegisters.push_back(RI->GetRegister(2));
+  CalleeSavedRegisters.push_back(RI->GetRegister(2));
   // s0
-  CalleSavedRegisters.push_back(RI->GetRegister(8));
+  CalleeSavedRegisters.push_back(RI->GetRegister(8));
   // s1
-  CalleSavedRegisters.push_back(RI->GetRegister(9));
+  CalleeSavedRegisters.push_back(RI->GetRegister(9));
   // s2-s11
   for (int i = 18; i <= 27; i++)
-    CalleSavedRegisters.push_back(RI->GetRegister(i));
+    CalleeSavedRegisters.push_back(RI->GetRegister(i));
 
   // a0-a7
   for (int i = 10; i <= 17; i++)

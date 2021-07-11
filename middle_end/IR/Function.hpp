@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+class Value;
 class BasicBlock;
 class FunctionParameter;
 
@@ -37,6 +38,16 @@ public:
   void SetToDeclarationOnly() { DeclarationOnly = true; }
   bool IsDeclarationOnly() const { return DeclarationOnly; }
 
+  unsigned GetReturnsNumber() const { return ReturnsNumber; }
+  void SetReturnsNumber(unsigned n) { ReturnsNumber = n; }
+
+  Value *GetReturnValue() { return ReturnValue; }
+  void SetReturnValue(Value *v) { ReturnValue = v; }
+
+  /// If the function had multiple return value, then this field was set
+  /// therefore it is also usable as a predicate
+  bool HasMultipleReturn() const { return ReturnValue != nullptr; }
+
   bool IsRetTypeVoid() { return ReturnType.IsVoid(); }
 
   void CreateBasicBlock();
@@ -54,6 +65,8 @@ private:
 
   std::string IgnorableStructVarName = "";
   bool DeclarationOnly = false;
+  unsigned ReturnsNumber = ~0;
+  Value *ReturnValue = nullptr;
 };
 
 #endif
