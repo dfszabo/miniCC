@@ -17,8 +17,14 @@ public:
   void InsertLinkRegisterReload(MachineFunction &Func);
   void InsertStackAdjustmentUpward(MachineFunction &Func);
   void InsertStackAdjustmentDownward(MachineFunction &Func);
+  // TODO: naming inconsistency...
+  void SpillClobberedCalleeSavedRegisters(MachineFunction &Func);
+  void ReloadClobberedCalleeSavedRegisters(MachineFunction &Func);
 
 private:
+  MachineInstruction CreateSTORE(MachineFunction &Func, unsigned Register);
+  MachineInstruction CreateLOAD(MachineFunction &Func, unsigned Register);
+
   MachineIRModule *MIRM;
   TargetMachine *TM;
 };

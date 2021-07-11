@@ -61,8 +61,19 @@ void PreAllocateReturnRegister(
 }
 
 PhysicalReg GetNextAvailableReg(uint8_t BitSize, std::vector<PhysicalReg> &Pool,
-                                TargetMachine *TM) {
+                                std::vector<PhysicalReg> &BackupPool,
+                                TargetMachine *TM, MachineFunction &MFunc) {
   unsigned loopCounter = 0;
+
+  // TODO: implement spilling and remove this assertion then
+  assert(!(Pool.empty() && BackupPool.empty()) && "Ran out of registers");
+
+  if (Pool.empty()) {
+    Pool.push_back(BackupPool[0]);
+    MFunc.GetUsedCalleSavedRegs().push_back(BackupPool[0]);
+    BackupPool.erase(BackupPool.begin());
+  }
+
   for (auto UnAllocatedReg : Pool) {
     auto UnAllocatedRegInfo = TM->GetRegInfo()->GetRegisterByID(UnAllocatedReg);
     // If the register bit width matches the requested size then return this
@@ -100,9 +111,16 @@ void RegisterAllocator::RunRA() {
     std::map<VirtualReg, PhysicalReg> AllocatedRegisters;
     std::vector<PhysicalReg> RegisterPool;
 
+    // Used if run out of caller saved registers
+    std::vector<PhysicalReg> BackupRegisterPool;
+
     // Initialize the usable register's pool
     for (auto TargetReg : TM->GetABI()->GetCallerSavedRegisters())
       RegisterPool.push_back(TargetReg->GetID());
+
+    // Initialize the backup register pool with the callee saved ones
+    for (auto TargetReg : TM->GetABI()->GetCalleeSavedRegisters())
+      BackupRegisterPool.push_back(TargetReg->GetID());
 
     PreAllocateParameters(Func, TM, AllocatedRegisters, LiveRanges);
     PreAllocateReturnRegister(Func, TM, AllocatedRegisters);
@@ -198,7 +216,8 @@ void RegisterAllocator::RunRA() {
       // if not allocated yet, then allocate it
       if (AllocatedRegisters.count(VReg) == 0) {
         AllocatedRegisters[VReg] =
-            GetNextAvailableReg(VRegToMOMap[VReg]->GetSize(), RegisterPool, TM);
+            GetNextAvailableReg(VRegToMOMap[VReg]->GetSize(), RegisterPool,
+                                BackupRegisterPool, TM, Func);
         FreeAbleWorkList.push_back({VReg, DefLine, KillLine});
       }
 #ifdef DEBUG
