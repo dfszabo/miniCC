@@ -24,6 +24,8 @@ public:
     CallerSavedRegisters = CallerSaved;
   }
 
+  RegList &GetCalleeSavedRegisters() { return CalleeSavedRegisters; }
+
   RegList &GetReturnRegisters() { return ReturnRegisters; }
   void SetReturnRegisters(RegList ReturnRegs) { ReturnRegisters = ReturnRegs; }
 
@@ -31,7 +33,7 @@ protected:
   unsigned StackAlignment = ~0;
   unsigned MaxStructSize = ~0;
   RegList ArgumentRegisters;
-  RegList CalleSavedRegisters;
+  RegList CalleeSavedRegisters;
   RegList CallerSavedRegisters;
   RegList ReturnRegisters;
 };

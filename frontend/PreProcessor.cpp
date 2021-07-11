@@ -6,9 +6,9 @@ std::string WhiteSpaceChars("\t ");
 
 void PreProcessor::ParseDirective(std::string &Line) {
   std::string Directive = Line.c_str() + 1;
-  auto pos = Directive.find_first_not_of("abcdefghijklmnopqrstuvwxyz ");
+  auto pos = Directive.find_first_not_of("abcdefghijklmnopqrstuvwxyz");
   if (pos != std::string::npos)
-    Directive = Directive.substr(0, pos - 1);
+    Directive = Directive.substr(0, pos);
 
   // TODO: make a lexer for the preprocessor too
   if (Directive == "define") {

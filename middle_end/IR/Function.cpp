@@ -66,5 +66,5 @@ void Function::Print() const {
     for (auto &BB : BasicBlocks)
       BB->Print();
 
-  std::cout << std::endl;
+  std::cout << std::endl << std::endl;
 }

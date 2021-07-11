@@ -92,6 +92,9 @@ private:
 
   /// Used for determining if implicit cast need or not in return statements
   Type CurrentFuncRetType = Type::Invalid;
+
+  /// The amount of return seen in the current function being parsed
+  unsigned ReturnsNumber = 0;
 };
 
 #endif

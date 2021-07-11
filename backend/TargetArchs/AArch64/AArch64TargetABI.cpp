@@ -10,15 +10,17 @@ AArch64TargetABI::AArch64TargetABI(RegisterInfo *RI) {
   for (int i = 32; i <= 39; i++)
     ArgumentRegisters.push_back(RI->GetRegister(i));
 
+  // TODO: make maybe a new vector for callee saved GPR regs
+  // so excluding special ones like sp, fp and lr
   // sp
-  CalleSavedRegisters.push_back(RI->GetRegister(64));
+  //CalleeSavedRegisters.push_back(RI->GetRegister(64));
   // fp
-  CalleSavedRegisters.push_back(RI->GetRegister(61));
+  //CalleeSavedRegisters.push_back(RI->GetRegister(61));
   // lr
-  CalleSavedRegisters.push_back(RI->GetRegister(62));
+  //CalleeSavedRegisters.push_back(RI->GetRegister(62));
   // x19-x28
   for (int i = 51; i <= 60; i++)
-    CalleSavedRegisters.push_back(RI->GetRegister(i));
+    CalleeSavedRegisters.push_back(RI->GetRegister(i));
 
   // w0-w7
   for (int i = 32; i <= 39; i++)

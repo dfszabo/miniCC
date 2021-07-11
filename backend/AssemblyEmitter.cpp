@@ -5,6 +5,7 @@
 #include <iostream>
 
 void AssemblyEmitter::GenerateAssembly() {
+  unsigned FunctionCounter = 0;
   for (auto &Func : MIRM->GetFunctions()) {
     std::cout << ".globl\t" << Func.GetName() << std::endl;
     std::cout << Func.GetName() << ":" << std::endl;
@@ -12,7 +13,7 @@ void AssemblyEmitter::GenerateAssembly() {
     bool IsFirstBB = true;
     for (auto &BB : Func.GetBasicBlocks()) {
       if (!IsFirstBB) {
-        std::cout << ".L" << BB.GetName() << ":" << std::endl;
+        std::cout << ".L" << FunctionCounter << "_" << BB.GetName() << ":" << std::endl;
       } else
         IsFirstBB = false;
 
@@ -68,7 +69,7 @@ void AssemblyEmitter::GenerateAssembly() {
                    || CurrentOperand->IsGlobalSymbol()) {
             std::string Str = "";
             if (CurrentOperand->IsLabel())
-              Str += ".L";
+              Str += ".L" + std::to_string(FunctionCounter) + "_";
 
             if (!CurrentOperand->IsGlobalSymbol())
               Str.append(CurrentOperand->GetLabel());
@@ -83,6 +84,7 @@ void AssemblyEmitter::GenerateAssembly() {
       }
     }
     std::cout << std::endl;
+    FunctionCounter++;
   }
   for (auto &GlobalData : MIRM->GetGlobalDatas())
     GlobalData.Print();

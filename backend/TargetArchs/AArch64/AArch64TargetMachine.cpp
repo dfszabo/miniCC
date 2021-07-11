@@ -222,7 +222,7 @@ bool AArch64TargetMachine::SelectMOV(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 2 && "MOV must have exactly 2 operands");
 
   if (MI->GetOperand(1)->IsImmediate()) {
-    assert(IsUInt<16>(MI->GetOperand(1)->GetImmediate()) &&
+    assert(IsInt<16>(MI->GetOperand(1)->GetImmediate()) &&
            "Invalid immediate value");
     MI->SetOpcode(MOV_rc);
   } else
