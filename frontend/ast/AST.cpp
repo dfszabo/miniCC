@@ -236,7 +236,7 @@ Value *ForStatement::IRCodegen(IRFactory *IRF) {
   // initialization part has to be generated before the loop_header basicblock
   // and also inserting the increment expression before the backward jump to the
   // loop_header
-
+  // TODO: Add support for break statement
   const auto FuncPtr = IRF->GetCurrentFunction();
   auto Header = std::make_unique<BasicBlock>("loop_header", FuncPtr);
   auto LoopBody = std::make_unique<BasicBlock>("loop_body", FuncPtr);
@@ -528,6 +528,8 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
 
   // TODO: revisit this
   if (Init) {
+    // If initialized with initializer list then assuming its only 1 dimensional
+    // and only contain integer literal expressions.
     if (auto InitListExpr = dynamic_cast<InitializerListExpression*>(Init.get());
         InitListExpr != nullptr) {
       unsigned LoopCounter = 0;
@@ -535,6 +537,9 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
         if (auto ConstExpr =
                 dynamic_cast<IntegerLiteralExpression *>(Expr.get());
             ConstExpr != nullptr) {
+          // basically storing each entry to the right stack area
+          // TODO: problematic for big arrays, Clang and GCC create a global
+          // array to store there the initial values and use memcopy
           auto ResultType = SA->GetType();
           ResultType.ReduceDimension();
 
