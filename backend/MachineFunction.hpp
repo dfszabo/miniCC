@@ -9,6 +9,7 @@
 class MachineFunction {
   using BasicBlockList = std::vector<MachineBasicBlock>;
   using ParamList = std::vector<std::pair<unsigned, LowLevelType>>;
+  using PhysRegList = std::vector<unsigned>;
 
 public:
   MachineFunction() {}
@@ -35,6 +36,8 @@ public:
 
   ParamList GetParameters() { return Parameters; }
 
+  PhysRegList &GetUsedCalleSavedRegs() { return UsedCalleSavedRegs; }
+
   StackFrame &GetStackFrame() { return SF; }
   unsigned GetStackFrameSize() { return SF.GetSize(); }
   unsigned GetStackObjectPosition(unsigned ID) { return SF.GetPosition(ID); }
@@ -59,6 +62,11 @@ private:
 
   /// Predicate to signal if the function is calling other functions or not
   bool HasCall = false;
+
+  /// To keep track what registers were used in the function which must be saved
+  /// by the called function if clobbered. This information is used for the
+  /// prolog and epilog insertion to restore these registers.
+  PhysRegList UsedCalleSavedRegs;
 };
 
 #endif
