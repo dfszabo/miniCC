@@ -1108,9 +1108,26 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
       }
     }
 
+    // TODO: This will only work here if the ternary condition was in
+    //  parenthesis, which for the time being is sufficient. Make it work as it
+    //  should.
+    if (lexer.Is(Token::QuestionMark))
+      RightExpression = ParseTernaryExpression(std::move(RightExpression));
+
     LeftExpression = std::make_unique<BinaryExpression>(
         std::move(LeftExpression), BinaryOperator, std::move(RightExpression));
   }
+}
+
+// <TernaryExpression> ::= <Expression> '?' <Expression> ':' <Expression>
+std::unique_ptr<Expression>
+Parser::ParseTernaryExpression(std::unique_ptr<Expression> Condition) {
+  Expect(Token::QuestionMark);
+  auto TrueExpr = ParseExpression();
+  Expect(Token::Colon);
+  auto FalseExpr = ParseExpression();
+
+  return std::make_unique<TernaryExpression>(Condition, TrueExpr, FalseExpr);
 }
 
 // <PrimaryExpression> ::= <IdentifierExpression>
