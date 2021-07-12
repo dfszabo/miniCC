@@ -1090,6 +1090,59 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
   }
 }
 
+Value *TernaryExpression::IRCodegen(IRFactory *IRF) {
+  // goal IR:
+  //    # Condition generated here
+  //    sa $result
+  //    cmp.eq $c1, $Condition, 0
+  //    br $c1, <false>
+  // <true>
+  //    # ExprIfTrue generated here
+  //    str [$result], $ExprIfTrue
+  //    j <end>
+  // <false>
+  //    # ExprIfFalse generated here
+  //    str [$result], ExprIfFalse
+  //    j <end>
+  // <end>
+
+  const auto FuncPtr = IRF->GetCurrentFunction();
+
+  auto TrueBB = std::make_unique<BasicBlock>("true", FuncPtr);
+  auto FalseBB = std::make_unique<BasicBlock>("false", FuncPtr);
+  auto FinalBB = std::make_unique<BasicBlock>("end", FuncPtr);
+
+  auto C = Condition->IRCodegen(IRF);
+
+  // Condition Test
+
+  // if L was a compare instruction then just revert its relation
+  if (auto LCMP = dynamic_cast<CompareInstruction *>(C); LCMP != nullptr) {
+    LCMP->InvertRelation();
+    IRF->CreateBR(C, FalseBB.get());
+  } else {
+    auto LHSTest = IRF->CreateCMP(CompareInstruction::EQ, C,
+                                  IRF->GetConstant((uint64_t)0));
+    IRF->CreateBR(LHSTest, FalseBB.get());
+  }
+
+  // TRUE
+  IRF->InsertBB(std::move(TrueBB));
+  auto TrueExpr = ExprIfTrue->IRCodegen(IRF);
+  auto Result = IRF->CreateSA("result", TrueExpr->GetType());
+  IRF->CreateSTR(TrueExpr, Result);
+  IRF->CreateJUMP(FinalBB.get());
+
+  // FALSE
+  IRF->InsertBB(std::move(FalseBB));
+  IRF->CreateSTR(ExprIfFalse->IRCodegen(IRF), Result);
+  IRF->CreateJUMP(FinalBB.get());
+
+  IRF->InsertBB(std::move(FinalBB));
+
+  return Result;
+}
+
 Value *IntegerLiteralExpression::IRCodegen(IRFactory *IRF) {
   return IRF->GetConstant(IntValue);
 }

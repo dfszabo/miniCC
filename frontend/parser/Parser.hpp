@@ -65,6 +65,8 @@ public:
   std::unique_ptr<Expression> ParseUnaryExpression();
   std::unique_ptr<Expression> ParseBinaryExpression();
   std::unique_ptr<Expression>
+  ParseTernaryExpression(std::unique_ptr<Expression> Condition);
+  std::unique_ptr<Expression>
   ParseBinaryExpressionRHS(int Precedence, std::unique_ptr<Expression> LHS);
   std::unique_ptr<Expression> ParseCallExpression(Token ID);
   std::unique_ptr<Expression> ParseArrayExpression(std::unique_ptr<Expression> Base);

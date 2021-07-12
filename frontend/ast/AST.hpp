@@ -647,6 +647,44 @@ private:
   std::unique_ptr<Expression> Right;
 };
 
+class TernaryExpression : public Expression {
+  using ExprPtr = std::unique_ptr<Expression>;
+
+public:
+  ExprPtr &GetCondition() { return Condition; }
+  void SetCondition(ExprPtr &e) { Condition = std::move(e); }
+
+  ExprPtr &GetExprIfTrue() { return ExprIfTrue; }
+  void SetExprIfTrue(ExprPtr &e) { ExprIfTrue = std::move(e); }
+
+  ExprPtr &GetExprIfFalse() { return ExprIfFalse; }
+  void SetExprIfFalse(ExprPtr &e) { ExprIfFalse = std::move(e); }
+
+  TernaryExpression() = default;
+
+  TernaryExpression(ExprPtr &Cond, ExprPtr &True, ExprPtr &False)
+  : Condition(std::move(Cond)), ExprIfTrue(std::move(True)),
+        ExprIfFalse(std::move(False)) {
+    ResultType = ExprIfTrue->GetResultType();
+  }
+
+  void ASTDump(unsigned tab = 0) override {
+    Print("TernaryExpression ", tab);
+    auto Str = "'" + ResultType.ToString() + "' ";
+    PrintLn(Str.c_str());
+    Condition->ASTDump(tab + 2);
+    ExprIfTrue->ASTDump(tab + 2);
+    ExprIfFalse->ASTDump(tab + 2);
+  }
+
+  Value *IRCodegen(IRFactory *IRF) override;
+
+private:
+  ExprPtr Condition;
+  ExprPtr ExprIfTrue;
+  ExprPtr ExprIfFalse;
+};
+
 class StructMemberReference : public Expression {
   using ExprPtr = std::unique_ptr<Expression>;
 

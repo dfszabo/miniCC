@@ -30,6 +30,7 @@ public:
     GreaterThan,
     Bang,
     And,
+    QuestionMark,
 
     // Multichar operators
     PlusPlus,
@@ -136,6 +137,8 @@ public:
       return ">";
     case Bang:
       return "!";
+    case QuestionMark:
+      return "?";
     case PlusPlus:
       return "++";
     case MinusMinus:
