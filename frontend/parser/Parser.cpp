@@ -990,6 +990,10 @@ std::unique_ptr<Expression> Parser::ParseBinaryExpression() {
   auto LeftExpression = ParseUnaryExpression();
   assert(LeftExpression && "Cannot be NULL");
 
+  // TODO: see other call sites...
+  if (lexer.Is(Token::QuestionMark))
+    LeftExpression = ParseTernaryExpression(std::move(LeftExpression));
+
   return ParseBinaryExpressionRHS(0, std::move(LeftExpression));
 }
 

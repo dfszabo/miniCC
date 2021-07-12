@@ -16,7 +16,7 @@ public:
 
 private:
   std::vector<std::string> &Source;
-  std::map<std::string, std::string> DefinedMacros;
+  std::map<std::string, std::pair<std::string, unsigned>> DefinedMacros;
 };
 
 #endif
