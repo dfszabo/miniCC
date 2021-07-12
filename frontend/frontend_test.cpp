@@ -9,7 +9,7 @@
 #include "../middle_end/IR/IRFactory.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
-#include "PreProcessor.hpp"
+#include "preprocessor/PreProcessor.hpp"
 #include <fstream>
 #include <iostream>
 #include <memory>
