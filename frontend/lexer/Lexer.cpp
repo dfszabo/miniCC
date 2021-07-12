@@ -221,6 +221,9 @@ std::optional<Token> Lexer::LexSymbol() {
     } else
       TokenKind = Token::Bang;
     break;
+  case '?':
+    TokenKind = Token::QuestionMark;
+    break;
   case '&':
     if (GetNextNthCharOnSameLine(1) == '&') {
       TokenKind = Token::DoubleAnd;
