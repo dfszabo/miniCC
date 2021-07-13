@@ -236,7 +236,7 @@ Value *ForStatement::IRCodegen(IRFactory *IRF) {
   // initialization part has to be generated before the loop_header basicblock
   // and also inserting the increment expression before the backward jump to the
   // loop_header
-
+  // TODO: Add support for break statement
   const auto FuncPtr = IRF->GetCurrentFunction();
   auto Header = std::make_unique<BasicBlock>("loop_header", FuncPtr);
   auto LoopBody = std::make_unique<BasicBlock>("loop_body", FuncPtr);
@@ -438,6 +438,10 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
           Jump->SetTargetBB(RetBBPtr);
   }
 
+  // if its a void function without return statement, then add one
+  if (ReturnsNumber == 0 && RetType.IsVoid())
+    IRF->CreateRET(nullptr);
+
   return nullptr;
 }
 
@@ -523,8 +527,35 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
   auto SA = IRF->CreateSA(Name, Type);
 
   // TODO: revisit this
-  if (Init)
-    IRF->CreateSTR(Init->IRCodegen(IRF), SA);
+  if (Init) {
+    // If initialized with initializer list then assuming its only 1 dimensional
+    // and only contain integer literal expressions.
+    if (auto InitListExpr = dynamic_cast<InitializerListExpression*>(Init.get());
+        InitListExpr != nullptr) {
+      unsigned LoopCounter = 0;
+      for (auto &Expr : InitListExpr->GetExprList()) {
+        if (auto ConstExpr =
+                dynamic_cast<IntegerLiteralExpression *>(Expr.get());
+            ConstExpr != nullptr) {
+          // basically storing each entry to the right stack area
+          // TODO: problematic for big arrays, Clang and GCC create a global
+          // array to store there the initial values and use memcopy
+          auto ResultType = SA->GetType();
+          ResultType.ReduceDimension();
+
+          if (ResultType.GetPointerLevel() == 0)
+            ResultType.IncrementPointerLevel();
+
+          auto GEP = IRF->CreateGEP(ResultType, SA,
+                                    IRF->GetConstant((uint64_t)LoopCounter));
+          IRF->CreateSTR(IRF->GetConstant((uint64_t)ConstExpr->GetUIntValue()), GEP);
+        }
+        LoopCounter++;
+      }
+    }
+    else
+      IRF->CreateSTR(Init->IRCodegen(IRF), SA);
+  }
 
   IRF->AddToSymbolTable(Name, SA);
   return SA;

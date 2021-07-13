@@ -233,7 +233,9 @@ class StoreInstruction : public Instruction {
 public:
   StoreInstruction(Value *S, Value *D, BasicBlock *P)
       : Instruction(Instruction::STORE, P, IRType::NONE), Source(S),
-        Destination(D) {}
+        Destination(D) {
+    assert(Source && Destination);
+  }
 
   void Print() const override;
 
