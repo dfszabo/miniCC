@@ -149,6 +149,8 @@ Value *SwitchStatement::IRCodegen(IRFactory *IRF) {
     if (!Statements.empty())
       CaseBodies.push_back(std::make_unique<BasicBlock>("switch_case", FuncPtr));
 
+  IRF->GetBreaksEndBBsTable().push_back(SwitchEnd.get());
+
   // because of the fallthrough mechanism multiple cases could use the same
   // code block, CaseIdx keep track the current target basic block so falling
   // through cases could refer to it
@@ -170,10 +172,6 @@ Value *SwitchStatement::IRCodegen(IRFactory *IRF) {
       IRF->InsertBB(std::move(CaseBodies.front()));
       for (auto &Statement : Statements) {
         Statement->IRCodegen(IRF);
-        // If the statement is a "break" then insert jump to the default case
-        // here, since cannot generate that jump simply, it would require context
-        if (auto Break = dynamic_cast<BreakStatement*>(Statement.get()); Break != nullptr)
-          IRF->CreateJUMP(SwitchEnd.get());
       }
       CaseBodies.erase(CaseBodies.begin());
     }
@@ -184,6 +182,7 @@ Value *SwitchStatement::IRCodegen(IRFactory *IRF) {
   for (auto &Statement : DefaultBody)
     Statement->IRCodegen(IRF);
 
+  IRF->GetBreaksEndBBsTable().erase(IRF->GetBreaksEndBBsTable().end() - 1);
   IRF->InsertBB(std::move(SwitchEnd));
 
   return nullptr;
@@ -222,8 +221,10 @@ Value *WhileStatement::IRCodegen(IRFactory *IRF) {
     IRF->CreateBR(Cmp, LoopEnd.get());
   }
 
+  IRF->GetBreaksEndBBsTable().push_back(LoopEnd.get());
   IRF->InsertBB(std::move(LoopBody));
   Body->IRCodegen(IRF);
+  IRF->GetBreaksEndBBsTable().erase(IRF->GetBreaksEndBBsTable().end() - 1);
   IRF->CreateJUMP(HeaderPtr);
 
   IRF->InsertBB(std::move(LoopEnd));
@@ -270,8 +271,10 @@ Value *ForStatement::IRCodegen(IRFactory *IRF) {
   IRF->InsertBB(std::move(LoopBody));
   // Push entry
   IRF->GetLoopIncrementBBsTable().push_back(LoopIncrement.get());
+  IRF->GetBreaksEndBBsTable().push_back(LoopEnd.get());
   Body->IRCodegen(IRF);
   // Pop entry
+  IRF->GetBreaksEndBBsTable().erase(IRF->GetBreaksEndBBsTable().end() - 1);
   IRF->GetLoopIncrementBBsTable().erase(IRF->GetLoopIncrementBBsTable().end() - 1);
   IRF->CreateJUMP(LoopIncrement.get());
   IRF->InsertBB(std::move(LoopIncrement));
@@ -447,6 +450,11 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
 
 Value *ContinueStatement::IRCodegen(IRFactory *IRF) {
   return IRF->CreateJUMP(IRF->GetLoopIncrementBBsTable().back());
+}
+
+Value *BreakStatement::IRCodegen(IRFactory *IRF) {
+  assert(IRF->GetBreaksEndBBsTable().size() > 0);
+  return IRF->CreateJUMP(IRF->GetBreaksEndBBsTable().back());
 }
 
 Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {

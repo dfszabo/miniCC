@@ -428,7 +428,7 @@ public:
     PrintLn("BreakStatement", tab);
   }
 
-  Value *IRCodegen(IRFactory *IRF) override { return nullptr; }
+  Value *IRCodegen(IRFactory *IRF) override;
 };
 
 class ContinueStatement : public Statement {

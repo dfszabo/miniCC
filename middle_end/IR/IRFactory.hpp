@@ -331,6 +331,10 @@ public:
     return LoopIncrementBBsTable;
   }
 
+  std::vector<BasicBlock*> &GetBreaksEndBBsTable() {
+    return BreaksTargetBBsTable;
+  }
+
   TargetMachine *GetTargetMachine() { return TM; }
 
 private:
@@ -362,6 +366,10 @@ private:
   /// For context information for "continue" statements. Containing the pointer
   /// to the basic block which will be the target of the generated jump.
   std::vector<BasicBlock*> LoopIncrementBBsTable;
+
+  /// For context information for "break" statements. Containing the pointer
+  /// to the basic block which will be the target of the generated jump.
+  std::vector<BasicBlock*> BreaksTargetBBsTable;
 };
 
 #endif
