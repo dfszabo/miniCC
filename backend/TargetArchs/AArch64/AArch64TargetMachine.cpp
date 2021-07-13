@@ -187,6 +187,18 @@ bool AArch64TargetMachine::SelectTRUNC(MachineInstruction *MI) {
     return true;
   }
 
+  // in cases like
+  //      TRUNC  %dst(s32), %src(s64)
+  // for arm only a "mov" instruction is needed, but for $src the W subregister
+  // of the X register should be used, this will be enforced in a later pass
+  if (MI->GetOperand(0)->GetType().GetBitWidth() == 32 &&
+      MI->GetOperand(1)->GetType().GetBitWidth() == 64) {
+    if (!MI->GetOperand(1)->IsImmediate()) {
+      MI->SetOpcode(MOV_rr);
+      return true;
+    }
+  }
+
   assert(!"Unimplemented!");
   return false;
 }

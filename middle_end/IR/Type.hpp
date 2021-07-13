@@ -46,6 +46,7 @@ public:
     return BitWidth == RHS.BitWidth && Kind == RHS.Kind;
   }
 
+  bool IsInvalid() const { return Kind == INVALID; }
   bool IsFP() const { return Kind == FP; }
   bool IsINT() const { return Kind == SINT || Kind == UINT; }
   bool IsPTR() const { return PointerLevel > 0; }

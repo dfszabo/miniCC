@@ -6,6 +6,7 @@
 #include "../backend/RegisterAllocator.hpp"
 #include "../backend/TargetArchs/AArch64/AArch64TargetMachine.hpp"
 #include "../backend/TargetArchs/RISCV/RISCVTargetMachine.hpp"
+#include "../backend/TargetArchs/AArch64/AArch64MOVFixPass.hpp"
 #include "../middle_end/IR/IRFactory.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
@@ -120,9 +121,6 @@ int main(int argc, char *argv[]) {
   if (DumpIR)
     IRModule.Print();
 
-
-
-
   MachineIRModule LLIRModule;
   IRtoLLIR I2LLIR(IRModule, &LLIRModule, TM.get());
   I2LLIR.GenerateLLIRFromIR();
@@ -164,6 +162,9 @@ int main(int argc, char *argv[]) {
   }
   PrologueEpilogInsertion PEI(&LLIRModule, TM.get());
   PEI.Run();
+
+  if (TargetArch == "aarch64")
+    AArch64MOVFixPass(&LLIRModule, TM.get()).Run();
 
   if (PrintBeforePasses) {
     std::cout << "<<<<< Before Emitting Assembly >>>>>" << std::endl
