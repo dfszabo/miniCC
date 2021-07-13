@@ -614,6 +614,18 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
   case Type::UnsignedInt:
     IRRetType = IRType(IRType::UINT);
     break;
+  case Type::Long:
+    IRRetType = IRType(IRType::SINT, 64);
+    break;
+  case Type::UnsignedLong:
+    IRRetType = IRType(IRType::UINT, 64);
+    break;
+  case Type::LongLong:
+    IRRetType = IRType(IRType::SINT, 64);
+    break;
+  case Type::UnsignedLongLong:
+    IRRetType = IRType(IRType::UINT, 64);
+    break;
   case Type::Double:
     IRRetType = IRType(IRType::FP, 64);
     break;
@@ -649,13 +661,15 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
 
     IsRetChanged = true;
     Args.push_back(StructTemp);
-    //IRRetType.IncrementPointerLevel();
     IRRetType = IRType::NONE;
     break;
   }
   default:
+    assert(!"Unreachable");
     break;
   }
+
+  assert(!IRRetType.IsInvalid() && "Must be a valid type");
 
   // in case if the ret type was a struct, so StructTemp not nullptr
   if (StructTemp) {

@@ -35,6 +35,7 @@ add_executable(miniCC
     backend/StackFrame.cpp
     backend/TargetInstructionLegalizer.cpp
     backend/TargetMachine.cpp
+    backend/TargetArchs/AArch64/AArch64MOVFixPass.cpp
     backend/TargetArchs/AArch64/AArch64RegisterInfo.cpp
     backend/TargetArchs/AArch64/AArch64InstructionDefinitions.cpp
     backend/TargetArchs/AArch64/AArch64InstructionLegalizer.cpp
