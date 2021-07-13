@@ -16,10 +16,13 @@ unsigned StackFrame::GetPosition(unsigned ID) {
 
   unsigned Position = 0;
 
+  // For now the object size is its alignment as well
+  // FIXME: add also alignment info
   for (const auto &[ObjectID, ObjectSize] : StackSlots) {
     // If the stack object is what we are looking for
     if (ObjectID == ID)
-      return Position; // then return its position
+      // then return its aligned position
+      return GetNextAlignedValue(Position, ObjectSize);
 
     Position = GetNextAlignedValue(Position, ObjectSize);
     Position += ObjectSize;

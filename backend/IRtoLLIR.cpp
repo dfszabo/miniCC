@@ -29,7 +29,7 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
       auto Instr = MachineInstruction(MachineInstruction::LOAD,
                                       &MF->GetBasicBlocks().back());
       NextVReg = MF->GetNextAvailableVReg();
-      Instr.AddVirtualRegister(NextVReg);
+      Instr.AddVirtualRegister(NextVReg, BitWidth);
       Instr.AddStackAccess(Val->GetID());
       MBB->InsertInstr(Instr);
     }
@@ -39,7 +39,7 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
         auto Instr = MachineInstruction(MachineInstruction::LOAD,
                                         &MF->GetBasicBlocks().back());
         NextVReg = MF->GetNextAvailableVReg();
-        Instr.AddVirtualRegister(NextVReg);
+        Instr.AddVirtualRegister(NextVReg, BitWidth);
         Instr.AddStackAccess(IRVregToLLIRVreg[Val->GetID()]);
         MBB->InsertInstr(Instr);
       } else
