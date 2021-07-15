@@ -6,6 +6,7 @@
 void StackFrame::InsertStackSlot(unsigned ID, unsigned Size) {
   assert(StackSlots.count(ID) == 0 && "Already existing object on the stack");
 
+  ObjectsSize = GetNextAlignedValue(ObjectsSize, Size);
   ObjectsSize += Size;
   
   StackSlots.insert({ID, Size});

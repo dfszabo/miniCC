@@ -208,7 +208,6 @@ private:
 };
 
 class CompoundStatement : public Statement {
-  using DeclVec = std::vector<std::unique_ptr<VariableDeclaration>>;
   using StmtVec = std::vector<std::unique_ptr<Statement>>;
 
 public:
@@ -218,14 +217,7 @@ public:
     Statements.push_back(std::move(s));
   }
 
-  DeclVec &GetDeclarations() { return Declarations; }
-  void SetDeclarations(DeclVec &d) { Declarations = std::move(d); }
-  void AddDeclaration(std::unique_ptr<VariableDeclaration> &d) {
-    Declarations.push_back(std::move(d));
-  }
-
-  CompoundStatement(DeclVec &Decls, StmtVec &Stats)
-      : Declarations(std::move(Decls)), Statements(std::move(Stats)) {}
+  CompoundStatement(StmtVec &Stats) : Statements(std::move(Stats)) {}
 
   CompoundStatement() = delete;
 
@@ -236,8 +228,6 @@ public:
 
   void ASTDump(unsigned tab = 0) override {
     PrintLn("CompoundStatement", tab);
-    for (size_t i = 0; i < Declarations.size(); i++)
-      Declarations[i]->ASTDump(tab + 2);
     for (size_t i = 0; i < Statements.size(); i++)
       Statements[i]->ASTDump(tab + 2);
   }
@@ -245,7 +235,6 @@ public:
   Value *IRCodegen(IRFactory *IRF) override;
 
 private:
-  DeclVec Declarations;
   StmtVec Statements;
 };
 

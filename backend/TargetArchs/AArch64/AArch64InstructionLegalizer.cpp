@@ -27,7 +27,14 @@ bool AArch64InstructionLegalizer::Check(MachineInstruction *MI) {
     if (MI->GetOperand(2)->IsImmediate())
       return false;
     break;
-  case MachineInstruction::ZEXT:
+  case MachineInstruction::ZEXT: {
+    auto PrevInst = MI->GetParent()->GetPrecedingInstr(MI);
+
+    // If not a LOAD then do nothing
+    if (PrevInst && PrevInst->GetOpcode() == MachineInstruction::LOAD)
+      return false;
+    break;
+  }
   case MachineInstruction::GLOBAL_ADDRESS:
     return false;
   default:
@@ -140,7 +147,7 @@ bool AArch64InstructionLegalizer::ExpandZEXT(MachineInstruction *MI) {
 
   // If not a LOAD then do nothing
   if (!(PrevInst->GetOpcode() == MachineInstruction::LOAD))
-    return true;
+    return false;
 
   auto ZEXTDest = *MI->GetOperand(0);
   PrevInst->InsertOperand(0, ZEXTDest);
