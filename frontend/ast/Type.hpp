@@ -82,9 +82,19 @@ public:
 
   static bool IsImplicitlyCastable(const Type::VariantKind from,
                                    const Type::VariantKind to) {
-    return (from == Int && to == Double) || (from == Double && to == Int) ||
-           ((from == Char || from == UnsignedChar) && (to == Int || to == UnsignedInt)) ||
-           ((from == Int || from == UnsignedInt) && (to == Char || to == UnsignedChar));
+    switch (to) {
+    case Char:
+    case UnsignedChar:
+    case Int:
+    case UnsignedInt:
+    case Long:
+    case UnsignedLong:
+    case LongLong:
+    case UnsignedLongLong:
+      return from >= Char;
+    default:
+      return false;
+    }
   }
 
   static bool IsSmallerThanInt(const Type::VariantKind v) {

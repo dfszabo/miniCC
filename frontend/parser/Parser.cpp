@@ -427,20 +427,19 @@ Type Parser::ParseTypeSpecifier() {
 std::unique_ptr<CompoundStatement> Parser::ParseCompoundStatement() {
   Expect(Token::LeftCurly);
 
-  std::vector<std::unique_ptr<VariableDeclaration>> Declarations;
   std::vector<std::unique_ptr<Statement>> Statements;
 
   while (IsTypeSpecifier(GetCurrentToken()) ||
          IsQualifier(GetCurrentTokenKind()) || lexer.IsNot(Token::RightCurly)) {
     if (IsTypeSpecifier(GetCurrentToken()) ||
         IsQualifier(GetCurrentTokenKind()))
-      Declarations.push_back(std::move(ParseVariableDeclaration()));
+      Statements.push_back(std::move(ParseVariableDeclaration()));
     else
       Statements.push_back(std::move(ParseStatement()));
   }
   Expect(Token::RightCurly);
 
-  return std::make_unique<CompoundStatement>(Declarations, Statements);
+  return std::make_unique<CompoundStatement>(Statements);
 }
 
 // <VariableDeclaration> ::= <TypeSpecifier> '*'* <Identifier>
@@ -474,8 +473,25 @@ std::unique_ptr<VariableDeclaration> Parser::ParseVariableDeclaration() {
     Lex(); // eat '='
     if (lexer.Is(Token::LeftCurly))
       InitExpr = ParseInitializerListExpression();
-    else
+    else {
       InitExpr = ParseExpression();
+      // if the variable type not match the size of the initializer expression
+      // then also do an implicit cast
+      if ((type.GetTypeVariant() !=
+           InitExpr->GetResultType().GetTypeVariant()) &&
+          !Type::OnlySigndnessDifference(
+              type.GetTypeVariant(),
+              InitExpr->GetResultType().GetTypeVariant())) {
+        if (!Type::IsImplicitlyCastable(
+                InitExpr->GetResultType().GetTypeVariant(),
+                type.GetTypeVariant())) {
+          assert(!"Invalid initialization");
+        } else {
+          InitExpr = std::make_unique<ImplicitCastExpression>(
+              std::move(InitExpr), type);
+        }
+      }
+    }
   }
 
   Expect(Token::SemiColon);

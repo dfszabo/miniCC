@@ -287,8 +287,6 @@ Value *ForStatement::IRCodegen(IRFactory *IRF) {
 }
 
 Value *CompoundStatement::IRCodegen(IRFactory *IRF) {
-  for (auto &Declaration : Declarations)
-    Declaration->IRCodegen(IRF);
   for (auto &Statement : Statements)
     Statement->IRCodegen(IRF);
   return nullptr;
