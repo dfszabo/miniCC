@@ -1206,6 +1206,27 @@ std::unique_ptr<Expression> Parser::ParseConstantExpression() {
     auto IntLit = std::make_unique<IntegerLiteralExpression>(ParseIntegerConstant());
     if (IsNegative)
       IntLit->SetValue(-IntLit->GetSIntValue());
+    // TODO: currently 1 ull would be valid since the lexer will ignore the
+    // white spaces, make such input invalid
+    if (lexer.Is(Token::Identifier)) {
+      auto Str = GetCurrentToken().GetString();
+      if (Str == "u") {
+        Lex();
+        IntLit->SetType(Type::UnsignedInt);
+      } else if (Str == "l") {
+        Lex();
+        IntLit->SetType(Type::Long);
+      } else if (Str == "ul") {
+        Lex();
+        IntLit->SetType(Type::UnsignedLong);
+      } else if (Str == "ll") {
+        Lex();
+        IntLit->SetType(Type::LongLong);
+      } else if (Str == "ull") {
+        Lex();
+        IntLit->SetType(Type::UnsignedLongLong);
+      }
+    }
     return IntLit;
   } else {
     auto FPLit = std::make_unique<FloatLiteralExpression>(ParseRealConstant());
