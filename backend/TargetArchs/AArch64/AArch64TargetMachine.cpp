@@ -7,6 +7,40 @@
 
 using namespace AArch64;
 
+bool AArch64TargetMachine::SelectLSL(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "LSL must have 3 operands");
+
+  if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
+    assert(IsUInt<12>((int64_t)ImmMO->GetImmediate()) &&
+           "Immediate must be 12 bit wide");
+
+    MI->SetOpcode(LSL_rri);
+    return true;
+  } else {
+    MI->SetOpcode(LSL_rrr);
+    return true;
+  }
+
+  return false;
+}
+
+bool AArch64TargetMachine::SelectLSR(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "LSR must have 3 operands");
+
+  if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
+    assert(IsUInt<12>((int64_t)ImmMO->GetImmediate()) &&
+           "Immediate must be 12 bit wide");
+
+    MI->SetOpcode(LSR_rri);
+    return true;
+  } else {
+    MI->SetOpcode(LSR_rrr);
+    return true;
+  }
+
+  return false;
+}
+
 bool AArch64TargetMachine::SelectADD(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "ADD must have 3 operands");
 

@@ -21,6 +21,8 @@ public:
 
   uint8_t GetPointerSize() override { return 64; }
 
+  bool SelectLSL(MachineInstruction *MI) override;
+  bool SelectLSR(MachineInstruction *MI) override;
   bool SelectADD(MachineInstruction *MI) override;
   bool SelectSUB(MachineInstruction *MI) override;
   bool SelectMUL(MachineInstruction *MI) override;
