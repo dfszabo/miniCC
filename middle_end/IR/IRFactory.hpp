@@ -41,6 +41,14 @@ public:
     return CreateBinaryInstruction(Instruction::OR, LHS, RHS);
   }
 
+  Instruction *CreateLSL(Value *LHS, Value *RHS) {
+    return CreateBinaryInstruction(Instruction::LSL, LHS, RHS);
+  }
+
+  Instruction *CreateLSR(Value *LHS, Value *RHS) {
+    return CreateBinaryInstruction(Instruction::LSR, LHS, RHS);
+  }
+
   Instruction *CreateADD(Value *LHS, Value *RHS) {
     return CreateBinaryInstruction(Instruction::ADD, LHS, RHS);
   }

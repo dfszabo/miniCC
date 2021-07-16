@@ -7,6 +7,10 @@ std::string Instruction::AsString(IKind IK) {
     return "and";
   case OR:
     return "or";
+  case LSL:
+    return "lsl";
+  case LSR:
+    return "lsr";
   case ADD:
     return "add";
   case SUB:
