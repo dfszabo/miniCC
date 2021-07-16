@@ -201,14 +201,20 @@ std::optional<Token> Lexer::LexSymbol() {
       TokenKind = Token::Equal;
     break;
   case '<':
-    if (GetNextNthCharOnSameLine(1) == '=') {
+    if (GetNextNthCharOnSameLine(1) == '<') {
+      TokenKind = Token::LessThanLessThan;
+      Size = 2;
+    } else if (GetNextNthCharOnSameLine(1) == '=') {
       TokenKind = Token::LessEqual;
       Size = 2;
     } else
       TokenKind = Token::LessThan;
     break;
   case '>':
-    if (GetNextNthCharOnSameLine(1) == '=') {
+    if (GetNextNthCharOnSameLine(1) == '>') {
+      TokenKind = Token::GreaterThanGreaterThan;
+      Size = 2;
+    } else if (GetNextNthCharOnSameLine(1) == '=') {
       TokenKind = Token::GreaterEqual;
       Size = 2;
     } else

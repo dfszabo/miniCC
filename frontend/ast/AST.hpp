@@ -524,6 +524,8 @@ public:
     SUB_ASSIGN,
     MUL_ASSIGN,
     DIV_ASSIGN,
+    LSL,
+    LSR,
     ADD,
     SUB,
     MUL,
@@ -554,6 +556,10 @@ public:
       return MUL_ASSIGN;
     case Token::ForwardSlashEqual:
       return DIV_ASSIGN;
+    case Token::LessThanLessThan:
+      return LSL;
+    case Token::GreaterThanGreaterThan:
+      return LSR;
     case Token::Plus:
       return ADD;
     case Token::Minus:
