@@ -15,6 +15,7 @@ public:
     // Arithmetic and Logical
     AND,
     OR,
+    XOR,
     LSL,
     LSR,
     ADD,

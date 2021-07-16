@@ -12,6 +12,7 @@ enum Opcodes : unsigned {
   ADD_rrr,
   ADD_rri,
   AND_rri,
+  EOR_rri,
   LSL_rrr,
   LSL_rri,
   LSR_rrr,

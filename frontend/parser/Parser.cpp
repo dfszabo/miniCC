@@ -108,6 +108,7 @@ static bool IsUnaryOperator(Token::TokenKind tk) {
   switch (tk) {
   case Token::And:
   case Token::Astrix:
+  case Token::Bang:
   case Token::Minus:
     return true;
 
@@ -1005,8 +1006,6 @@ static int GetBinOpPrecedence(Token::TokenKind TK) {
   case Token::ForwardSlash:
   case Token::Percent:
     return 80;
-  case Token::Bang:
-    return 90;
   default:
     return -1;
   }
