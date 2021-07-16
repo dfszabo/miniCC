@@ -17,6 +17,8 @@ public:
     // Arithmetic and Logical
     AND = 1 << 16,
     OR,
+    LSL,
+    LSR,
     ADD,
     SUB,
     MUL,
