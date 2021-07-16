@@ -1078,6 +1078,10 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
   }
 
   switch (GetOperationKind()) {
+  case LSL:
+    return IRF->CreateLSL(L, R);
+  case LSR:
+    return IRF->CreateLSR(L, R);
   case ADD:
     return IRF->CreateADD(L, R);
   case SUB:

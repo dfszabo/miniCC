@@ -45,6 +45,8 @@ public:
     DoubleAnd,
     DoubleEqual,
     MinusGreaterThan,
+    LessThanLessThan,
+    GreaterThanGreaterThan,
 
     // Symbols
     Colon,
@@ -165,6 +167,10 @@ public:
       return "==";
     case MinusGreaterThan:
       return "->";
+    case LessThanLessThan:
+      return "<<";
+    case GreaterThanGreaterThan:
+      return ">>";
     case Colon:
       return ":";
     case SemiColon:
