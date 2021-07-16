@@ -3,14 +3,13 @@
 using namespace AArch64;
 
 AArch64InstructionDefinitions::AArch64InstructionDefinitions() {
-  InstrEnumStrings = {"ADD_rrr", "ADD_rri", "AND_rri", "SUB_rrr",  "SUB_rri",
-                      "SUBS",    "MUL_rri", "MUL_rrr", "SDIV_rri", "SDIV_rrr",
-                      "UDIV_rrr",
-                      "CMP_ri",  "CMP_rr",  "CSET",    "SXTB",     "SXTW",
-                      "MOV_rc",  "MOV_rr",  "ADRP",    "LDR",      "LDRB",
-                      "STR",     "STRB",    "BEQ",     "BNE",      "BGE",
-                      "BGT",     "BLE",     "BLT",     "B",        "BL",
-                      "RET"};
+  InstrEnumStrings = {
+      "ADD_rrr",  "ADD_rri",  "AND_rri",  "LSL_rrr", "LSL_rri", "LSR_rrr",
+      "LSR_rri",  "SUB_rrr",  "SUB_rri",  "SUBS",    "MUL_rri", "MUL_rrr",
+      "SDIV_rri", "SDIV_rrr", "UDIV_rrr", "CMP_ri",  "CMP_rr",  "CSET",
+      "SXTB",     "SXTW",     "MOV_rc",   "MOV_rr",  "ADRP",    "LDR",
+      "LDRB",     "STR",      "STRB",     "BEQ",     "BNE",     "BGE",
+      "BGT",      "BLE",      "BLT",      "B",       "BL",      "RET"};
 }
 
 AArch64InstructionDefinitions::IRToTargetInstrMap
@@ -20,6 +19,10 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[ADD_rrr] = {ADD_rrr, 32, "add\t$1, $2, $3", {GPR, GPR, GPR}};
       ret[ADD_rri] = {ADD_rri, 32, "add\t$1, $2, #$3", {GPR, GPR, UIMM12}};
       ret[AND_rri] = {ADD_rri, 32, "and\t$1, $2, #$3", {GPR, GPR, UIMM12}};
+      ret[LSL_rrr] = {LSL_rrr, 32, "lsl\t$1, $2, $3", {GPR, GPR, GPR}};
+      ret[LSL_rri] = {LSL_rri, 32, "lsl\t$1, $2, #$3", {GPR, GPR, UIMM12}};
+      ret[LSR_rrr] = {LSR_rrr, 32, "lsr\t$1, $2, $3", {GPR, GPR, GPR}};
+      ret[LSR_rri] = {LSR_rri, 32, "lsr\t$1, $2, #$3", {GPR, GPR, UIMM12}};
       ret[SUB_rrr] = {SUB_rrr, 32, "sub\t$1, $2, $3", {GPR, GPR, GPR}};
       ret[SUB_rri] = {SUB_rri, 32, "sub\t$1, $2, #$3", {GPR, GPR, UIMM12}};
       ret[SUBS] = {SUBS, 32, "subs\t$1, $2, $3", {GPR, GPR, GPR}};
