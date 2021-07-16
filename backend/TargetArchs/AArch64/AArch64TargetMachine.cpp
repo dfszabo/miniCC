@@ -289,14 +289,16 @@ bool AArch64TargetMachine::SelectLOAD(MachineInstruction *MI) {
 bool AArch64TargetMachine::SelectSTORE(MachineInstruction *MI) {
   assert((MI->GetOperandsNumber() == 2 || MI->GetOperandsNumber() == 3) &&
          "STORE must have 2 or 3 operands");
-  // TODO: add this code and solve the failing tests
-//  if (MI->GetOperand(MI->GetOperandsNumber() - 1)->GetType().GetBitWidth() ==
-//      8 ||
-//      (MI->GetOperandsNumber() == 2 && MI->GetParent()->GetParent()->IsStackSlot(
-//          MI->GetOperand(0)->GetSlot()) &&
-//       MI->GetParent()->GetParent()->GetStackObjectSize(
-//           MI->GetOperand(0)->GetSlot()) == 1)) {
-  if (MI->GetOperand(MI->GetOperandsNumber() - 1)->GetType().GetBitWidth() == 8) {
+
+  MachineFunction *ParentMF = nullptr;
+  if (MI->GetOperandsNumber() == 2)
+    ParentMF = MI->GetParent()->GetParent();
+  auto Op0 = MI->GetOperand(0);
+  auto OpLast = MI->GetOperand(MI->GetOperandsNumber() - 1);
+
+  if (OpLast->GetType().GetBitWidth() == 8 ||
+      (MI->GetOperandsNumber() == 2 && ParentMF->IsStackSlot(Op0->GetSlot()) &&
+       ParentMF->GetStackObjectSize(Op0->GetSlot()) == 1)) {
     MI->SetOpcode(STRB);
     return true;
   }
