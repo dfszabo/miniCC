@@ -11,6 +11,12 @@ void MachineInstruction::Print(TargetMachine *TM) const {
   case OR:
     OpcodeStr = "OR";
     break;
+  case LSL:
+    OpcodeStr = "LSL";
+    break;
+  case LSR:
+    OpcodeStr = "LSR";
+    break;
   case ADD:
     OpcodeStr = "ADD";
     break;
