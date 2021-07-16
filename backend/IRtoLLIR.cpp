@@ -10,7 +10,8 @@
 #include "Support.hpp"
 
 MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
-                                                    MachineBasicBlock *MBB) {
+                                                    MachineBasicBlock *MBB,
+                                                    bool IsDef = false) {
   assert(Val);
   assert(MBB);
   auto MF = MBB->GetParent();
@@ -18,13 +19,15 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
 
   if (Val->IsRegister()) {
     auto BitWidth = Val->GetBitWidth();
+    if (Val->GetTypeRef().IsPTR() && dynamic_cast<StackAllocationInstruction*>(Val) == nullptr)
+      BitWidth = TM->GetPointerSize();
     unsigned NextVReg;
 
     // If the register were spilled, (example: function return values are
     // spilled to the stack) then load the value in first into a VReg
     // and return this VReg as LLIR VReg.
     // TODO: Investigate if this is the appropriate place and way to do this
-    if (IRVregToLLIRVreg.count(Val->GetID()) == 0 &&
+    if (!IsDef && IRVregToLLIRVreg.count(Val->GetID()) == 0 &&
         MF->IsStackSlot(Val->GetID())) {
       auto Instr = MachineInstruction(MachineInstruction::LOAD,
                                       &MF->GetBasicBlocks().back());
@@ -35,7 +38,7 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
     }
     // If the IR VReg is mapped already to an LLIR VReg then use that
     else if (IRVregToLLIRVreg.count(Val->GetID()) > 0) {
-      if (MF->IsStackSlot(IRVregToLLIRVreg[Val->GetID()])) {
+      if (!IsDef && MF->IsStackSlot(IRVregToLLIRVreg[Val->GetID()])) {
         auto Instr = MachineInstruction(MachineInstruction::LOAD,
                                         &MF->GetBasicBlocks().back());
         NextVReg = MF->GetNextAvailableVReg();
@@ -83,6 +86,13 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
   return MachineOperand();
 }
 
+unsigned IRtoLLIR::GetIDFromValue(Value * Val) {
+  assert(Val);
+  unsigned Ret = IRVregToLLIRVreg.count(Val->GetID()) > 0 ?
+  IRVregToLLIRVreg[Val->GetID()] : Val->GetID();
+  return Ret;
+}
+
 MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
                                         MachineBasicBlock *BB,
                                         std::vector<MachineBasicBlock> &BBs) {
@@ -126,9 +136,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       BB->InsertInstr(GlobalAddress);
       AddressReg = GlobAddrReg;
     } else {
-      AddressReg = I->GetMemoryLocation()->GetID();
-      if (IRVregToLLIRVreg.count(AddressReg) > 0)
-        AddressReg = IRVregToLLIRVreg[AddressReg];
+      AddressReg = GetIDFromValue(I->GetMemoryLocation());
     }
 
     ResultMI.AddAttribute(MachineInstruction::IS_STORE);
@@ -203,13 +211,11 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       BB->InsertInstr(GlobalAddress);
       AddressReg = GlobAddrReg;
     } else {
-      AddressReg = I->GetMemoryLocation()->GetID();
-      if (IRVregToLLIRVreg.count(AddressReg) > 0)
-        AddressReg = IRVregToLLIRVreg[AddressReg];
+      AddressReg = GetIDFromValue(I->GetMemoryLocation());
     }
 
     ResultMI.AddAttribute(MachineInstruction::IS_LOAD);
-    ResultMI.AddOperand(GetMachineOperandFromValue((Value *)I, BB));
+    ResultMI.AddOperand(GetMachineOperandFromValue((Value *)I, BB, true));
 
     // Check if the instruction accessing the stack
     if (ParentFunction->IsStackSlot(AddressReg))
@@ -250,8 +256,9 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
   else if (auto I = dynamic_cast<GetElementPointerInstruction *>(Instr); I != nullptr) {
     MachineInstruction GoalInstr;
 
+    auto SourceID = GetIDFromValue(I->GetSource());
     const bool IsGlobal = I->GetSource()->IsGlobalVar();
-    const bool IsStack = ParentFunction->IsStackSlot(I->GetSource()->GetID());
+    const bool IsStack = ParentFunction->IsStackSlot(SourceID);
     const bool IsReg = !IsGlobal && !IsStack;
 
     if (IsGlobal)
@@ -265,7 +272,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     if (IsGlobal)
       GoalInstr.AddGlobalSymbol(((GlobalVariable*)I->GetSource())->GetName());
     else if (IsStack)
-      GoalInstr.AddStackAccess(I->GetSource()->GetID());
+      GoalInstr.AddStackAccess(SourceID);
 
     auto &SourceType = I->GetSource()->GetTypeRef();
     unsigned ConstantIndexPart = 0;
@@ -558,7 +565,8 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         auto Instr = MachineInstruction(MachineInstruction::LOAD, BB);
         Instr.AddRegister(TargetRetRegs[i]->GetID(),
                           TargetRetRegs[i]->GetBitWidth());
-        Instr.AddStackAccess(I->GetRetVal()->GetID(), i * (TM->GetPointerSize() / 8));
+        auto RetId = GetIDFromValue(I->GetRetVal());
+        Instr.AddStackAccess(RetId, i * (TM->GetPointerSize() / 8));
         BB->InsertInstr(Instr);
       }
     }
@@ -580,19 +588,16 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       auto Load = MachineInstruction(MachineInstruction::LOAD, BB);
       auto NewVReg = ParentFunction->GetNextAvailableVReg();
       Load.AddVirtualRegister(NewVReg, /* TODO: use alignment here */ 32);
-      Load.AddStackAccess(I->GetSource()->GetID(), i * /* TODO: use alignment here */ 4);
+      auto SrcId = GetIDFromValue(I->GetSource());
+      Load.AddStackAccess(SrcId, i * /* TODO: use alignment here */ 4);
       BB->InsertInstr(Load);
 
       auto Store = MachineInstruction(MachineInstruction::STORE, BB);
-      if (ParentFunction->IsStackSlot(I->GetDestination()->GetID()))
-        Store.AddStackAccess(I->GetDestination()->GetID(),
-                             i * /* TODO: use alignment here */ 4);
+      auto DestId = GetIDFromValue(I->GetDestination());
+      if (ParentFunction->IsStackSlot(DestId))
+        Store.AddStackAccess(DestId,i * /* TODO: use alignment here */ 4);
       else {
-        auto MemVReg = I->GetDestination()->GetID();
-        // if the IR VReg is mapped to an LLIR VReg, then use that instead
-        if (IRVregToLLIRVreg.count(MemVReg) > 0)
-          MemVReg = IRVregToLLIRVreg[MemVReg];
-        Store.AddMemory(MemVReg, TM->GetPointerSize());
+        Store.AddMemory(DestId, TM->GetPointerSize());
         Store.GetOperands()[0].SetOffset(i * /* TODO: use alignment here */ 4);
       }
       Store.AddVirtualRegister(NewVReg, /* TODO: use alignment here */ 32);

@@ -13,7 +13,8 @@ public:
   IRtoLLIR(Module &IRModule, MachineIRModule *TranslUnit, TargetMachine *TM)
       : IRM(IRModule), TU(TranslUnit), TM(TM) {}
 
-  MachineOperand GetMachineOperandFromValue(Value *Val, MachineBasicBlock *MBB);
+  MachineOperand GetMachineOperandFromValue(Value *Val, MachineBasicBlock *MBB,
+                                            bool IsDef);
 
   void GenerateLLIRFromIR();
 
@@ -28,8 +29,13 @@ public:
 private:
   void HandleFunctionParams(Function &F, MachineFunction *Func);
   MachineInstruction ConvertToMachineInstr(Instruction *Instr,
-                                          MachineBasicBlock *BB,
-                                          std::vector<MachineBasicBlock> &BBs);
+                                           MachineBasicBlock *BB,
+                                           std::vector<MachineBasicBlock> &BBs);
+
+  /// return the ID of the Value, but checks if it was mapped and if so then
+  /// returning the mapped value
+  unsigned GetIDFromValue(Value *Val);
+
   Module &IRM;
   MachineIRModule *TU;
   TargetMachine *TM;
@@ -40,8 +46,9 @@ private:
   std::map<unsigned, std::vector<unsigned>> StructByIDToRegMap;
 
   /// Keep track what IR virtual registers were mapped to what LLIR virtual
-  /// registers. This needed since while translating from IR to LLIR occasionally
-  /// new instructions are added with possible new virtual registers.
+  /// registers. This needed since while translating from IR to LLIR
+  /// occasionally new instructions are added with possible new virtual
+  /// registers.
   std::map<unsigned, unsigned> IRVregToLLIRVreg;
 };
 
