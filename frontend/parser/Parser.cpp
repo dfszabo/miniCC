@@ -265,7 +265,7 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
     }
 
     if (lexer.Is(Token::Enum)) {
-      TU->AddDeclaration(ParseEnumDeclaration());
+      TU->AddDeclaration(ParseEnumDeclaration(Qualifiers));
       Token = GetCurrentToken();
       continue;
     }
@@ -568,7 +568,8 @@ Parser::ParseStructDeclaration(unsigned Qualifiers = 0) {
 }
 
 // <EnumDeclaration> ::= 'enum' '{' <Identifier> (, <Identifier>)* '}' ';'
-std::unique_ptr<EnumDeclaration> Parser::ParseEnumDeclaration() {
+std::unique_ptr<EnumDeclaration>
+Parser::ParseEnumDeclaration(unsigned Qualifiers) {
   Expect(Token::Enum);
   Expect(Token::LeftCurly);
 
@@ -577,19 +578,25 @@ std::unique_ptr<EnumDeclaration> Parser::ParseEnumDeclaration() {
   int EnumCounter = 0;
   do {
     if (lexer.Is(Token::Comma))
-        Lex();
+      Lex(); // eat ','
 
     auto Identifier = Expect(Token::Identifier);
     Enumerators.push_back({Identifier.GetString(), EnumCounter});
 
     // Insert into the symbol table and for now assign the index of the enum
     // to it, not considering explicit assignments like "enum { A = 10 };"
-    InsertToSymTable(Identifier.GetString(), Type(Type::Int),
-                     false, ValueType((unsigned)EnumCounter));
+    InsertToSymTable(Identifier.GetString(), Type(Type::Int), false,
+                     ValueType((unsigned)EnumCounter));
     EnumCounter++;
   } while (lexer.Is(Token::Comma));
 
   Expect(Token::RightCurly);
+
+  if (Qualifiers & Type::Typedef) {
+    auto AliasName = Expect(Token::Identifier).GetString();
+    TypeDefinitions[AliasName] = Type(Type::Int);
+  }
+
   Expect(Token::SemiColon);
 
   return std::make_unique<EnumDeclaration>(Enumerators);

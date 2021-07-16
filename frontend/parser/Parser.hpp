@@ -48,7 +48,7 @@ public:
   std::unique_ptr<VariableDeclaration> ParseVariableDeclaration();
   std::unique_ptr<MemberDeclaration> ParseMemberDeclaration();
   std::unique_ptr<StructDeclaration> ParseStructDeclaration(unsigned Qualifiers);
-  std::unique_ptr<EnumDeclaration> ParseEnumDeclaration();
+  std::unique_ptr<EnumDeclaration> ParseEnumDeclaration(unsigned Qualifiers);
   Node ParseReturnTypeSpecifier();
   std::vector<std::unique_ptr<FunctionParameterDeclaration>>
   ParseParameterList();
