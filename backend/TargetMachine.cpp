@@ -6,6 +6,8 @@ bool TargetMachine::SelectInstruction(MachineInstruction *MI) {
   auto Opcode = MI->GetOpcode();
 
   switch (Opcode) {
+  case MachineInstruction::XOR:
+    return SelectXOR(MI);
   case MachineInstruction::LSL:
     return SelectLSL(MI);
   case MachineInstruction::LSR:

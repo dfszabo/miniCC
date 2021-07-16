@@ -757,6 +757,7 @@ public:
     ADDRESS,
     DEREF,
     MINUS,
+    NOT,
     POST_INCREMENT,
     POST_DECREMENT,
   };
@@ -769,6 +770,8 @@ public:
       return DEREF;
     case Token::Minus:
       return MINUS;
+    case Token::Bang:
+      return NOT;
     case Token::PlusPlus:
       return POST_INCREMENT;
     case Token::MinusMinus:
@@ -797,6 +800,9 @@ public:
     case DEREF:
       ResultType = Expr->GetResultType();
       ResultType.DecrementPointerLevel();
+      break;
+    case NOT:
+      ResultType = Type(Type::Int);
       break;
     case MINUS:
     case POST_DECREMENT:

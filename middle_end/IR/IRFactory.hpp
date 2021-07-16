@@ -41,6 +41,10 @@ public:
     return CreateBinaryInstruction(Instruction::OR, LHS, RHS);
   }
 
+  Instruction *CreateXOR(Value *LHS, Value *RHS) {
+    return CreateBinaryInstruction(Instruction::XOR, LHS, RHS);
+  }
+
   Instruction *CreateLSL(Value *LHS, Value *RHS) {
     return CreateBinaryInstruction(Instruction::LSL, LHS, RHS);
   }

@@ -892,6 +892,46 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
     auto ResultType = E->GetType();
     return IRF->CreateLD(ResultType, E);
   }
+  case NOT: {
+    // goal IR:
+    //    # E generated here
+    //    sa $result
+    //    str [$result], 0
+    //    cmp.eq $c1, $E, 0
+    //    br $c1, <end>
+    // <true>
+    //    str [$result], 1
+    //    j <end>
+    // <end>
+    const auto FuncPtr = IRF->GetCurrentFunction();
+
+    auto TrueBB = std::make_unique<BasicBlock>("not_true", FuncPtr);
+    auto FinalBB = std::make_unique<BasicBlock>("not_final", FuncPtr);
+
+    // LHS Test
+    auto Result = IRF->CreateSA("result", IRType::CreateBool());
+    IRF->CreateSTR(IRF->GetConstant((uint64_t)1), Result);
+
+    // if L was a compare instruction then just revert its relation
+    if (auto LCMP = dynamic_cast<CompareInstruction *>(E); LCMP != nullptr) {
+      LCMP->InvertRelation();
+      IRF->CreateBR(E, FinalBB.get());
+    } else {
+      auto LHSTest = IRF->CreateCMP(CompareInstruction::EQ, E,
+                                    IRF->GetConstant((uint64_t)0));
+      IRF->CreateBR(LHSTest, FinalBB.get());
+    }
+
+    // TRUE
+    IRF->InsertBB(std::move(TrueBB));
+    IRF->CreateSTR(IRF->GetConstant((uint64_t)0), Result);
+    IRF->CreateJUMP(FinalBB.get());
+
+    IRF->InsertBB(std::move(FinalBB));
+
+    // the result seems to be always an rvalue so loading it also
+    return IRF->CreateLD(IRType::CreateBool(), Result);
+  }
   case MINUS: {
     if (auto ConstE = dynamic_cast<IntegerLiteralExpression*>(Expr.get());
         ConstE != nullptr) {

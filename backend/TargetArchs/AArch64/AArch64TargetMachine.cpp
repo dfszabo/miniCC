@@ -7,8 +7,34 @@
 
 using namespace AArch64;
 
+// TODO: This should be done in the legalizer
+void ExtendRegSize(MachineOperand *MO, uint8_t BitWidth = 32) {
+  if (MO->GetSize() < 32)
+    MO->GetTypeRef().SetBitWidth(BitWidth);
+}
+
+bool AArch64TargetMachine::SelectXOR(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "XOR must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
+  if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
+    assert(IsUInt<12>((int64_t)ImmMO->GetImmediate()) &&
+           "Immediate must be 12 bit wide");
+
+    MI->SetOpcode(EOR_rri);
+    return true;
+  }
+  assert(!"Unreachable");
+  return false;
+}
+
 bool AArch64TargetMachine::SelectLSL(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "LSL must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
 
   if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
     assert(IsUInt<12>((int64_t)ImmMO->GetImmediate()) &&
@@ -27,6 +53,9 @@ bool AArch64TargetMachine::SelectLSL(MachineInstruction *MI) {
 bool AArch64TargetMachine::SelectLSR(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "LSR must have 3 operands");
 
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
   if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
     assert(IsUInt<12>((int64_t)ImmMO->GetImmediate()) &&
            "Immediate must be 12 bit wide");
@@ -43,6 +72,9 @@ bool AArch64TargetMachine::SelectLSR(MachineInstruction *MI) {
 
 bool AArch64TargetMachine::SelectADD(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "ADD must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
 
   if (auto Symbol = MI->GetOperand(2); Symbol->IsGlobalSymbol()) {
     MI->SetOpcode(ADD_rri);
@@ -79,6 +111,9 @@ bool AArch64TargetMachine::SelectADD(MachineInstruction *MI) {
 bool AArch64TargetMachine::SelectSUB(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "SUB must have 3 operands");
 
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
   // If last operand is an immediate then select "SUB_rri"
   if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
     assert(IsUInt<12>((int64_t)ImmMO->GetImmediate()) &&
@@ -99,6 +134,9 @@ bool AArch64TargetMachine::SelectSUB(MachineInstruction *MI) {
 
 bool AArch64TargetMachine::SelectMUL(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "MUL must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
 
   // If last operand is an immediate then select "MUL_rri"
   if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
@@ -121,6 +159,9 @@ bool AArch64TargetMachine::SelectMUL(MachineInstruction *MI) {
 bool AArch64TargetMachine::SelectDIV(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "DIV must have 3 operands");
 
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
   // If last operand is an immediate then select "addi"
   if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
     assert(IsUInt<12>((int64_t)ImmMO->GetImmediate()) &&
@@ -141,6 +182,9 @@ bool AArch64TargetMachine::SelectDIV(MachineInstruction *MI) {
 
 bool AArch64TargetMachine::SelectDIVU(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "DIVU must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
 
   // If last operand is an immediate then select "addi"
   if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
@@ -167,6 +211,9 @@ bool AArch64TargetMachine::SelectMODU(MachineInstruction *MI) {
 bool AArch64TargetMachine::SelectCMP(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "CMP must have 3 operands");
 
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
   if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
     MI->SetOpcode(CMP_ri);
     // remove the destination hence the implicit condition register is
@@ -186,6 +233,8 @@ bool AArch64TargetMachine::SelectCMP(MachineInstruction *MI) {
 
 bool AArch64TargetMachine::SelectSEXT(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 2 && "SEXT must have 2 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
 
   if (MI->GetOperand(1)->IsImmediate()) {
     MI->SetOpcode(MOV_rc);
