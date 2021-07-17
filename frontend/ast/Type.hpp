@@ -38,35 +38,52 @@ public:
   bool IsPointerType() const { return PointerLevel != 0; }
 
   static std::string ToString(const Type *t) {
+    std::string Result = "";
+    
     switch (t->GetTypeVariant()) {
     case Double:
-      return "double";
+      Result = "double";
+      break;
     case Char:
-      return "char";
+      Result = "char";
+      break;
     case UnsignedChar:
-      return "unsigned char";
+      Result = "unsigned char";
+      break;
     case Int:
-      return "int";
+      Result = "int";
+      break;
     case UnsignedInt:
-      return "unsigned int";
+      Result = "unsigned int";
+      break;
     case Long:
-      return "long";
+      Result = "long";
+      break;
     case UnsignedLong:
-      return "unsigned long";
+      Result = "unsigned long";
+      break;
     case LongLong:
-      return "long long";
+      Result = "long long";
+      break;
     case UnsignedLongLong:
-      return "unsigned long long";
+      Result = "unsigned long long";
+      break;
     case Void:
-      return "void";
+      Result = "void";
+      break;
     case Composite:
       return t->GetName();
     case Invalid:
       return "invalid";
     default:
-      assert(false && "Unknown type.");
+      assert(!"Unknown type.");
       break;
     }
+
+    for (size_t i = 0; i < t->GetPointerLevel(); i++)
+      Result.push_back('*');
+
+    return Result;
   }
 
   /// Given two type variants it return the stronger one.
@@ -95,6 +112,37 @@ public:
     default:
       return false;
     }
+  }
+
+  static bool IsImplicitlyCastable(const Type from, const Type to) {
+    const bool IsToPtr = to.IsPointerType();
+    const bool IsFromPtr = from.IsPointerType();
+    const bool IsFromArray = from.IsArray();
+
+    // array to pointer decay case
+    if (IsFromArray && !IsFromPtr && IsToPtr) {
+      if (from.GetTypeVariant() == to.GetTypeVariant())
+        return true;
+      return false;
+    }
+
+    bool Result;
+    switch (to.GetTypeVariant()) {
+    case Char:
+    case UnsignedChar:
+    case Int:
+    case UnsignedInt:
+    case Long:
+    case UnsignedLong:
+    case LongLong:
+    case UnsignedLongLong:
+      Result = from.GetTypeVariant() >= Char;
+      break;
+    default:
+      return false;
+    }
+
+    return Result;
   }
 
   static bool IsSmallerThanInt(const Type::VariantKind v) {
@@ -231,6 +279,7 @@ public:
 
   friend bool operator==(const Type &lhs, const Type &rhs) {
     bool result = lhs.Kind == rhs.Kind && lhs.Ty == rhs.Ty;
+    result = result && lhs.GetPointerLevel() == rhs.GetPointerLevel();
 
     if (!result)
       return false;
@@ -243,6 +292,10 @@ public:
       break;
     }
     return result;
+  }
+
+  friend bool operator!=(const Type &lhs, const Type &rhs) {
+      return !(lhs == rhs);
   }
 
   std::string ToString() const {

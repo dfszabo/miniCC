@@ -716,9 +716,20 @@ Value *ArrayExpression::IRCodegen(IRFactory *IRF) {
   auto IndexValue = IndexExpression->IRCodegen(IRF);
 
   auto ResultType = BaseValue->GetType();
-  ResultType.ReduceDimension();
-  if (ResultType.GetPointerLevel() == 0)
-    ResultType.IncrementPointerLevel();
+
+  // case when a pointer is tha base and not an array
+  if (ResultType.IsPTR() && !ResultType.IsArray()) {
+    // if the base value is on the stack
+    if (auto SA = dynamic_cast<StackAllocationInstruction*>(BaseValue); SA != nullptr) {
+      // then load it in first
+      BaseValue = IRF->CreateLD(ResultType, SA);
+      ResultType.DecrementPointerLevel();
+    }
+  } else {
+    ResultType.ReduceDimension();
+    if (ResultType.GetPointerLevel() == 0)
+      ResultType.IncrementPointerLevel();
+  }
 
   auto GEP = IRF->CreateGEP(ResultType, BaseValue, IndexValue);
 
@@ -731,6 +742,29 @@ Value *ArrayExpression::IRCodegen(IRFactory *IRF) {
 Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
   auto SourceTypeVariant = CastableExpression->GetResultType().GetTypeVariant();
   auto DestTypeVariant = GetResultType().GetTypeVariant();
+
+  // If its an array to pointer decay
+  // Note: its only allowed if the expression is a ReferenceExpression
+  // TODO: Investigate whether other types of expressions should be allowed
+  if (CastableExpression->GetResultType().IsArray() &&
+      GetResultType().IsPointerType()) {
+    assert(SourceTypeVariant == DestTypeVariant);
+
+    auto RefExp = dynamic_cast<ReferenceExpression *>(CastableExpression.get());
+    assert(RefExp);
+
+    auto Referee = RefExp->GetIdentifier();
+    auto Res = IRF->GetSymbolValue(Referee);
+    if (!Res)
+      Res = IRF->GetGlobalVar(Referee);
+    assert(Res);
+
+    auto Gep = IRF->CreateGEP(GetIRTypeFromASTType(GetResultType()), Res,
+                              IRF->GetConstant((uint64_t)0));
+
+    return Gep;
+  }
+
   auto Val = CastableExpression->IRCodegen(IRF);
 
   if (Type::OnlySigndnessDifference(SourceTypeVariant, DestTypeVariant))
@@ -1116,6 +1150,9 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
       break;
     }
   }
+
+  if (L->IsConstant())
+    L = IRF->CreateMOV(L, R->GetBitWidth());
 
   switch (GetOperationKind()) {
   case LSL:

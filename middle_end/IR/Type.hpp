@@ -58,7 +58,7 @@ public:
   std::vector<unsigned>& GetDimensions() { return Dimensions; }
   unsigned CalcElemSize(unsigned dim) {
     unsigned result = 1;
-    assert(dim < Dimensions.size() && "Out of bound");
+    assert((dim == 0 || dim < Dimensions.size()) && "Out of bound");
     for (size_t i = dim + 1; i < Dimensions.size(); i++)
       result *= Dimensions[i];
 

@@ -54,6 +54,14 @@ public:
   }
 
   Instruction *CreateADD(Value *LHS, Value *RHS) {
+    if (LHS->IsConstant() && RHS->IsConstant()) {
+      auto ConstLHS = dynamic_cast<Constant*>(LHS);
+      auto ConstRHS = dynamic_cast<Constant*>(RHS);
+      assert(ConstLHS && ConstRHS);
+
+      const auto Val = ConstLHS->GetIntValue() + ConstRHS->GetIntValue();
+      return CreateMOV(GetConstant((uint64_t)Val));
+    }
     return CreateBinaryInstruction(Instruction::ADD, LHS, RHS);
   }
 
