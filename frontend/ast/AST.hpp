@@ -963,7 +963,7 @@ private:
 class ImplicitCastExpression : public Expression {
 public:
   ImplicitCastExpression(std::unique_ptr<Expression> e, Type t)
-      : CastableExpression(std::move(e)), Expression(t.GetTypeVariant()) {}
+      : CastableExpression(std::move(e)), Expression(t) {}
 
   Type GetSourceType() { return CastableExpression->GetResultType(); }
   std::unique_ptr<Expression> &GetCastableExpression() {

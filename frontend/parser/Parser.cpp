@@ -891,7 +891,7 @@ std::unique_ptr<Expression> Parser::ParsePostFixExpression() {
       }
 
       MemberList.push_back(Member);
-      InitList.push_back(ParseConstantExpression());
+      InitList.push_back(ParseExpression());
 
       if (!lexer.Is(Token::Comma))
         break;
@@ -1267,12 +1267,12 @@ std::unique_ptr<Expression> Parser::ParseCallExpression(Token Id) {
       EmitError("arguments number mismatch", lexer);
 
     for (size_t i = 0; i < FuncArgNum; i++) {
-      auto CallArgType = CallArgs[i]->GetResultType().GetTypeVariant();
+      auto CallArgType = CallArgs[i]->GetResultType();
 
-      // If the ith argument type is not matching the expeccted one
-      if (CallArgType != FuncArgTypes[i].GetTypeVariant()) {
+      // If the ith argument type is not matching the expected one
+      if (CallArgType != FuncArgTypes[i]) {
         // Cast if allowed
-        if (Type::IsImplicitlyCastable(CallArgType, FuncArgTypes[i].GetTypeVariant()))
+        if (Type::IsImplicitlyCastable(CallArgType, FuncArgTypes[i]))
           CallArgs[i] = std::make_unique<ImplicitCastExpression>(
               std::move(CallArgs[i]), FuncArgTypes[i]);
         else // otherwise its an error
@@ -1286,14 +1286,12 @@ std::unique_ptr<Expression> Parser::ParseCallExpression(Token Id) {
   return std::make_unique<CallExpression>(Id.GetString(), CallArgs, FuncType);
 }
 
-std::unique_ptr<Expression> Parser::ParseArrayExpression(std::unique_ptr<Expression> Base) {
+std::unique_ptr<Expression>
+Parser::ParseArrayExpression(std::unique_ptr<Expression> Base) {
   Lex();
   auto IndexExpr = ParseExpression();
   Expect(Token::RightBracet);
 
-  Type ActualType;
-
-  // Type type = std::move(ActualType);
   Type type = Base->GetResultType();
 
   /// Remove the first N dimensions from the actual type. Example:
@@ -1301,9 +1299,11 @@ std::unique_ptr<Expression> Parser::ParseArrayExpression(std::unique_ptr<Express
   /// then the result type of 'arr[0]' is 'int[10]'. N is the
   /// amount of index expressions used when referencing the array here
   /// 'arr'. In the example its 1.
-  type.GetDimensions().erase(type.GetDimensions().begin(),
-                             type.GetDimensions().begin() +
-                             1);
+  if (!type.IsPointerType())
+    type.GetDimensions().erase(type.GetDimensions().begin(),
+                               type.GetDimensions().begin() + 1);
+  else
+    type.DecrementPointerLevel();
 
   Base->SetLValueness(true);
   return std::make_unique<ArrayExpression>(Base, IndexExpr, type);

@@ -1,6 +1,6 @@
 // RUN: AArch64
 // FUNC-DECL: unsigned new_tetris()
-// TEST-CASE: new_tetris() -> 2
+// TEST-CASE: new_tetris() -> 5
 
 typedef unsigned uint;
 
@@ -21,6 +21,7 @@ typedef struct tetris {
 
 uint new_tetris() {
   Tetris tetris;
-  tetris.curr_piece = (Piece){.kind = 1, .x = 2, .y = 3, .rotation = 4};
-  return tetris.curr_piece.x;
+  uint y = 3;
+  tetris.curr_piece = (Piece){.kind = 1, .x = 2, .y = y, .rotation = 4};
+  return tetris.curr_piece.x + tetris.curr_piece.y;
 }
