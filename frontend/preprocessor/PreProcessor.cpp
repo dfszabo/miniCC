@@ -1,11 +1,30 @@
 #include "PreProcessor.hpp"
-
-#include <cassert>
 #include "PPLexer.hpp"
+#include <cassert>
+#include <fstream>
 
 std::string WhiteSpaceChars("\t ");
 
-void PreProcessor::ParseDirective(std::string &Line) {
+static bool getFileContent(std::string fileName,
+                           std::vector<std::string> &vecOfStrs) {
+  // Open the File
+  std::ifstream in(fileName.c_str());
+  // Check if object is valid
+  if (!in)
+    return false;
+
+  std::string str;
+  // Read the next line from File until it reaches the end.
+  while (std::getline(in, str))
+    // Line contains string of length > 0 then save it in vector
+    vecOfStrs.push_back(str);
+
+  // Close The File
+  in.close();
+  return true;
+}
+
+void PreProcessor::ParseDirective(std::string &Line, size_t LineIdx) {
   PPLexer lexer(Line);
   lexer.Lex(); // eat '#'
 
@@ -48,7 +67,8 @@ void PreProcessor::ParseDirective(std::string &Line) {
         // and it became "((($0) > ($1)) ? ($0) : ($1))"
         // this will make the substitution easier later
         while (Body.find(Params[i]) != std::string::npos)
-          Body.replace(Body.find(Params[i]), Params[i].length(), "$" + std::to_string(i));
+          Body.replace(Body.find(Params[i]), Params[i].length(),
+                       "$" + std::to_string(i));
       }
 
       DefinedMacros[DefinedID.GetString()] = {Body, Params.size()};
@@ -57,6 +77,31 @@ void PreProcessor::ParseDirective(std::string &Line) {
     else {
       DefinedMacros[DefinedID.GetString()] = {RemainingText, 0};
     }
+  } else if (Directive.GetKind() == PPToken::Include) {
+    assert(lexer.Is(PPToken::DoubleQuote));
+    lexer.Lex(); // eat '"'
+
+    auto FileNameToken = lexer.Lex();
+    assert(FileNameToken.GetKind() == PPToken::Identifier);
+    auto FileName = FileNameToken.GetString();
+
+    assert(lexer.Is(PPToken::Dot));
+    lexer.Lex(); // eat '.'
+    FileName.push_back('.');
+
+    auto ExtensionToken = lexer.Lex();
+    assert(ExtensionToken.GetKind() == PPToken::Identifier);
+    FileName.append(ExtensionToken.GetString());
+
+    assert(lexer.Is(PPToken::DoubleQuote));
+    lexer.Lex(); // eat '"'
+
+    std::vector<std::string> FileContent;
+    auto Success = getFileContent(FilePath + FileName, FileContent);
+    assert(Success && "Cannot open file");
+
+    Source.insert(Source.begin() + LineIdx + 1, FileContent.begin(),
+                  FileContent.end());
   }
 }
 
@@ -111,7 +156,7 @@ void PreProcessor::Run() {
       continue;
 
     if (!Line.empty() && Line[0] == '#') {
-      ParseDirective(Line);
+      ParseDirective(Line, LineIdx);
       // delete current line, assuming the directive only used one line
       Source.erase(Source.begin() + LineIdx);
       LineIdx--; // since the erase we have to check again the same LineIdx

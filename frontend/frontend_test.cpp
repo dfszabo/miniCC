@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
   std::vector<std::string> src;
   getFileContent(FilePath.c_str(), src);
 
-  PreProcessor(src).Run();
+  PreProcessor(src, FilePath).Run();
 
   if (DumpPreProcessedFile) {
     for (auto &Line : src)

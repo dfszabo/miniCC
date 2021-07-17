@@ -27,7 +27,8 @@ public:
 
   std::string &GetSource() { return Source; }
   std::string GetRemainingText() {
-    assert(LineIndex < Source.size());
+    if (LineIndex > Source.length())
+      return "";
     return Source.substr(LineIndex);
   }
 

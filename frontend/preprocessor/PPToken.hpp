@@ -14,13 +14,16 @@ public:
     Identifier,
     
     // Symbols
+    Dot,
     Colon,
     Hashtag,
     LeftParen,
     RightParen,
+    DoubleQuote,
     
     // Keywords
     Define,
+    Include,
   };
 
   PPToken() : Kind(Invalid) {}
@@ -46,6 +49,8 @@ public:
       return "Invalid";
     case Identifier:
       return "Identifier";
+    case Dot:
+      return ".";
     case Colon:
       return ",";
     case Hashtag:
@@ -54,8 +59,12 @@ public:
       return "(";
     case RightParen:
       return ")";
+    case DoubleQuote:
+      return "\"";
     case Define:
       return "define";
+    case Include:
+      return "include";
 
     default:
       assert(false && "Unhandled token type.");
