@@ -8,13 +8,18 @@
 class PreProcessor {
 public:
   PreProcessor() = delete;
-  PreProcessor(std::vector<std::string> &Src) : Source(Src) {}
+  PreProcessor(std::vector<std::string> &Src, std::string Path) : Source(Src) {
+    FilePath = Path.substr(0, Path.rfind('/'));
+    if (FilePath.length() > 0 && FilePath[FilePath.length() - 1] != '/')
+      FilePath.push_back('/');
+  }
 
-  void ParseDirective(std::string &Line);
+  void ParseDirective(std::string &Line, size_t LineIdx);
   void SubstituteMacros(std::string &Line);
   void Run();
 
 private:
+  std::string FilePath;
   std::vector<std::string> &Source;
   std::map<std::string, std::pair<std::string, unsigned>> DefinedMacros;
 };
