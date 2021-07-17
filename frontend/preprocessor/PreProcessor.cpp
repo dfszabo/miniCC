@@ -80,22 +80,26 @@ void PreProcessor::SubstituteMacros(std::string &Line) {
 
       auto RemainingLine = Line.substr(Pos);
       size_t StartPos = 0;
-      std::vector<std::string> ActualParams;
+      std::vector<std::string> ActualParams(0);
       for (size_t i = 0; i < MacroParam; i++) {
         size_t EndPos = i != MacroParam - 1 ? RemainingLine.find(",")
                                             : RemainingLine.find(")");
-        ActualParams.push_back(RemainingLine.substr(StartPos, EndPos - StartPos));
+        ActualParams.push_back(
+            RemainingLine.substr(StartPos, EndPos - StartPos));
         StartPos = EndPos + 1;
       }
 
+      auto ReplacedMacroBody = MacroBody;
       for (size_t i = 0; i < ActualParams.size(); i++) {
         auto Param = "$" + std::to_string(i);
-        while (MacroBody.find(Param) != std::string::npos)
-          MacroBody.replace(MacroBody.find(Param), Param.length(), ActualParams[i]);
+        while (ReplacedMacroBody.find(Param) != std::string::npos)
+          ReplacedMacroBody.replace(ReplacedMacroBody.find(Param),
+                                    Param.length(), ActualParams[i]);
       }
 
       if (Line.find(MacroID) != std::string::npos)
-        Line.replace(Line.find(MacroID), MacroID.length() + StartPos + 1, MacroBody);
+        Line.replace(Line.find(MacroID), MacroID.length() + StartPos + 1,
+                     ReplacedMacroBody);
     }
   }
 }
