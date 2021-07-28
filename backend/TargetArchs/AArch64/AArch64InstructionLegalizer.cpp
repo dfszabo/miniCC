@@ -27,14 +27,6 @@ bool AArch64InstructionLegalizer::Check(MachineInstruction *MI) {
     if (MI->GetOperand(2)->IsImmediate())
       return false;
     break;
-  case MachineInstruction::ZEXT: {
-    auto PrevInst = MI->GetParent()->GetPrecedingInstr(MI);
-
-    // If not a LOAD then do nothing
-    if (PrevInst && PrevInst->GetOpcode() == MachineInstruction::LOAD)
-      return false;
-    break;
-  }
   case MachineInstruction::GLOBAL_ADDRESS:
     return false;
   default:
@@ -53,7 +45,6 @@ bool AArch64InstructionLegalizer::IsExpandable(const MachineInstruction *MI) {
   case MachineInstruction::MUL:
   case MachineInstruction::DIV:
   case MachineInstruction::DIVU:
-  case MachineInstruction::ZEXT:
   case MachineInstruction::GLOBAL_ADDRESS:
     return true;
 
@@ -137,24 +128,6 @@ bool AArch64InstructionLegalizer::ExpandDIV(MachineInstruction *MI) {
 bool AArch64InstructionLegalizer::ExpandDIVU(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "DIVU must have exactly 3 operands");
   return ExpandArithmeticInstWithImm(MI, 2);
-}
-
-bool AArch64InstructionLegalizer::ExpandZEXT(MachineInstruction *MI) {
-  assert(MI->GetOperandsNumber() == 2 && "ZEXT must have exactly 2 operands");
-  auto ParentBB = MI->GetParent();
-
-  auto PrevInst = ParentBB->GetPrecedingInstr(MI);
-
-  // If not a LOAD then do nothing
-  if (!(PrevInst->GetOpcode() == MachineInstruction::LOAD))
-    return false;
-
-  auto ZEXTDest = *MI->GetOperand(0);
-  PrevInst->InsertOperand(0, ZEXTDest);
-  PrevInst->SetOpcode(MachineInstruction::ZEXT_LOAD);
-  ParentBB->Erase(MI);
-
-  return true;
 }
 
 bool AArch64InstructionLegalizer::ExpandGLOBAL_ADDRESS(MachineInstruction *MI) {

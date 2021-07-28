@@ -30,6 +30,8 @@ enum Opcodes : unsigned {
   CSET,
   SXTB,
   SXTW,
+  UXTB,
+  UXTW,
   MOV_rc,
   MOV_rr,
   ADRP,
