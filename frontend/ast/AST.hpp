@@ -717,18 +717,18 @@ private:
 
 class StructInitExpression : public Expression {
 public:
-  using StrList = std::vector<std::string>;
+  using UintList = std::vector<unsigned>;
   using ExprPtrList = std::vector<std::unique_ptr<Expression>>;
 
-  StrList &GetMemberId() { return MemberIdentifiers; }
-  void SetMemberId(StrList l) { MemberIdentifiers = l; }
+  UintList &GetMemberOrdering() { return MemberOrdering; }
+  void SetMemberOrdering(UintList l) { MemberOrdering = l; }
 
   ExprPtrList &GetInitList() { return InitValues; }
   void SetInitList(ExprPtrList &e) { InitValues = std::move(e); }
 
   StructInitExpression(Type ResultType, ExprPtrList InitList,
-                       StrList MemberNames) :
-  InitValues(std::move(InitList)), MemberIdentifiers(std::move(MemberNames)) {
+                       UintList InitOrder) :
+  InitValues(std::move(InitList)), MemberOrdering(std::move(InitOrder)) {
     this->ResultType = ResultType;
   }
 
@@ -745,7 +745,7 @@ public:
   Value *IRCodegen(IRFactory *IRF) override;
 
 private:
-  StrList MemberIdentifiers;
+  UintList MemberOrdering;
   ExprPtrList InitValues;
 };
 

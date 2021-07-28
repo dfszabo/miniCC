@@ -75,6 +75,14 @@ bool Parser::IsUserDefined(std::string Name) {
   return UserDefinedTypes.count(Name) > 0 || TypeDefinitions.count(Name);
 }
 
+std::vector<std::string> Parser::GetUserDefinedTypeMembers(std::string Name) {
+  assert(IsUserDefined(Name));
+
+  if (TypeDefinitions.count(Name) > 0)
+    Name = TypeDefinitions[Name].GetName();
+  return std::get<1>(UserDefinedTypes[Name]);
+}
+
 Type Parser::GetUserDefinedType(std::string Name) {
   assert(IsUserDefined(Name));
 
@@ -880,7 +888,7 @@ std::unique_ptr<Expression> Parser::ParsePostFixExpression() {
 
     Expect(Token::LeftCurly);
 
-    StructInitExpression::StrList MemberList;
+    std::vector<std::string> MemberList;
     StructInitExpression::ExprPtrList InitList;
     while (lexer.Is(Token::Dot) || lexer.Is(Token::Identifier)) {
       std::string Member = "";
@@ -900,10 +908,31 @@ std::unique_ptr<Expression> Parser::ParsePostFixExpression() {
     }
     Expect(Token::RightCurly);
 
+    // construct a list of the orders how the fields are initialized
+    // ex.: "struct P { int x, y; };"
+    //      ...
+    //      struct P Obj = (struct P) { .y = 2, .x = 1 }
+    //
+    //  in the above case the InitOrder would look like: {1, 0}, so the first
+    //  init expression actually initializing the 2nd (index 1) struct member
+    auto MemberNames = GetUserDefinedTypeMembers(TypeName);
+    std::vector<unsigned> InitOrder;
+    for (auto &Member : MemberList) {
+      unsigned Order = 0;
+      for (auto &TypeMemberName : MemberNames) {
+        if (TypeMemberName == Member) {
+          InitOrder.push_back(Order);
+          break;
+        }
+        Order++;
+      }
+    }
+
     // TODO: do semantic check that the member names are valid
+    auto ResTy = GetUserDefinedType(TypeName);
     return std::make_unique<StructInitExpression>(
-        GetUserDefinedType(TypeName), std::move(InitList),
-        std::move(MemberList));
+        ResTy, std::move(InitList),
+        std::move(InitOrder));
   }
 
   auto Expr = ParsePrimaryExpression();

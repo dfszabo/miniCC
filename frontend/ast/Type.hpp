@@ -72,7 +72,8 @@ public:
       Result = "void";
       break;
     case Composite:
-      return t->GetName();
+      Result = t->GetName();
+      break;
     case Invalid:
       return "invalid";
     default:
