@@ -3,8 +3,6 @@ import re
 import subprocess
 from os import path
 
-workdir = "/home/david/work/mini-c-compiler-cpp/tests"
-
 
 def check_file(file_name):
     arch = ""
@@ -24,22 +22,26 @@ def check_file(file_name):
             if m:
                 test_cases.append((m.group(1), m.group(2)))
 
-    if len(test_cases) == 0:
-        return False, False
+    return arch, function_declarations, test_cases
 
+
+def execute_tests(file_name, arch, function_declarations, test_cases):
     run_command = "qemu-" + arch
     if arch == "":
-        return False, True
+        return False
 
-    test_main_c_template = ""
+    test_main_c_template = "#include <stdio.h>\n"
     for func_decl in function_declarations:
         test_main_c_template += func_decl + ";\n"
 
-    test_main_c_template += "int main() { return $; }"
+    test_main_c_template += "int main() {"
+    test_main_c_template += "  int res = $;"
+    test_main_c_template += r'  if (res != @) { printf("\nExpected: %d, Actual: %d\n", @, res); return 1;}'
+    test_main_c_template += "  return 0; }"
 
     ret_code = subprocess.run(["../build/miniCC", file_name], stdout=subprocess.DEVNULL, timeout=10).returncode
     if ret_code != 0:
-        return False, True
+        return False
 
     test_asm = subprocess.check_output(["../build/miniCC", file_name]).decode("utf-8")
 
@@ -49,7 +51,8 @@ def check_file(file_name):
 
     for case, expected_result in test_cases:
         current_test_main = test_main_c_template
-        current_test_main = current_test_main.replace("$", case + " == " + expected_result)
+        current_test_main = current_test_main.replace("$", case)
+        current_test_main = current_test_main.replace("@", expected_result)
 
         text_file = open("test_main.c", "w")
         n = text_file.write(current_test_main)
@@ -63,15 +66,15 @@ def check_file(file_name):
                 os.remove("test.s")
             if path.exists("test"):
                 os.remove("test")
-            return False, True
+            return False
 
         ret_code = subprocess.run([run_command, "test"]).returncode
 
-        if ret_code == 0:
+        if ret_code != 0:
             os.remove("test_main.c")
             os.remove("test.s")
             os.remove("test")
-            return False, True
+            return False
 
     if path.exists("test_main.c"):
         os.remove("test_main.c")
@@ -79,28 +82,32 @@ def check_file(file_name):
         os.remove("test.s")
     if path.exists("test"):
         os.remove("test")
-    return True, True
+    return True
 
 
 failed_tests = []
 tests_count = 0
 passed_tests_count = 0
-for subdir, dirs, files in os.walk(workdir):
+for subdir, dirs, files in os.walk(os.getcwd()):
     for filename in files:
         filepath = subdir + os.sep + filename
 
         if filepath.endswith(".c") or filepath.endswith(".s"):
-            success, has_cases = check_file(filepath)
-            if not has_cases:
+            arch, function_declarations, test_cases = check_file(filepath)
+            if arch == "":
                 continue
+
+            print(filepath, end="")
+
+            success = execute_tests(filepath, arch, function_declarations, test_cases)
 
             tests_count += 1
             if success:
                 passed_tests_count += 1
-                print(filepath + "...PASS")
+                print("...PASS")
             else:
                 failed_tests.append(filepath)
-                print(filepath + "...FAIL")
+                print("...FAIL")
 
 print("\n--------", tests_count, "Test executed --------")
 print("\t\t", passed_tests_count, "PASS")
