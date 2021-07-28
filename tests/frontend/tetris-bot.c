@@ -167,7 +167,7 @@ ull board_hole_factor(const Tetris *self) {
     // otherwise count the holes weighted by its depth
     for (uint r = row; r < BOARD_HEIGHT; r++)
       if (self->board[r][col] == 0)
-        hole_factor += row;
+        hole_factor += r;
   }
 
   return hole_factor;
