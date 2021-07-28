@@ -73,8 +73,13 @@ void AssemblyEmitter::GenerateAssembly() {
 
             if (!CurrentOperand->IsGlobalSymbol())
               Str.append(CurrentOperand->GetLabel());
-            else
+            else {
               Str.append(CurrentOperand->GetGlobalSymbol());
+              if (DollarPos > 0 && AssemblyTemplateStr[DollarPos - 1] == '#') {
+                AssemblyTemplateStr.erase(DollarPos - 1);
+                DollarPos--;
+              }
+            }
             AssemblyTemplateStr.replace(DollarPos, 2, Str);
           } else
             assert(!"Invalid Machine Operand type");
@@ -86,6 +91,8 @@ void AssemblyEmitter::GenerateAssembly() {
     std::cout << std::endl;
     FunctionCounter++;
   }
+  if (!MIRM->GetGlobalDatas().empty())
+    std::cout << ".section .data" << std::endl;
   for (auto &GlobalData : MIRM->GetGlobalDatas())
     GlobalData.Print();
 }
