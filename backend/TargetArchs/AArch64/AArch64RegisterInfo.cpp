@@ -100,6 +100,8 @@ unsigned AArch64RegisterInfo::GetFrameRegister() { return 61; }
 
 unsigned AArch64RegisterInfo::GetLinkRegister() { return X30; }
 
-unsigned AArch64RegisterInfo::GetStackRegister() { return 64; }
+unsigned AArch64RegisterInfo::GetStackRegister() { return X31; }
+
+unsigned AArch64RegisterInfo::GetStructPtrRegister() { return X8; }
 
 unsigned AArch64RegisterInfo::GetZeroRegister() { return XZR; }

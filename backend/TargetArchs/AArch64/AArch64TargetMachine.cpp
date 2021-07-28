@@ -252,9 +252,26 @@ bool AArch64TargetMachine::SelectSEXT(MachineInstruction *MI) {
 }
 
 bool AArch64TargetMachine::SelectZEXT(MachineInstruction *MI) {
-  // FIXME: its not right to do this, but temporarily might enable to compile
-  // some tests, fix this ASAP afterwards
-  return SelectSEXT(MI);
+  assert(MI->GetOperandsNumber() == 2 && "ZEXT must have 2 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+
+  if (MI->GetOperand(1)->IsImmediate()) {
+    MI->SetOpcode(MOV_rc);
+    return true;
+  } else if (MI->GetOperand(1)->GetType().GetBitWidth() == 32) {
+    MI->SetOpcode(UXTW);
+    return true;
+  } else if (MI->GetOperand(1)->GetType().GetBitWidth() == 8) {
+    MI->SetOpcode(UXTB);
+    return true;
+  } else if (MI->GetOperand(1)->GetType().GetBitWidth() == 64) {
+    MI->SetOpcode(MOV_rr);
+    return true;
+  }
+
+  assert(!"Unimplemented!");
+  return false;
 }
 
 bool AArch64TargetMachine::SelectTRUNC(MachineInstruction *MI) {
