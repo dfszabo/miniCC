@@ -163,9 +163,9 @@ public:
   }
 
   CallInstruction *CreateCALL(std::string &Name, std::vector<Value *> Args,
-                              IRType Type) {
-    auto Inst =
-        std::make_unique<CallInstruction>(Name, Args, Type, GetCurrentBB());
+                              IRType Type, int StructIdx = -1) {
+    auto Inst = std::make_unique<CallInstruction>(Name, Args, Type,
+                                                  GetCurrentBB(), StructIdx);
     auto InstPtr = Inst.get();
 
     if (!Type.IsVoid())

@@ -69,14 +69,16 @@ private:
 class FunctionParameter : public Value {
 public:
   FunctionParameter() = delete;
-  FunctionParameter(std::string &Name, IRType Type)
-      : Value(PARAM, Type), Name(Name) {}
+  FunctionParameter(std::string &Name, IRType Type, bool Struct = false)
+      : Value(PARAM, Type), Name(Name), ImplicitStructPtr(Struct) {}
 
   std::string &GetName() { return Name; }
+  bool IsImplicitStructPtr() const { return ImplicitStructPtr; }
   std::string ValueString() const override { return "$" + Name; }
 
 private:
   std::string Name;
+  bool ImplicitStructPtr = false;
 };
 
 class GlobalVariable : public Value {
