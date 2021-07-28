@@ -6,9 +6,11 @@
 #include "StackFrame.hpp"
 #include <vector>
 
+class Function;
+
 class MachineFunction {
   using BasicBlockList = std::vector<MachineBasicBlock>;
-  using ParamList = std::vector<std::pair<unsigned, LowLevelType>>;
+  using ParamList = std::vector<std::tuple<unsigned, LowLevelType, bool>>;
   using PhysRegList = std::vector<unsigned>;
 
 public:
@@ -30,8 +32,8 @@ public:
     SF.InsertStackSlot(ID, Size);
   }
 
-  void InsertParameter(unsigned ID, LowLevelType LLT) {
-    Parameters.push_back({ID, LLT});
+  void InsertParameter(unsigned ID, LowLevelType LLT, bool ImplStructPtr = false) {
+    Parameters.push_back({ID, LLT, ImplStructPtr});
   }
 
   ParamList GetParameters() { return Parameters; }
