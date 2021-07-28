@@ -35,6 +35,7 @@ public:
 
   bool IsUserDefined(std::string Name);
   Type GetUserDefinedType(std::string Name);
+  std::vector<std::string> GetUserDefinedTypeMembers(std::string Name);
 
   unsigned ParseQualifiers();
   Type ParseType(Token::TokenKind tk);
