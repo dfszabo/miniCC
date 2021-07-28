@@ -106,6 +106,16 @@ public:
     return MO;
   }
 
+  static MachineOperand CreateMemory(uint64_t Id, int Offset,
+                                     unsigned BitWidth) {
+    MachineOperand MO;
+    MO.SetToMemAddr();
+    MO.SetOffset(Offset);
+    MO.SetValue(Id);
+    MO.SetType(LowLevelType::CreatePTR(BitWidth));
+    return MO;
+  }
+
   static MachineOperand CreateStackAccess(uint64_t Slot, int Offset = 0) {
     MachineOperand MO;
     MO.SetToStackAccess();

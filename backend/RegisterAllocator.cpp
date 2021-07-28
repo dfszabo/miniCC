@@ -19,18 +19,23 @@ void PreAllocateParameters(MachineFunction &Func, TargetMachine *TM,
   auto ArgRegs = TM->GetABI()->GetArgumentRegisters();
   unsigned CurrentParamReg = 0;
 
-  for (auto [ParamID, ParamLLT] : Func.GetParameters()) {
+  for (auto [ParamID, ParamLLT, IsImplStructPtr] : Func.GetParameters()) {
     // FIXME: excess parameters should be stored on the stack
     assert(CurrentParamReg < ArgRegs.size() && "Run out of param regs");
 
     // set the parameter live
     LiveRanges[ParamID] = {0, ~0};
 
+    TargetRegister *CurrArgReg =
+        IsImplStructPtr ? TM->GetRegInfo()->GetRegisterByID(
+                              TM->GetRegInfo()->GetStructPtrRegister())
+                        : ArgRegs[CurrentParamReg++];
+
     // allocate the param to the CurrentParamReg -th param register
     if (ParamLLT.GetBitWidth() <= 32)
-      AllocatedRegisters[ParamID] = ArgRegs[CurrentParamReg++]->GetSubRegs()[0];
+      AllocatedRegisters[ParamID] = CurrArgReg->GetSubRegs()[0];
     else
-      AllocatedRegisters[ParamID] = ArgRegs[CurrentParamReg++]->GetID();
+      AllocatedRegisters[ParamID] = CurrArgReg->GetID();
   }
 }
 

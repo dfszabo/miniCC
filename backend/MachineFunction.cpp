@@ -7,7 +7,7 @@ class TargetMachine;
 unsigned MachineFunction::GetNextAvailableVReg() {
   // If this function was called the first time then here the highest virtual
   // register ID is searched and NextVReg is set to that.
-  for (auto &[ParamID, ParamLLT] : Parameters)
+  for (auto &[ParamID, ParamLLT, IsStructPtr] : Parameters)
     if (ParamID == NextVReg)
       NextVReg++;
     else if (ParamID > NextVReg)

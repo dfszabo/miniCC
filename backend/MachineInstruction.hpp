@@ -146,6 +146,10 @@ public:
     AddOperand(MachineOperand::CreateMemory(Id, BitWidth));
   }
 
+  void AddMemory(uint64_t Id, int Offset, unsigned BitWidth) {
+    AddOperand(MachineOperand::CreateMemory(Id, Offset, BitWidth));
+  }
+
   void AddStackAccess(uint64_t Slot, unsigned Offset = 0) {
     AddOperand(MachineOperand::CreateStackAccess(Slot, Offset));
   }

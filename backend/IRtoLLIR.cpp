@@ -103,7 +103,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
 
   // Three address ALU instructions: INSTR Result, Op1, Op2
   if (auto I = dynamic_cast<BinaryInstruction *>(Instr); I != nullptr) {
-    auto Result = GetMachineOperandFromValue((Value *)I, BB);
+    auto Result = GetMachineOperandFromValue((Value *)I, BB, true);
     auto FirstSrcOp = GetMachineOperandFromValue(I->GetLHS(), BB);
     auto SecondSrcOp = GetMachineOperandFromValue(I->GetRHS(), BB);
 
@@ -113,7 +113,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
   }
   // Two address ALU instructions: INSTR Result, Op
   else if (auto I = dynamic_cast<UnaryInstruction *>(Instr); I != nullptr) {
-    auto Result = GetMachineOperandFromValue((Value *)I, BB);
+    auto Result = GetMachineOperandFromValue((Value *)I, BB, true);
     auto Op = GetMachineOperandFromValue(I->GetOperand(), BB);
 
     ResultMI.AddOperand(Result);
@@ -453,21 +453,27 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       // Handle pointer case for both local and global objects
       else if (Param->GetTypeRef().IsPTR() && (Param->IsGlobalVar() ||
           ParentFunction->IsStackSlot(Param->GetID()))) {
+        unsigned DestinationReg;
+        unsigned RegBitWidth = TargetArgRegs[ParamCounter]->GetBitWidth();
+
+        if ((int)ParamCounter == I->GetImplicitStructArgIndex())
+          DestinationReg = TM->GetRegInfo()->GetStructPtrRegister();
+        else
+          DestinationReg = TargetArgRegs[ParamCounter]->GetID();
+
         if (Param->IsGlobalVar()) {
           Instr = MachineInstruction(MachineInstruction::GLOBAL_ADDRESS, BB);
 
-          Instr.AddRegister(TargetArgRegs[ParamCounter]->GetID(),
-                            TargetArgRegs[ParamCounter]->GetBitWidth());
+          Instr.AddRegister(DestinationReg, RegBitWidth);
 
-          auto Symbol = ((GlobalVariable*)Param)->GetName();
+          auto Symbol = ((GlobalVariable *)Param)->GetName();
           Instr.AddGlobalSymbol(Symbol);
           BB->InsertInstr(Instr);
           ParamCounter++;
         } else {
           Instr = MachineInstruction(MachineInstruction::STACK_ADDRESS, BB);
 
-          Instr.AddRegister(TargetArgRegs[ParamCounter]->GetID(),
-                            TargetArgRegs[ParamCounter]->GetBitWidth());
+          Instr.AddRegister(DestinationReg, RegBitWidth);
 
           Instr.AddStackAccess(Param->GetID());
           BB->InsertInstr(Instr);
@@ -589,7 +595,12 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       auto NewVReg = ParentFunction->GetNextAvailableVReg();
       Load.AddVirtualRegister(NewVReg, /* TODO: use alignment here */ 32);
       auto SrcId = GetIDFromValue(I->GetSource());
-      Load.AddStackAccess(SrcId, i * /* TODO: use alignment here */ 4);
+
+      if (ParentFunction->IsStackSlot(SrcId))
+        Load.AddStackAccess(SrcId, i * /* TODO: use alignment here */ 4);
+      else
+        Load.AddMemory(SrcId, i * /* TODO: use alignment here */ 4, TM->GetPointerSize());
+
       BB->InsertInstr(Load);
 
       auto Store = MachineInstruction(MachineInstruction::STORE, BB);
@@ -628,6 +639,7 @@ void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
   for (auto &Param : F.GetParameters()) {
     auto ParamID = Param->GetID();
     auto ParamSize = Param->GetBitWidth();
+    auto IsStructPtr = Param->IsImplicitStructPtr();
 
     // Handle structs
     if (Param->GetTypeRef().IsStruct() && !Param->GetTypeRef().IsPTR()) {
@@ -655,9 +667,11 @@ void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
     }
 
     if (Param->GetTypeRef().IsPTR())
-      Func->InsertParameter(ParamID, LowLevelType::CreatePTR(TM->GetPointerSize()));
+      Func->InsertParameter(
+          ParamID, LowLevelType::CreatePTR(TM->GetPointerSize()), IsStructPtr);
     else
-      Func->InsertParameter(ParamID, LowLevelType::CreateINT(ParamSize));
+      Func->InsertParameter(ParamID, LowLevelType::CreateINT(ParamSize),
+                            IsStructPtr);
   }
 }
 
