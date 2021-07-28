@@ -104,8 +104,11 @@ void PrologueEpilogInsertion::InsertStackAdjustmentDownward(
 MachineInstruction PrologueEpilogInsertion::CreateSTORE(MachineFunction &Func,
                                                         unsigned Register) {
   MachineInstruction STR(MachineInstruction::STORE, nullptr);
-  auto Offset = Func.GetStackObjectPosition(Register);
-  Offset = GetNextAlignedValue(Offset, TM->GetPointerSize());
+  auto StackID = Register;
+  if (LocalPhysRegToStackSlotMap.count(Register) > 0)
+    StackID = LocalPhysRegToStackSlotMap[Register];
+  auto Offset = Func.GetStackObjectPosition(StackID);
+  Offset = GetNextAlignedValue(Offset, TM->GetPointerSize() / 8);
   auto SPReg = TM->GetRegInfo()->GetStackRegister();
 
   STR.AddRegister(Register, TM->GetPointerSize());
@@ -121,8 +124,11 @@ MachineInstruction PrologueEpilogInsertion::CreateSTORE(MachineFunction &Func,
 MachineInstruction PrologueEpilogInsertion::CreateLOAD(MachineFunction &Func,
                                                         unsigned Register) {
   MachineInstruction LOAD(MachineInstruction::LOAD, nullptr);
-  auto Offset = Func.GetStackObjectPosition(Register);
-  Offset = GetNextAlignedValue(Offset, TM->GetPointerSize());
+  auto StackID = Register;
+  if (LocalPhysRegToStackSlotMap.count(Register) > 0)
+    StackID = LocalPhysRegToStackSlotMap[Register];
+  auto Offset = Func.GetStackObjectPosition(StackID);
+  Offset = GetNextAlignedValue(Offset, TM->GetPointerSize() / 8);
   auto SPReg = TM->GetRegInfo()->GetStackRegister();
 
   LOAD.AddRegister(Register, TM->GetPointerSize());
@@ -141,7 +147,7 @@ void PrologueEpilogInsertion::SpillClobberedCalleeSavedRegisters(
   const unsigned StartOfInsertion = Func.IsCaller() ? 2 : 1;
 
   for (auto Reg : Func.GetUsedCalleSavedRegs()) {
-    auto STR = CreateSTORE(Func, LocalPhysRegToStackSlotMap[Reg]);
+    auto STR = CreateSTORE(Func, Reg);
     Func.GetBasicBlocks().front().InsertInstr(STR, StartOfInsertion + Counter);
     Counter++;
   }
@@ -153,7 +159,7 @@ void PrologueEpilogInsertion::ReloadClobberedCalleeSavedRegisters(
   auto &LastBB = Func.GetBasicBlocks().back();
 
   for (auto Reg : Func.GetUsedCalleSavedRegs()) {
-    auto LOAD = CreateLOAD(Func, LocalPhysRegToStackSlotMap[Reg]);
+    auto LOAD = CreateLOAD(Func, Reg);
     LastBB.InsertInstr(LOAD, LastBB.GetInstructions().size() - 1 - Counter);
     Counter++;
   }
@@ -165,10 +171,11 @@ void PrologueEpilogInsertion::Run() {
     if (Func.GetStackFrameSize() == 0 && Func.GetUsedCalleSavedRegs().empty() && Func.IsCaller())
       continue;
 
+    LocalPhysRegToStackSlotMap.clear();
     NextStackSlot = 10000;
 
     for (auto CalleSavedReg : Func.GetUsedCalleSavedRegs()) {
-      Func.GetStackFrame().InsertStackSlot(CalleSavedReg,
+      Func.GetStackFrame().InsertStackSlot(NextStackSlot,
                                            TM->GetPointerSize() / 8);
       LocalPhysRegToStackSlotMap[CalleSavedReg] = NextStackSlot++;
     }
