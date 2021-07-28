@@ -141,6 +141,31 @@ void RegisterAllocator::RunRA() {
       }
     }
 
+    // remove all the registers which are already allocated from the register
+    // pool
+    // FIXME: temporary simple solution for miss compiles caused by the RA
+    // unaware of the liveranges of this registers
+    std::set<PhysicalReg> RegsToCheck;
+    for (auto &BB : Func.GetBasicBlocks())
+      for (auto &Instr : BB.GetInstructions())
+        for (size_t i = 0; i < Instr.GetOperandsNumber(); i++) {
+          auto &Operand = Instr.GetOperands()[i];
+
+          if (Operand.IsRegister()) {
+            auto PhysReg = Operand.GetReg();
+            auto ParentReg = TM->GetRegInfo()->GetParentReg(PhysReg);
+            if (ParentReg)
+              RegsToCheck.insert(ParentReg->GetID());
+            else
+              RegsToCheck.insert(PhysReg);
+          }
+        }
+    for (auto Reg : RegsToCheck) {
+      auto position = std::find(RegisterPool.begin(), RegisterPool.end(), Reg);
+      if (position != RegisterPool.end())
+        RegisterPool.erase(position);
+    }
+
     // Calculating the live ranges for the virtual registers
     unsigned InstrCounter = 0;
     for (auto &BB : Func.GetBasicBlocks())
