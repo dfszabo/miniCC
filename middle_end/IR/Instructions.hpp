@@ -127,20 +127,23 @@ private:
 class CallInstruction : public Instruction {
 public:
   CallInstruction(const std::string &N, std::vector<Value *> &A, IRType T,
-                  BasicBlock *P)
-      : Instruction(Instruction::CALL, P, T), Name(N), Arguments(A) {}
+                  BasicBlock *P, int StructIdx)
+      : Instruction(Instruction::CALL, P, T), Name(N), Arguments(A),
+        ImplicitStructArgIndex(StructIdx) {}
 
   CallInstruction(const std::string N, IRType T, BasicBlock *P)
       : Instruction(Instruction::CALL, P, T), Name(N) {}
 
   std::string &GetName() { return Name; }
   std::vector<Value *> &GetArgs() { return Arguments; }
+  int GetImplicitStructArgIndex() const { return ImplicitStructArgIndex; }
 
   void Print() const override;
 
 private:
   std::string Name;
   std::vector<Value *> Arguments;
+  int ImplicitStructArgIndex = -1;
 };
 
 class JumpInstruction : public Instruction {
