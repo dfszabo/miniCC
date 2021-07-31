@@ -56,8 +56,9 @@ public:
   bool IsVirtual() const { return Virtual; }
   void SetVirtual(bool v) { Virtual = v; }
 
-  bool IsRegister() const { return Type == REGISTER; }
-  bool IsVirtualReg() const { return IsRegister() && Virtual; }
+  /// Returns true if the operand is a physical register
+  bool IsRegister() const { return Type == REGISTER && !Virtual; }
+  bool IsVirtualReg() const { return Type == REGISTER && Virtual; }
   bool IsImmediate() const { return Type == INT_IMMEDIATE; }
   bool IsMemory() const { return Type == MEMORY_ADDRESS; }
   bool IsStackAccess() const { return Type == STACK_ACCESS; }
