@@ -7,6 +7,7 @@
 #include "TargetRegister.hpp"
 #include <algorithm>
 #include <vector>
+#include <set>
 #include <iostream>
 
 using VirtualReg = unsigned;
@@ -65,8 +66,8 @@ void PreAllocateReturnRegister(
   }
 }
 
-PhysicalReg GetNextAvailableReg(uint8_t BitSize, std::vector<PhysicalReg> &Pool,
-                                std::vector<PhysicalReg> &BackupPool,
+PhysicalReg GetNextAvailableReg(uint8_t BitSize, std::set<PhysicalReg> &Pool,
+                                std::set<PhysicalReg> &BackupPool,
                                 TargetMachine *TM, MachineFunction &MFunc) {
   unsigned loopCounter = 0;
 
@@ -74,9 +75,10 @@ PhysicalReg GetNextAvailableReg(uint8_t BitSize, std::vector<PhysicalReg> &Pool,
   assert(!(Pool.empty() && BackupPool.empty()) && "Ran out of registers");
 
   if (Pool.empty()) {
-    Pool.push_back(BackupPool[0]);
-    MFunc.GetUsedCalleSavedRegs().push_back(BackupPool[0]);
-    BackupPool.erase(BackupPool.begin());
+    const auto BackupReg = *BackupPool.begin();
+    Pool.insert(BackupReg);
+    MFunc.GetUsedCalleSavedRegs().push_back(BackupReg);
+    BackupPool.erase(BackupReg);
   }
 
   for (auto UnAllocatedReg : Pool) {
@@ -84,7 +86,7 @@ PhysicalReg GetNextAvailableReg(uint8_t BitSize, std::vector<PhysicalReg> &Pool,
     // If the register bit width matches the requested size then return this
     // register and delete it from the pool
     if (UnAllocatedRegInfo->GetBitWidth() == BitSize) {
-      Pool.erase(Pool.begin() + loopCounter);
+      Pool.erase(UnAllocatedReg);
       return UnAllocatedReg;
     }
     // Otherwise check the subregisters of the register if it has, and try to
@@ -92,7 +94,7 @@ PhysicalReg GetNextAvailableReg(uint8_t BitSize, std::vector<PhysicalReg> &Pool,
     for (auto SubReg : UnAllocatedRegInfo->GetSubRegs()) {
       auto SubRegInfo = TM->GetRegInfo()->GetRegisterByID(SubReg);
       if (SubRegInfo->GetBitWidth() == BitSize) {
-        Pool.erase(Pool.begin() + loopCounter);
+        Pool.erase(UnAllocatedReg);
         return SubReg;
       }
     }
@@ -114,62 +116,48 @@ void RegisterAllocator::RunRA() {
     LiveRangeMap LiveRanges;
     std::map<VirtualReg, MachineOperand*> VRegToMOMap;
     std::map<VirtualReg, PhysicalReg> AllocatedRegisters;
-    std::vector<PhysicalReg> RegisterPool;
+    std::set<PhysicalReg> RegisterPool;
 
     // Used if run out of caller saved registers
-    std::vector<PhysicalReg> BackupRegisterPool;
+    std::set<PhysicalReg> BackupRegisterPool;
 
     // Initialize the usable register's pool
     for (auto TargetReg : TM->GetABI()->GetCallerSavedRegisters())
-      RegisterPool.push_back(TargetReg->GetID());
+      RegisterPool.insert(TargetReg->GetID());
 
     // Initialize the backup register pool with the callee saved ones
     for (auto TargetReg : TM->GetABI()->GetCalleeSavedRegisters())
-      BackupRegisterPool.push_back(TargetReg->GetID());
+      BackupRegisterPool.insert(TargetReg->GetID());
 
     PreAllocateParameters(Func, TM, AllocatedRegisters, LiveRanges);
     PreAllocateReturnRegister(Func, TM, AllocatedRegisters);
 
     // Remove the pre allocated registers from the register pool
+    std::set<PhysicalReg> RegsToBeRemoved;
     for (const auto [VirtReg, PhysReg] : AllocatedRegisters) {
-      auto RegsToCheck = TM->GetRegInfo()->GetRegisterByID(PhysReg)->GetSubRegs();
-      RegsToCheck.push_back(PhysReg);
-      auto ParentReg = TM->GetRegInfo()->GetParentReg(PhysReg);
-      if (ParentReg)
-        RegsToCheck.push_back(ParentReg->GetID());
-
-      for (auto Reg : RegsToCheck) {
-        auto position = std::find(RegisterPool.begin(), RegisterPool.end(),
-                                  Reg);
-        if (position != RegisterPool.end())
-          RegisterPool.erase(position);
-      }
+      const auto ParentReg = TM->GetRegInfo()->GetParentReg(PhysReg);
+      RegsToBeRemoved.insert(ParentReg ? ParentReg->GetID() : PhysReg);
     }
 
     // remove all the registers which are already allocated from the register
     // pool
     // FIXME: temporary simple solution for miss compiles caused by the RA
     // unaware of the liveranges of this registers
-    std::set<PhysicalReg> RegsToCheck;
     for (auto &BB : Func.GetBasicBlocks())
       for (auto &Instr : BB.GetInstructions())
         for (size_t i = 0; i < Instr.GetOperandsNumber(); i++) {
           auto &Operand = Instr.GetOperands()[i];
 
           if (Operand.IsRegister()) {
-            auto PhysReg = Operand.GetReg();
-            auto ParentReg = TM->GetRegInfo()->GetParentReg(PhysReg);
-            if (ParentReg)
-              RegsToCheck.insert(ParentReg->GetID());
-            else
-              RegsToCheck.insert(PhysReg);
+            const auto PhysReg = Operand.GetReg();
+            const auto ParentReg = TM->GetRegInfo()->GetParentReg(PhysReg);
+            RegsToBeRemoved.insert(ParentReg ? ParentReg->GetID() : PhysReg);
           }
         }
-    for (auto Reg : RegsToCheck) {
-      auto position = std::find(RegisterPool.begin(), RegisterPool.end(), Reg);
-      if (position != RegisterPool.end())
-        RegisterPool.erase(position);
-    }
+
+    // Actually removing the registers from the pool
+    for (auto Reg : RegsToBeRemoved)
+        RegisterPool.erase(Reg);
 
     // Calculating the live ranges for the virtual registers
     unsigned InstrCounter = 0;
@@ -243,20 +231,8 @@ void RegisterAllocator::RunRA() {
     // To keep track the already allocated, but not yet freed live ranges
     std::vector<std::tuple<unsigned, unsigned, unsigned>> FreeAbleWorkList;
     for (const auto &[VReg, DefLine, KillLine] : SortedLiveRanges) {
-      // if not allocated yet, then allocate it
-      if (AllocatedRegisters.count(VReg) == 0) {
-        AllocatedRegisters[VReg] =
-            GetNextAvailableReg(VRegToMOMap[VReg]->GetSize(), RegisterPool,
-                                BackupRegisterPool, TM, Func);
-        FreeAbleWorkList.push_back({VReg, DefLine, KillLine});
-      }
-#ifdef DEBUG
-      std::cout << "VReg " << VReg << " allocated to "
-                << TM->GetRegInfo()->GetRegisterByID(AllocatedRegisters[VReg])->GetName()
-                << std::endl;
-#endif
 
-      // free registers which are already killed
+      // First free registers which are already killed at this point
       for (int i = 0; i < (int)FreeAbleWorkList.size(); i++) {
         auto [CheckVReg, CheckDefLine, CheckKillLine] = FreeAbleWorkList[i];
         // the above checked entry definitions line
@@ -275,14 +251,27 @@ void RegisterAllocator::RunRA() {
 
 #ifdef DEBUG
           std::cout << "Freed register "
-                    << TM->GetRegInfo()->GetRegisterByID(FreeAbleReg)->GetName()
-                    << std::endl;
+          << TM->GetRegInfo()->GetRegisterByID(FreeAbleReg)->GetName()
+          << std::endl;
 #endif
           RegisterPool.insert(RegisterPool.begin(), FreeAbleReg);
           FreeAbleWorkList.erase(FreeAbleWorkList.begin() + i);
           i--; // to correct the index i, because of the erase
         }
       }
+
+      // Then if this VReg is not allocated yet, then allocate it
+      if (AllocatedRegisters.count(VReg) == 0) {
+        AllocatedRegisters[VReg] =
+            GetNextAvailableReg(VRegToMOMap[VReg]->GetSize(), RegisterPool,
+                                BackupRegisterPool, TM, Func);
+        FreeAbleWorkList.push_back({VReg, DefLine, KillLine});
+      }
+#ifdef DEBUG
+      std::cout << "VReg " << VReg << " allocated to "
+                << TM->GetRegInfo()->GetRegisterByID(AllocatedRegisters[VReg])->GetName()
+                << std::endl;
+#endif
     }
 
 #ifdef DEBUG
