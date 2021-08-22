@@ -20,10 +20,13 @@ public:
     LeftParen,
     RightParen,
     DoubleQuote,
+    ForwardSlash,
     
     // Keywords
     Define,
     Include,
+    IfNotDef,
+    EndIf,
   };
 
   PPToken() : Kind(Invalid) {}
@@ -61,10 +64,16 @@ public:
       return ")";
     case DoubleQuote:
       return "\"";
+    case ForwardSlash:
+      return "/";
     case Define:
       return "define";
     case Include:
       return "include";
+    case IfNotDef:
+      return "ifndef";
+    case EndIf:
+      return "endif";
 
     default:
       assert(false && "Unhandled token type.");

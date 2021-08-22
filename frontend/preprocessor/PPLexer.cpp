@@ -5,6 +5,7 @@
 std::unordered_map<std::string, PPToken::PPTokenKind> PPLexer::Keywords =
     std::unordered_map<std::string, PPToken::PPTokenKind>{
         {"define", PPToken::Define}, {"include", PPToken::Include},
+        {"ifndef", PPToken::IfNotDef}, {"endif", PPToken::EndIf},
     };
 
 PPLexer::PPLexer(std::string &s) {
@@ -95,6 +96,9 @@ std::optional<PPToken> PPLexer::LexSymbol() {
     break;
   case '"':
     PPTokenKind = PPToken::DoubleQuote;
+    break;
+  case '/':
+    PPTokenKind = PPToken::ForwardSlash;
     break;
   default:
     return std::nullopt;

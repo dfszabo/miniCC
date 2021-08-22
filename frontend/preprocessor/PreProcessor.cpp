@@ -81,20 +81,17 @@ void PreProcessor::ParseDirective(std::string &Line, size_t LineIdx) {
     assert(lexer.Is(PPToken::DoubleQuote));
     lexer.Lex(); // eat '"'
 
-    auto FileNameToken = lexer.Lex();
-    assert(FileNameToken.GetKind() == PPToken::Identifier);
-    auto FileName = FileNameToken.GetString();
+    std::string FileName = "";
 
-    assert(lexer.Is(PPToken::Dot));
-    lexer.Lex(); // eat '.'
-    FileName.push_back('.');
+    auto NextToken = lexer.Lex();
+    while (NextToken.GetKind() == PPToken::Identifier ||
+           NextToken.GetKind() == PPToken::Dot ||
+           NextToken.GetKind() == PPToken::ForwardSlash) {
+      FileName.append(NextToken.GetString());
+      NextToken = lexer.Lex();
+    }
 
-    auto ExtensionToken = lexer.Lex();
-    assert(ExtensionToken.GetKind() == PPToken::Identifier);
-    FileName.append(ExtensionToken.GetString());
-
-    assert(lexer.Is(PPToken::DoubleQuote));
-    lexer.Lex(); // eat '"'
+    assert(NextToken.GetKind() == PPToken::DoubleQuote);
 
     std::vector<std::string> FileContent;
     auto Success = getFileContent(FilePath + FileName, FileContent);
@@ -102,6 +99,10 @@ void PreProcessor::ParseDirective(std::string &Line, size_t LineIdx) {
 
     Source.insert(Source.begin() + LineIdx + 1, FileContent.begin(),
                   FileContent.end());
+  } else if (Directive.GetKind() == PPToken::IfNotDef) {
+    // TODO
+  } else if (Directive.GetKind() == PPToken::EndIf) {
+    // TODO
   }
 }
 
