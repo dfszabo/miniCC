@@ -1,6 +1,6 @@
 .vscode
 test
-build/
+build*
 .idea/
 cmake-build-debug/
 venv
