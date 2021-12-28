@@ -1,7 +1,7 @@
 #ifndef FUNCTION_HPP
 #define FUNCTION_HPP
 
-#include "Type.hpp"
+#include "IRType.hpp"
 #include <memory>
 #include <string>
 #include <vector>

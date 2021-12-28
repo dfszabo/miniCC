@@ -1,7 +1,7 @@
 #ifndef VALUE_HPP
 #define VALUE_HPP
 
-#include "Type.hpp"
+#include "IRType.hpp"
 #include <iostream>
 #include <string>
 #include <variant>
@@ -98,22 +98,7 @@ public:
     return "@" + Name + "<" + ValueType.AsString() + ">";
   }
 
-  void Print() const {
-    std::cout << "global var (" << GetType().AsString() << "):" << std::endl
-              << "\t" << Name;
-
-    if (!InitList.empty()) {
-      std::cout << " = {";
-      for (size_t i = 0; i < InitList.size(); i++) {
-        std::cout << " " << std::to_string(InitList[i]);
-        if (i  + 1 < InitList.size())
-          std::cout << ",";
-      }
-      std::cout << " }";
-    }
-
-    std::cout << std::endl << std::endl;
-  }
+  void Print() const;
 
 private:
   std::string Name;

@@ -10,17 +10,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -g -Wall -Wno-reorder")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG")
 
 add_executable(miniCC
-    frontend/frontend_test.cpp
+    frontend/driver.cpp
     frontend/preprocessor/PPLexer.cpp
     frontend/preprocessor/PreProcessor.cpp
     frontend/parser/Parser.cpp
+    frontend/parser/SymbolTable.cpp
     frontend/lexer/Lexer.cpp
     frontend/ast/AST.cpp
+    frontend/ast/Type.cpp
     middle_end/IR/BasicBlock.cpp
     middle_end/IR/Function.cpp
     middle_end/IR/Instructions.cpp
     middle_end/IR/Module.cpp
-    middle_end/IR/Type.cpp
+    middle_end/IR/IRType.cpp
+    middle_end/IR/Value.cpp
     backend/AssemblyEmitter.cpp
     backend/IRtoLLIR.cpp
     backend/InstructionSelection.cpp

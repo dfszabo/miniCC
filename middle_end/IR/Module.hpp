@@ -1,7 +1,7 @@
 #ifndef MODULE_HPP
 #define MODULE_HPP
 
-#include "Type.hpp"
+#include "IRType.hpp"
 #include <cassert>
 #include <memory>
 #include <vector>

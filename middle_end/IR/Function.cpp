@@ -1,6 +1,6 @@
 #include "Function.hpp"
 #include "BasicBlock.hpp"
-#include "Type.hpp"
+#include "IRType.hpp"
 #include <cassert>
 #include <iostream>
 

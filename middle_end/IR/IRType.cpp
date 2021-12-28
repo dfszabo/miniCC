@@ -1,4 +1,4 @@
-#include "Type.hpp"
+#include "IRType.hpp"
 
 void IRType::ReduceDimension() {
   if (Dimensions.size() > 0)
