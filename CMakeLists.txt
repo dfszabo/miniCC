@@ -25,6 +25,12 @@ add_executable(miniCC
     middle_end/IR/Module.cpp
     middle_end/IR/IRType.cpp
     middle_end/IR/Value.cpp
+    middle_end/Transforms/CopyPropagationPass.cpp
+    middle_end/Transforms/CSEPass.cpp
+    middle_end/Transforms/DeadCodeEliminationPass.cpp
+    middle_end/Transforms/LoopHoistingPass.cpp
+    middle_end/Transforms/PassManager.cpp
+    middle_end/Transforms/ValueNumberingPass.cpp
     backend/AssemblyEmitter.cpp
     backend/IRtoLLIR.cpp
     backend/InstructionSelection.cpp
