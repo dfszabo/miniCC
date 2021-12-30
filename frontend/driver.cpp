@@ -4,14 +4,15 @@
 #include "../backend/MachineInstructionLegalizer.hpp"
 #include "../backend/PrologueEpilogInsertion.hpp"
 #include "../backend/RegisterAllocator.hpp"
+#include "../backend/TargetArchs/AArch64/AArch64MOVFixPass.hpp"
 #include "../backend/TargetArchs/AArch64/AArch64TargetMachine.hpp"
 #include "../backend/TargetArchs/RISCV/RISCVTargetMachine.hpp"
-#include "../backend/TargetArchs/AArch64/AArch64MOVFixPass.hpp"
 #include "../middle_end/IR/IRFactory.hpp"
+#include "../middle_end/Transforms/PassManager.hpp"
+#include "ast/ASTPrint.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
 #include "preprocessor/PreProcessor.hpp"
-#include "ast/ASTPrint.hpp"
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -123,6 +124,9 @@ int main(int argc, char *argv[]) {
   AST->IRCodegen(&IRF);
   if (DumpIR)
     IRModule.Print();
+
+  PassManager PM(&IRModule);
+  PM.RunAll();
 
   MachineIRModule LLIRModule;
   IRtoLLIR I2LLIR(IRModule, &LLIRModule, TM.get());
