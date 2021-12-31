@@ -1,6 +1,7 @@
 #ifndef AST_HPP
 #define AST_HPP
 
+#include "ASTVisitor.hpp"
 #include "../../middle_end/IR/IRFactory.hpp"
 #include "../../middle_end/IR/Value.hpp"
 #include "../lexer/Token.hpp"
@@ -12,24 +13,14 @@
 #include <string>
 #include <vector>
 
-static void PrintImpl(const char *str, unsigned tab = 0, bool newline = false) {
-  for (size_t i = 0; i < tab; i++)
-    std::cout << " ";
-  std::cout << str;
-  if (newline)
-    std::cout << std::endl;
-}
-
-static void Print(const char *str, unsigned tab = 0) { PrintImpl(str, tab); }
-
-static void PrintLn(const char *str, unsigned tab = 0) {
-  PrintImpl(str, tab, true);
-}
 
 class Node {
 public:
   virtual ~Node(){};
-  virtual void ASTDump(unsigned tab = 0) { PrintLn("Node"); }
+  virtual void Accept(ASTVisitor *visitor) const {
+    return;
+  }
+  
   virtual Value *IRCodegen(IRFactory *IRF) {
     assert(!"Must be a child node type");
     return nullptr;
@@ -45,8 +36,6 @@ public:
 
   void AddInfo(unsigned Bit) { InfoBits |= Bit;}
 
-  void ASTDump(unsigned tab = 0) override { PrintLn("Statement", tab); }
-
   bool IsRet() { return !!(InfoBits & RETURN); }
 
 private:
@@ -59,12 +48,11 @@ public:
   Expression(Type t) : ResultType(std::move(t)) {}
   Expression(Type::VariantKind vk) : ResultType(vk) {}
   Type &GetResultType() { return ResultType; }
+  Type const &GetResultType() const { return ResultType; }
   void SetType(Type t) { ResultType = t; }
 
   void SetLValueness(bool p) { IsLValue = p; }
   bool GetLValueness() { return IsLValue; }
-
-  void ASTDump(unsigned tab = 0) override { PrintLn("Expression", tab); }
 
 protected:
   bool IsLValue = false;
@@ -73,13 +61,14 @@ protected:
 
 class VariableDeclaration : public Statement {
 public:
-  std::string &GetName() { return Name; }
+  std::string const &GetName() const { return Name; }
   void SetName(std::string &s) { Name = s; }
 
-  Type GetType() { return AType; }
+  Type GetType() const { return AType; }
   void SetType(Type t) { AType = t; }
 
   std::unique_ptr<Expression> &GetInitExpr() { return Init; }
+  std::unique_ptr<Expression> const &GetInitExpr() const { return Init; }
   void SetInitExpr(std::unique_ptr<Expression> e) { Init = std::move(e); }
 
   VariableDeclaration(std::string &Name, Type Ty, std::vector<unsigned> Dim)
@@ -91,14 +80,8 @@ public:
 
   VariableDeclaration() = default;
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("VariableDeclaration ", tab);
-    auto TypeStr = "'" + AType.ToString() + "' ";
-    Print(TypeStr.c_str());
-    auto NameStr = "'" + Name + "'";
-    PrintLn(NameStr.c_str());
-    if (Init)
-      Init->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitVariableDeclaration(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -111,10 +94,10 @@ private:
 
 class MemberDeclaration : public Statement {
 public:
-  std::string &GetName() { return Name; }
+  std::string const &GetName() const { return Name; }
   void SetName(std::string &s) { Name = s; }
 
-  Type GetType() { return AType; }
+  Type GetType() const { return AType; }
   void SetType(Type t) { AType = t; }
 
   MemberDeclaration(std::string &Name, Type Ty, std::vector<unsigned> Dim)
@@ -124,12 +107,8 @@ public:
 
   MemberDeclaration() = default;
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("MemberDeclaration ", tab);
-    auto TypeStr = "'" + AType.ToString() + "' ";
-    Print(TypeStr.c_str());
-    auto NameStr = "'" + Name + "'";
-    PrintLn(NameStr.c_str());
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitMemberDeclaration(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -141,12 +120,13 @@ private:
 
 class StructDeclaration : public Statement {
 public:
-  std::string &GetName() { return Name; }
+  std::string const &GetName() const { return Name; }
   void SetName(std::string &s) { Name = s; }
 
-  std::vector<std::unique_ptr<MemberDeclaration>> &GetMembers() {
+  std::vector<std::unique_ptr<MemberDeclaration>> const &GetMembers() const {
     return Members;
   }
+
   void SetType(std::vector<std::unique_ptr<MemberDeclaration>> m) {
     Members = std::move(m);
   }
@@ -158,12 +138,8 @@ public:
 
   StructDeclaration() = default;
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("StructDeclaration '", tab);
-    Print(Name.c_str());
-    PrintLn("' ");
-    for (auto &M : Members)
-      M->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitStructDeclaration(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -184,20 +160,14 @@ public:
   EnumDeclaration(EnumList Enumerators)
       : Enumerators(std::move(Enumerators)) {}
 
-  void ASTDump(unsigned tab = 0) override {
-    std::string Str = "EnumDeclaration '";
-    Str += BaseType.ToString() + "'";
-    PrintLn(Str.c_str(), tab);
-    Str.clear();
-    Str = "Enumerators ";
-    unsigned LoopCounter = 0;
-    for (auto &[Enum, Val] : Enumerators) {
-      Str += "'" + Enum + "'";
-      Str += " = " + std::to_string(Val);
-      if (++LoopCounter < Enumerators.size())
-        Str += ", ";
-    }
-    PrintLn(Str.c_str(), tab + 2);
+  Type GetBaseType() const { return BaseType; }
+
+  EnumList const &GetEnumerators() const {
+    return Enumerators;
+  }
+
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitEnumDeclaration(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -212,6 +182,7 @@ class CompoundStatement : public Statement {
 
 public:
   StmtVec &GetStatements() { return Statements; }
+  StmtVec const &GetStatements() const { return Statements; }
   void SetStatements(StmtVec &s) { Statements = std::move(s); }
   void AddStatement(std::unique_ptr<Statement> &s) {
     Statements.push_back(std::move(s));
@@ -226,10 +197,8 @@ public:
 
   CompoundStatement(CompoundStatement &&) = default;
 
-  void ASTDump(unsigned tab = 0) override {
-    PrintLn("CompoundStatement", tab);
-    for (size_t i = 0; i < Statements.size(); i++)
-      Statements[i]->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitCompoundStatement(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -240,11 +209,11 @@ private:
 
 class ExpressionStatement : public Statement {
 public:
-  std::unique_ptr<Expression> &GetExpression() { return Expr; }
+  std::unique_ptr<Expression> const &GetExpression() const { return Expr; }
   void SetExpression(std::unique_ptr<Expression> e) { Expr = std::move(e); }
-  void ASTDump(unsigned tab = 0) override {
-    PrintLn("ExpressionStatement", tab);
-    Expr->ASTDump(tab + 2);
+
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitExpressionStatement(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -255,21 +224,17 @@ private:
 
 class IfStatement : public Statement {
 public:
-  std::unique_ptr<Expression> &GetCondition() { return Condition; }
+  std::unique_ptr<Expression> const &GetCondition() const { return Condition; }
   void SetCondition(std::unique_ptr<Expression> c) { Condition = std::move(c); }
 
-  std::unique_ptr<Statement> &GetIfBody() { return IfBody; }
+  std::unique_ptr<Statement> const &GetIfBody() const { return IfBody; }
   void SetIfBody(std::unique_ptr<Statement> ib) { IfBody = std::move(ib); }
 
-  std::unique_ptr<Statement> &GetElseBody() { return ElseBody; }
+  std::unique_ptr<Statement> const &GetElseBody() const { return ElseBody; }
   void SetElseBody(std::unique_ptr<Statement> eb) { ElseBody = std::move(eb); }
 
-  void ASTDump(unsigned tab = 0) override {
-    PrintLn("IfStatement", tab);
-    Condition->ASTDump(tab + 2);
-    IfBody->ASTDump(tab + 2);
-    if (ElseBody)
-      ElseBody->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitIfStatement(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -285,31 +250,17 @@ public:
   using VecOfStmts = std::vector<std::unique_ptr<Statement>>;
   using VecOfCasesData = std::vector<std::pair<int, VecOfStmts>>;
 
-  std::unique_ptr<Expression> &GetCondition() { return Condition; }
+  std::unique_ptr<Expression> const &GetCondition() const { return Condition; }
   void SetCondition(std::unique_ptr<Expression> c) { Condition = std::move(c); }
 
-  VecOfCasesData &GetCaseBodies() { return Cases; }
+  VecOfCasesData const &GetCaseBodies() const { return Cases; }
   void SetCaseBodies(VecOfCasesData c) { Cases = std::move(c); }
 
-  VecOfStmts &GetDefaultBody() { return DefaultBody; }
+  VecOfStmts const &GetDefaultBody() const { return DefaultBody; }
   void SetDefaultBody(VecOfStmts db) { DefaultBody = std::move(db); }
 
-  void ASTDump(unsigned tab = 0) override {
-    PrintLn("SwitchStatement", tab);
-    Condition->ASTDump(tab + 2);
-
-    for (auto &[CaseConst, CaseBody] : Cases) {
-      std::string Str = "Case '" + std::to_string(CaseConst) + "'";
-      PrintLn(Str.c_str(), tab + 2);
-      Str.clear();
-      for (auto &CaseStatement : CaseBody)
-        CaseStatement->ASTDump(tab + 4);
-    }
-
-    if (DefaultBody.size() > 0)
-      PrintLn("DefaultCase", tab + 2);
-    for (auto &DefaultStatement : DefaultBody)
-      DefaultStatement->ASTDump(tab + 4);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitSwitchStatement(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -322,16 +273,14 @@ private:
 
 class WhileStatement : public Statement {
 public:
-  std::unique_ptr<Expression> &GetCondition() { return Condition; }
+  std::unique_ptr<Expression> const &GetCondition() const { return Condition; }
   void SetCondition(std::unique_ptr<Expression> c) { Condition = std::move(c); }
 
-  std::unique_ptr<Statement> &GetBody() { return Body; }
+  std::unique_ptr<Statement> const &GetBody() const { return Body; }
   void SetBody(std::unique_ptr<Statement> b) { Body = std::move(b); }
 
-  void ASTDump(unsigned tab = 0) override {
-    PrintLn("WhileStatement", tab);
-    Condition->ASTDump(tab + 2);
-    Body->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitWhileStatement(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -343,30 +292,23 @@ private:
 
 class ForStatement : public Statement {
 public:
-  std::unique_ptr<Statement> &GetVarDecl() { return VarDecl; }
+  std::unique_ptr<Statement> const &GetVarDecl() const { return VarDecl; }
   void SetVarDecl(std::unique_ptr<Statement> v) { VarDecl = std::move(v); }
 
-  std::unique_ptr<Expression> &GetInit() { return Init; }
+  std::unique_ptr<Expression> const &GetInit() const { return Init; }
   void SetInit(std::unique_ptr<Expression> c) { Init = std::move(c); }
 
-  std::unique_ptr<Expression> &GetCondition() { return Condition; }
+  std::unique_ptr<Expression> const &GetCondition() const { return Condition; }
   void SetCondition(std::unique_ptr<Expression> c) { Condition = std::move(c); }
 
-  std::unique_ptr<Expression> &GetIncrement() { return Increment; }
+  std::unique_ptr<Expression> const &GetIncrement() const { return Increment; }
   void SetIncrement(std::unique_ptr<Expression> c) { Increment = std::move(c); }
 
-  std::unique_ptr<Statement> &GetBody() { return Body; }
+  std::unique_ptr<Statement> const &GetBody() const { return Body; }
   void SetBody(std::unique_ptr<Statement> b) { Body = std::move(b); }
 
-  void ASTDump(unsigned tab = 0) override {
-    PrintLn("ForStatement", tab);
-    if (Init)
-      Init->ASTDump(tab + 2);
-    else
-      VarDecl->ASTDump(tab + 2);
-    Condition->ASTDump(tab + 2);
-    Increment->ASTDump(tab + 2);
-    Body->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitForStatement(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -385,10 +327,16 @@ public:
     assert(HasValue() && "Must have a value to return it.");
     return ReturnValue.value();
   }
+
+  std::unique_ptr<Expression> const &GetRetVal() const {
+    assert(HasValue() && "Must have a value to return it.");
+    return ReturnValue.value();
+  }
+
   void SetRetVal(std::unique_ptr<Expression> v) {
     ReturnValue = std::move(v);
   }
-  bool HasValue() { return ReturnValue.has_value(); }
+  bool HasValue() const { return ReturnValue.has_value(); }
 
   ReturnStatement() {
     AddInfo(Statement::RETURN);
@@ -397,10 +345,8 @@ public:
     AddInfo(Statement::RETURN);
   }
 
-  void ASTDump(unsigned tab = 0) override {
-    PrintLn("ReturnStatement", tab);
-    if (ReturnValue)
-      ReturnValue.value()->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitReturnStatement(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -413,8 +359,8 @@ class BreakStatement : public Statement {
 public:
   BreakStatement() = default;
 
-  void ASTDump(unsigned tab = 0) override {
-    PrintLn("BreakStatement", tab);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitBreakStatement(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -424,8 +370,8 @@ class ContinueStatement : public Statement {
 public:
   ContinueStatement() = default;
 
-  void ASTDump(unsigned tab = 0) override {
-    PrintLn("ContinueStatement", tab);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitContinueStatement(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -433,18 +379,14 @@ public:
 
 class FunctionParameterDeclaration : public Statement {
 public:
-  std::string &GetName() { return Name; }
+  std::string const &GetName() const { return Name; }
   void SetName(std::string &s) { Name = s; }
 
-  Type GetType() { return Ty; }
+  Type GetType() const { return Ty; }
   void SetType(Type t) { Ty = t; }
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("FunctionParameterDeclaration ", tab);
-    auto TypeStr = "'" + Ty.ToString() + "' ";
-    Print(TypeStr.c_str());
-    auto NameStr = "'" + Name + "'";
-    PrintLn(NameStr.c_str());
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitFunctionParameterDeclaration(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -458,17 +400,17 @@ class FunctionDeclaration : public Statement {
   using ParamVec = std::vector<std::unique_ptr<FunctionParameterDeclaration>>;
 
 public:
-  Type GetType() { return T; }
+  Type GetType() const { return T; }
   void SetType(Type ft) { T = ft; }
 
-  std::string &GetName() { return Name; }
+  std::string const &GetName() const { return Name; }
   void SetName(std::string &s) { Name = s; }
 
-  ParamVec &GetArguments() { return Arguments; }
+  ParamVec const &GetArguments() const { return Arguments; }
   void SetArguments(ParamVec &a) { Arguments = std::move(a); }
   void SetArguments(ParamVec &&a) { Arguments = std::move(a); }
 
-  std::unique_ptr<CompoundStatement> &GetBody() { return Body; }
+  std::unique_ptr<CompoundStatement> const &GetBody() const { return Body; }
   void SetBody(std::unique_ptr<CompoundStatement> &cs) { Body = std::move(cs); }
 
   static Type CreateType(const Type &t, const ParamVec &params) {
@@ -492,16 +434,8 @@ public:
       : T(FT), Name(Name), Arguments(std::move(Args)), Body(std::move(Body)),
         ReturnsNumber(RetNum) {}
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("FunctionDeclaration ", tab);
-    auto TypeStr = "'" + T.ToString() + "' ";
-    Print(TypeStr.c_str());
-    auto NameStr = "'" + Name + "'";
-    PrintLn(NameStr.c_str());
-    for (size_t i = 0; i < Arguments.size(); i++)
-      Arguments[i]->ASTDump(tab + 2);
-    if (Body)
-      Body->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitFunctionDeclaration(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -598,13 +532,13 @@ public:
     }
   }
 
-  Token GetOperation() { return Operation; }
+  Token GetOperation() const { return Operation; }
   void SetOperation(Token bo) { Operation = bo; }
 
-  ExprPtr &GetLeftExpr() { return Left; }
+  ExprPtr const &GetLeftExpr() const { return Left; }
   void SetLeftExpr(ExprPtr &e) { Left = std::move(e); }
 
-  ExprPtr &GetRightExpr() { return Right; }
+  ExprPtr const &GetRightExpr() const { return Right; }
   void SetRightExpr(ExprPtr &e) { Right = std::move(e); }
 
   bool IsConditional() { return GetOperationKind() >= Not; }
@@ -625,13 +559,8 @@ public:
 
   BinaryExpression() = default;
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("BinaryExpression ", tab);
-    auto Str = "'" + ResultType.ToString() + "' ";
-    Str += "'" + Operation.GetString() + "'";
-    PrintLn(Str.c_str());
-    Left->ASTDump(tab + 2);
-    Right->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitBinaryExpression(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -646,13 +575,13 @@ class TernaryExpression : public Expression {
   using ExprPtr = std::unique_ptr<Expression>;
 
 public:
-  ExprPtr &GetCondition() { return Condition; }
+  ExprPtr const &GetCondition() const { return Condition; }
   void SetCondition(ExprPtr &e) { Condition = std::move(e); }
 
-  ExprPtr &GetExprIfTrue() { return ExprIfTrue; }
+  ExprPtr const &GetExprIfTrue() const { return ExprIfTrue; }
   void SetExprIfTrue(ExprPtr &e) { ExprIfTrue = std::move(e); }
 
-  ExprPtr &GetExprIfFalse() { return ExprIfFalse; }
+  ExprPtr const &GetExprIfFalse() const { return ExprIfFalse; }
   void SetExprIfFalse(ExprPtr &e) { ExprIfFalse = std::move(e); }
 
   TernaryExpression() = default;
@@ -663,13 +592,8 @@ public:
     ResultType = ExprIfTrue->GetResultType();
   }
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("TernaryExpression ", tab);
-    auto Str = "'" + ResultType.ToString() + "' ";
-    PrintLn(Str.c_str());
-    Condition->ASTDump(tab + 2);
-    ExprIfTrue->ASTDump(tab + 2);
-    ExprIfFalse->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitTernaryExpression(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -684,10 +608,10 @@ class StructMemberReference : public Expression {
   using ExprPtr = std::unique_ptr<Expression>;
 
 public:
-  std::string GetMemberId() { return MemberIdentifier; }
+  std::string GetMemberId() const { return MemberIdentifier; }
   void SetMemberId(std::string id) { MemberIdentifier = id; }
 
-  ExprPtr &GetExpr() { return StructTypedExpression; }
+  ExprPtr const &GetExpr() const { return StructTypedExpression; }
   void SetExpr(ExprPtr &e) { StructTypedExpression = std::move(e); }
 
   StructMemberReference(ExprPtr Expr, std::string Id, size_t Idx) :
@@ -699,12 +623,8 @@ public:
 
   StructMemberReference() {}
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("StructMemberReference ", tab);
-    auto Str = "'" + ResultType.ToString() + "' ";
-    Str += "'." + MemberIdentifier + "'";
-    PrintLn(Str.c_str());
-    StructTypedExpression->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitStructMemberReference(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -723,7 +643,7 @@ public:
   UintList &GetMemberOrdering() { return MemberOrdering; }
   void SetMemberOrdering(UintList l) { MemberOrdering = l; }
 
-  ExprPtrList &GetInitList() { return InitValues; }
+  ExprPtrList const &GetInitList() const { return InitValues; }
   void SetInitList(ExprPtrList &e) { InitValues = std::move(e); }
 
   StructInitExpression(Type ResultType, ExprPtrList InitList,
@@ -734,12 +654,8 @@ public:
 
   StructInitExpression() {}
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("StructInitExpression ", tab);
-    auto Str = "'" + ResultType.ToString() + "' ";
-    PrintLn(Str.c_str());
-    for (auto &InitValue : InitValues)
-      InitValue->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitStructInitExpression(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -782,10 +698,10 @@ public:
     }
   }
 
-  Token GetOperation() { return Operation; }
+  Token GetOperation() const { return Operation; }
   void SetOperation(Token bo) { Operation = bo; }
 
-  ExprPtr &GetExpr() { return Expr; }
+  ExprPtr const &GetExpr() const { return Expr; }
   void SetExpr(ExprPtr &e) { Expr = std::move(e); }
 
   UnaryExpression(Token Op, ExprPtr E) {
@@ -816,12 +732,8 @@ public:
 
   UnaryExpression() = default;
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("UnaryExpression ", tab);
-    auto Str = "'" + ResultType.ToString() + "' ";
-    Str += "'" + Operation.GetString() + "'";
-    PrintLn(Str.c_str());
-    Expr->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitUnaryExpression(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -835,22 +747,17 @@ class CallExpression : public Expression {
   using ExprVec = std::vector<std::unique_ptr<Expression>>;
 
 public:
-  std::string &GetName() { return Name; }
+  std::string const &GetName() const { return Name; }
   void SetName(std::string &n) { Name = n; }
 
-  ExprVec &GetArguments() { return Arguments; }
+  ExprVec const &GetArguments() const { return Arguments; }
   void SetArguments(ExprVec &a) { Arguments = std::move(a); }
 
   CallExpression(const std::string &Name, ExprVec &Args, Type T)
       : Name(Name), Arguments(std::move(Args)), Expression(std::move(T)) {}
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("CallExpression ", tab);
-    auto Str = "'" + ResultType.ToString() + "' ";
-    Str += "'" + Name + "'";
-    PrintLn(Str.c_str());
-    for (size_t i = 0; i < Arguments.size(); i++)
-      Arguments[i]->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitCallExpression(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -863,16 +770,13 @@ private:
 class ReferenceExpression : public Expression {
 public:
   std::string &GetIdentifier() { return Identifier; }
+  std::string const &GetIdentifier() const { return Identifier; }
   void SetIdentifier(std::string &id) { Identifier = id; }
 
   ReferenceExpression(Token t) { Identifier = t.GetString(); }
 
-
-  void ASTDump(unsigned tab = 0) override {
-    Print("ReferenceExpression ", tab);
-    auto Str = "'" + ResultType.ToString() + "' ";
-    Str += "'" + Identifier + "'";
-    PrintLn(Str.c_str());
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitReferenceExpression(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -893,12 +797,8 @@ public:
   }
   IntegerLiteralExpression() = delete;
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("IntegerLiteralExpression ", tab);
-    auto TyStr = "'" + ResultType.ToString() + "' ";
-    Print(TyStr.c_str());
-    auto ValStr = "'" + std::to_string((int64_t)IntValue) + "'";
-    PrintLn(ValStr.c_str());
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitIntegerLiteralExpression(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -909,18 +809,14 @@ private:
 
 class FloatLiteralExpression : public Expression {
 public:
-  double GetValue() { return FPValue; }
+  double GetValue() const { return FPValue; }
   void SetValue(double v) { FPValue = v; }
 
   FloatLiteralExpression(double v) : FPValue(v) { SetType(Type(Type::Double)); }
   FloatLiteralExpression() = delete;
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("FloatLiteralExpression ", tab);
-    auto TyStr = "'" + ResultType.ToString() + "' ";
-    Print(TyStr.c_str());
-    auto ValStr = "'" + std::to_string(FPValue) + "'";
-    PrintLn(ValStr.c_str());
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitFloatLiteralExpression(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -933,7 +829,7 @@ class ArrayExpression : public Expression {
   using ExprPtr = std::unique_ptr<Expression>;
 
 public:
-  ExprPtr &GetIndexExpression() { return IndexExpression; }
+  ExprPtr const &GetIndexExpression() const { return IndexExpression; }
   void SetIndexExpression(ExprPtr &e) { IndexExpression = std::move(e); }
 
   ArrayExpression(ExprPtr &Base, ExprPtr &Index, Type Ct = Type())
@@ -944,12 +840,8 @@ public:
   void SetLValueness(bool p) { IsLValue = p; }
   bool GetLValueness() { return IsLValue; }
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("ArrayExpression ", tab);
-    auto Str = "'" + ResultType.ToString() + "' ";
-    //Str += "'" + Identifier.GetString() + "'";
-    PrintLn(Str.c_str());
-    IndexExpression->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitArrayExpression(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -970,11 +862,12 @@ public:
     return CastableExpression;
   }
 
-  void ASTDump(unsigned tab = 0) override {
-    Print("ImplicitCastExpression ", tab);
-    auto Str = "'" + ResultType.ToString() + "'";
-    PrintLn(Str.c_str());
-    CastableExpression->ASTDump(tab + 2);
+  std::unique_ptr<Expression> const &GetCastableExpression() const {
+    return CastableExpression;
+  }
+
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitImplicitCastExpression(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
@@ -988,14 +881,13 @@ class InitializerListExpression : public Expression {
 
 public:
   ExprList &GetExprList() { return Expressions; }
+  ExprList const &GetExprList() const { return Expressions; }
   void SetExprList(ExprList &e) { Expressions = std::move(e); }
 
   InitializerListExpression(ExprList EL) : Expressions(std::move(EL)) {}
 
-  void ASTDump(unsigned tab = 0) override {
-    PrintLn("InitializerListExpression", tab);
-    for (auto &E : Expressions)
-    E->ASTDump(tab + 2);
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitInitializerListExpression(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override {return nullptr;}
@@ -1006,7 +898,7 @@ private:
 
 class TranslationUnit : public Statement {
 public:
-  std::vector<std::unique_ptr<Statement>> &GetDeclarations() {
+  std::vector<std::unique_ptr<Statement>> const &GetDeclarations() const {
     return Declarations;
   }
   void SetDeclarations(std::vector<std::unique_ptr<Statement>> s) {
@@ -1021,11 +913,8 @@ public:
   TranslationUnit(std::vector<std::unique_ptr<Statement>> s)
       : Declarations(std::move(s)) {}
 
-  void ASTDump(unsigned tab = 0) override {
-    PrintLn("TranslationUnit", tab);
-    for (size_t i = 0; i < Declarations.size(); i++)
-      Declarations[i]->ASTDump(tab + 2);
-    PrintLn("");
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitTranslationUnit(this);
   }
 
   Value *IRCodegen(IRFactory *IRF) override;
