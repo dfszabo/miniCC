@@ -8,9 +8,20 @@
 class Type {
 public:
   /// Basic type variants. Numerical ones are ordered by conversion rank.
-  enum VariantKind { Invalid, Composite, Void, Char,
-                     UnsignedChar, Int, UnsignedInt, Long, UnsignedLong,
-                     LongLong, UnsignedLongLong, Double };
+  enum VariantKind {
+    Invalid,
+    Composite,
+    Void,
+    Char,
+    UnsignedChar,
+    Int,
+    UnsignedInt,
+    Long,
+    UnsignedLong,
+    LongLong,
+    UnsignedLongLong,
+    Double
+  };
   enum TypeKind { Simple, Array, Struct };
   enum TypeQualifier : unsigned { None, Typedef, Const };
 
@@ -110,8 +121,7 @@ public:
 
   static bool OnlySigndnessDifference(const Type::VariantKind v1,
                                       const Type::VariantKind v2) {
-    if ((v1 == Int && v2 == UnsignedInt) ||
-        (v2 == Int && v1 == UnsignedInt) ||
+    if ((v1 == Int && v2 == UnsignedInt) || (v2 == Int && v1 == UnsignedInt) ||
         (v1 == Char && v2 == UnsignedChar) ||
         (v2 == Char && v1 == UnsignedChar) ||
         ((v1 == Long || v1 == LongLong) &&
@@ -128,7 +138,8 @@ public:
   }
 
   Type() : Kind(Simple), Ty(Invalid) {}
-  Type(TypeKind tk)  { Kind = tk;
+  Type(TypeKind tk) {
+    Kind = tk;
     switch (tk) {
     case Array:
     case Struct:
@@ -215,10 +226,10 @@ public:
     return Dimensions;
   }
 
-   void SetDimensions(std::vector<unsigned> D) {
-     Kind = Array;
-     Dimensions = std::move(D);
-   }
+  void SetDimensions(std::vector<unsigned> D) {
+    Kind = Array;
+    Dimensions = std::move(D);
+  }
 
   std::vector<Type> &GetArgTypes() { return ParameterList; }
 
@@ -248,7 +259,7 @@ public:
   }
 
   friend bool operator!=(const Type &lhs, const Type &rhs) {
-      return !(lhs == rhs);
+    return !(lhs == rhs);
   }
 
   std::string ToString() const;
