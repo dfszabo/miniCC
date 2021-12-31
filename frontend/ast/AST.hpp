@@ -1,10 +1,10 @@
 #ifndef AST_HPP
 #define AST_HPP
 
-#include "ASTVisitor.hpp"
 #include "../../middle_end/IR/IRFactory.hpp"
 #include "../../middle_end/IR/Value.hpp"
 #include "../lexer/Token.hpp"
+#include "ASTVisitor.hpp"
 #include "Type.hpp"
 #include <cassert>
 #include <iostream>
@@ -13,14 +13,11 @@
 #include <string>
 #include <vector>
 
-
 class Node {
 public:
   virtual ~Node(){};
-  virtual void Accept(ASTVisitor *visitor) const {
-    return;
-  }
-  
+  virtual void Accept(ASTVisitor *visitor) const { return; }
+
   virtual Value *IRCodegen(IRFactory *IRF) {
     assert(!"Must be a child node type");
     return nullptr;
@@ -34,7 +31,7 @@ public:
     RETURN = 1,
   };
 
-  void AddInfo(unsigned Bit) { InfoBits |= Bit;}
+  void AddInfo(unsigned Bit) { InfoBits |= Bit; }
 
   bool IsRet() { return !!(InfoBits & RETURN); }
 
@@ -157,14 +154,11 @@ public:
   EnumDeclaration(Type &BaseType, EnumList Enumerators)
       : BaseType(BaseType), Enumerators(std::move(Enumerators)) {}
 
-  EnumDeclaration(EnumList Enumerators)
-      : Enumerators(std::move(Enumerators)) {}
+  EnumDeclaration(EnumList Enumerators) : Enumerators(std::move(Enumerators)) {}
 
   Type GetBaseType() const { return BaseType; }
 
-  EnumList const &GetEnumerators() const {
-    return Enumerators;
-  }
+  EnumList const &GetEnumerators() const { return Enumerators; }
 
   void Accept(ASTVisitor *visitor) const override {
     visitor->VisitEnumDeclaration(this);
@@ -333,14 +327,10 @@ public:
     return ReturnValue.value();
   }
 
-  void SetRetVal(std::unique_ptr<Expression> v) {
-    ReturnValue = std::move(v);
-  }
+  void SetRetVal(std::unique_ptr<Expression> v) { ReturnValue = std::move(v); }
   bool HasValue() const { return ReturnValue.has_value(); }
 
-  ReturnStatement() {
-    AddInfo(Statement::RETURN);
-  }
+  ReturnStatement() { AddInfo(Statement::RETURN); }
   ReturnStatement(std::unique_ptr<Expression> e) : ReturnValue(std::move(e)) {
     AddInfo(Statement::RETURN);
   }
@@ -550,8 +540,9 @@ public:
     if (IsConditional())
       ResultType = Type(Type::Int);
     else {
-      auto Strongest = Type::GetStrongestType(Left->GetResultType().GetTypeVariant(),
-                                              Right->GetResultType().GetTypeVariant());
+      auto Strongest =
+          Type::GetStrongestType(Left->GetResultType().GetTypeVariant(),
+                                 Right->GetResultType().GetTypeVariant());
       ResultType =
           Type(Type::GetStrongestType(Strongest.GetTypeVariant(), Type::Int));
     }
@@ -587,7 +578,7 @@ public:
   TernaryExpression() = default;
 
   TernaryExpression(ExprPtr &Cond, ExprPtr &True, ExprPtr &False)
-  : Condition(std::move(Cond)), ExprIfTrue(std::move(True)),
+      : Condition(std::move(Cond)), ExprIfTrue(std::move(True)),
         ExprIfFalse(std::move(False)) {
     ResultType = ExprIfTrue->GetResultType();
   }
@@ -614,8 +605,9 @@ public:
   ExprPtr const &GetExpr() const { return StructTypedExpression; }
   void SetExpr(ExprPtr &e) { StructTypedExpression = std::move(e); }
 
-  StructMemberReference(ExprPtr Expr, std::string Id, size_t Idx) :
-    StructTypedExpression(std::move(Expr)), MemberIdentifier(Id), MemberIndex(Idx) {
+  StructMemberReference(ExprPtr Expr, std::string Id, size_t Idx)
+      : StructTypedExpression(std::move(Expr)), MemberIdentifier(Id),
+        MemberIndex(Idx) {
     auto STEType = StructTypedExpression->GetResultType();
     assert(MemberIndex < STEType.GetTypeList().size());
     this->ResultType = STEType.GetTypeList()[MemberIndex];
@@ -647,8 +639,8 @@ public:
   void SetInitList(ExprPtrList &e) { InitValues = std::move(e); }
 
   StructInitExpression(Type ResultType, ExprPtrList InitList,
-                       UintList InitOrder) :
-  InitValues(std::move(InitList)), MemberOrdering(std::move(InitOrder)) {
+                       UintList InitOrder)
+      : InitValues(std::move(InitList)), MemberOrdering(std::move(InitOrder)) {
     this->ResultType = ResultType;
   }
 
@@ -890,7 +882,7 @@ public:
     visitor->VisitInitializerListExpression(this);
   }
 
-  Value *IRCodegen(IRFactory *IRF) override {return nullptr;}
+  Value *IRCodegen(IRFactory *IRF) override { return nullptr; }
 
 private:
   ExprList Expressions;

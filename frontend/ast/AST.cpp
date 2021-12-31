@@ -147,7 +147,8 @@ Value *SwitchStatement::IRCodegen(IRFactory *IRF) {
 
   for (auto &[Const, Statements] : Cases)
     if (!Statements.empty())
-      CaseBodies.push_back(std::make_unique<BasicBlock>("switch_case", FuncPtr));
+      CaseBodies.push_back(
+          std::make_unique<BasicBlock>("switch_case", FuncPtr));
 
   IRF->GetBreaksEndBBsTable().push_back(SwitchEnd.get());
 
@@ -264,7 +265,7 @@ Value *ForStatement::IRCodegen(IRFactory *IRF) {
     IRF->CreateBR(Cond, LoopEnd.get());
   } else {
     auto CMPEQ = IRF->CreateCMP(CompareInstruction::EQ, Cond,
-                              IRF->GetConstant((uint64_t)0));
+                                IRF->GetConstant((uint64_t)0));
     IRF->CreateBR(CMPEQ, LoopEnd.get());
   }
 
@@ -275,7 +276,8 @@ Value *ForStatement::IRCodegen(IRFactory *IRF) {
   Body->IRCodegen(IRF);
   // Pop entry
   IRF->GetBreaksEndBBsTable().erase(IRF->GetBreaksEndBBsTable().end() - 1);
-  IRF->GetLoopIncrementBBsTable().erase(IRF->GetLoopIncrementBBsTable().end() - 1);
+  IRF->GetLoopIncrementBBsTable().erase(IRF->GetLoopIncrementBBsTable().end() -
+                                        1);
   IRF->CreateJUMP(LoopIncrement.get());
   IRF->InsertBB(std::move(LoopIncrement));
   Increment->IRCodegen(IRF); // generating loop increment code here
@@ -300,10 +302,10 @@ Value *ReturnStatement::IRCodegen(IRFactory *IRF) {
   auto RetNum = IRF->GetCurrentFunction()->GetReturnsNumber();
   IRF->GetCurrentFunction()->SetReturnsNumber(RetNum - 1);
 
-  bool HasRetVal = ReturnValue.has_value() &&
-                   !IRF->GetCurrentFunction()->IsRetTypeVoid();
+  bool HasRetVal =
+      ReturnValue.has_value() && !IRF->GetCurrentFunction()->IsRetTypeVoid();
 
-  Value* RetVal = HasRetVal ? ReturnValue.value()->IRCodegen(IRF) : nullptr;
+  Value *RetVal = HasRetVal ? ReturnValue.value()->IRCodegen(IRF) : nullptr;
 
   if (IRF->GetCurrentFunction()->HasMultipleReturn()) {
     if (HasRetVal)
@@ -391,7 +393,8 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   }
 
   if (ImplicitStructPtr) {
-    IRF->AddToSymbolTable(ImplicitStructPtr->GetName(), ImplicitStructPtr.get());
+    IRF->AddToSymbolTable(ImplicitStructPtr->GetName(),
+                          ImplicitStructPtr.get());
     IRF->Insert(std::move(ImplicitStructPtr));
   }
 
@@ -417,15 +420,16 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   // which will hold the different return values
   auto HasMultipleReturn = ReturnsNumber > 1 && !RetType.IsVoid();
   if (HasMultipleReturn)
-    IRF->GetCurrentFunction()->SetReturnValue(IRF->CreateSA(Name + ".return",
-                                                       RetType));
+    IRF->GetCurrentFunction()->SetReturnValue(
+        IRF->CreateSA(Name + ".return", RetType));
 
   Body->IRCodegen(IRF);
 
   // patching JUMP -s with nullptr destination to make them point to the last BB
   if (HasMultipleReturn) {
     auto BBName = Name + "_end";
-    auto RetBB = std::make_unique<BasicBlock>(BBName, IRF->GetCurrentFunction());
+    auto RetBB =
+        std::make_unique<BasicBlock>(BBName, IRF->GetCurrentFunction());
     auto RetBBPtr = RetBB.get();
     IRF->InsertBB(std::move(RetBB));
     auto RetVal = IRF->GetCurrentFunction()->GetReturnValue();
@@ -434,7 +438,7 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
 
     for (auto &BB : IRF->GetCurrentFunction()->GetBasicBlocks())
       for (auto &Instr : BB->GetInstructions())
-        if (auto Jump = dynamic_cast<JumpInstruction*>(Instr.get());
+        if (auto Jump = dynamic_cast<JumpInstruction *>(Instr.get());
             Jump && Jump->GetTargetBB() == nullptr)
           Jump->SetTargetBB(RetBBPtr);
   }
@@ -461,8 +465,8 @@ Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {
   // if the param is a struct and too big to passed by value then change it
   // to a struct pointer, because that is how it will be passed by callers
   if (ParamType.IsStruct() && !ParamType.IsPTR() &&
-      (ParamType.GetByteSize() * 8) > IRF->GetTargetMachine()->GetABI()->
-          GetMaxStructSizePassedByValue())
+      (ParamType.GetByteSize() * 8) >
+          IRF->GetTargetMachine()->GetABI()->GetMaxStructSizePassedByValue())
     ParamType.IncrementPointerLevel();
 
   auto Param = std::make_unique<FunctionParameter>(Name, ParamType);
@@ -488,15 +492,17 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
     // if the initialization is done by an initializer
     // FIXME: assuming max 2 dimensional init list like "{ { 1, 2 }, { 3, 4 } }"
     // add support for arbitrary dimension
-    if (auto InitListExpr = dynamic_cast<InitializerListExpression*>(Init.get());
+    if (auto InitListExpr =
+            dynamic_cast<InitializerListExpression *>(Init.get());
         InitListExpr != nullptr) {
       for (auto &Expr : InitListExpr->GetExprList())
-        if (auto ConstExpr = dynamic_cast<IntegerLiteralExpression*>(Expr.get());
+        if (auto ConstExpr =
+                dynamic_cast<IntegerLiteralExpression *>(Expr.get());
             ConstExpr != nullptr) {
           InitList.push_back(ConstExpr->GetUIntValue());
         } else if (auto InitListExpr =
-                     dynamic_cast<InitializerListExpression*>(Expr.get());
-                 InitListExpr != nullptr) {
+                       dynamic_cast<InitializerListExpression *>(Expr.get());
+                   InitListExpr != nullptr) {
           for (auto &Expr : InitListExpr->GetExprList())
             if (auto ConstExpr =
                     dynamic_cast<IntegerLiteralExpression *>(Expr.get());
@@ -504,13 +510,13 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
               InitList.push_back(ConstExpr->GetUIntValue());
             else
               assert(!"Other types unhandled yet");
-          }
+        }
     }
     // initialized by const expression
     // FIXME: for now only IntegerLiteralExpression, add support for const
     // expressions like 1 + 2 - 4 * 12
     else {
-      if (auto ConstExpr = dynamic_cast<IntegerLiteralExpression*>(Init.get());
+      if (auto ConstExpr = dynamic_cast<IntegerLiteralExpression *>(Init.get());
           ConstExpr != nullptr) {
         InitList.push_back(ConstExpr->GetUIntValue());
       }
@@ -536,7 +542,8 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
   if (Init) {
     // If initialized with initializer list then assuming its only 1 dimensional
     // and only contain integer literal expressions.
-    if (auto InitListExpr = dynamic_cast<InitializerListExpression*>(Init.get());
+    if (auto InitListExpr =
+            dynamic_cast<InitializerListExpression *>(Init.get());
         InitListExpr != nullptr) {
       unsigned LoopCounter = 0;
       for (auto &Expr : InitListExpr->GetExprList()) {
@@ -554,12 +561,12 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
 
           auto GEP = IRF->CreateGEP(ResultType, SA,
                                     IRF->GetConstant((uint64_t)LoopCounter));
-          IRF->CreateSTR(IRF->GetConstant((uint64_t)ConstExpr->GetUIntValue()), GEP);
+          IRF->CreateSTR(IRF->GetConstant((uint64_t)ConstExpr->GetUIntValue()),
+                         GEP);
         }
         LoopCounter++;
       }
-    }
-    else {
+    } else {
       auto InitExpr = Init->IRCodegen(IRF);
 
       if (InitExpr->GetType().IsStruct())
@@ -573,17 +580,11 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
   return SA;
 }
 
-Value *MemberDeclaration::IRCodegen(IRFactory *IRF) {
-  return nullptr;
-}
+Value *MemberDeclaration::IRCodegen(IRFactory *IRF) { return nullptr; }
 
-Value *StructDeclaration::IRCodegen(IRFactory *IRF) {
-  return nullptr;
-}
+Value *StructDeclaration::IRCodegen(IRFactory *IRF) { return nullptr; }
 
-Value *EnumDeclaration::IRCodegen(IRFactory *IRF) {
-  return nullptr;
-}
+Value *EnumDeclaration::IRCodegen(IRFactory *IRF) { return nullptr; }
 
 Value *CallExpression::IRCodegen(IRFactory *IRF) {
   std::vector<Value *> Args;
@@ -737,7 +738,8 @@ Value *ArrayExpression::IRCodegen(IRFactory *IRF) {
   // case when a pointer is tha base and not an array
   if (ResultType.IsPTR() && !ResultType.IsArray()) {
     // if the base value is on the stack
-    if (auto SA = dynamic_cast<StackAllocationInstruction*>(BaseValue); SA != nullptr) {
+    if (auto SA = dynamic_cast<StackAllocationInstruction *>(BaseValue);
+        SA != nullptr) {
       // then load it in first
       BaseValue = IRF->CreateLD(ResultType, SA);
       ResultType.DecrementPointerLevel();
@@ -839,8 +841,7 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
     if ((DestTypeVariant == Type::Char ||
          DestTypeVariant == Type::UnsignedChar))
       return IRF->CreateTRUNC(Val, 8);
-    if ((DestTypeVariant == Type::Int ||
-         DestTypeVariant == Type::UnsignedInt))
+    if ((DestTypeVariant == Type::Int || DestTypeVariant == Type::UnsignedInt))
       return IRF->CreateTRUNC(Val, 32);
     assert(!"Invalid conversion.");
   }
@@ -849,8 +850,7 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
     if ((DestTypeVariant == Type::Char ||
          DestTypeVariant == Type::UnsignedChar))
       return IRF->CreateTRUNC(Val, 8);
-    if ((DestTypeVariant == Type::Int ||
-         DestTypeVariant == Type::UnsignedInt))
+    if ((DestTypeVariant == Type::Int || DestTypeVariant == Type::UnsignedInt))
       return IRF->CreateTRUNC(Val, 32);
     assert(!"Invalid conversion.");
   }
@@ -914,7 +914,7 @@ Value *StructInitExpression::IRCodegen(IRFactory *IRF) {
     ResultType.IncrementPointerLevel();
 
     auto MemberPtr = IRF->CreateGEP(ResultType, StructTemp,
-                                IRF->GetConstant((uint64_t)MemberIdx));
+                                    IRF->GetConstant((uint64_t)MemberIdx));
     IRF->CreateSTR(InitExprCode, MemberPtr);
     LoopIdx++;
   }
@@ -923,14 +923,14 @@ Value *StructInitExpression::IRCodegen(IRFactory *IRF) {
 }
 
 Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
-  Value* E = nullptr;
+  Value *E = nullptr;
 
   if (GetOperationKind() != ADDRESS && GetOperationKind() != MINUS)
     E = Expr->IRCodegen(IRF);
 
   switch (GetOperationKind()) {
   case ADDRESS: {
-    auto RefExp = dynamic_cast<ReferenceExpression*>(Expr.get());
+    auto RefExp = dynamic_cast<ReferenceExpression *>(Expr.get());
     assert(RefExp);
     auto Referee = RefExp->GetIdentifier();
     auto Res = IRF->GetSymbolValue(Referee);
@@ -985,7 +985,7 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
     return IRF->CreateLD(IRType::CreateBool(), Result);
   }
   case MINUS: {
-    if (auto ConstE = dynamic_cast<IntegerLiteralExpression*>(Expr.get());
+    if (auto ConstE = dynamic_cast<IntegerLiteralExpression *>(Expr.get());
         ConstE != nullptr) {
       ConstE->SetValue(-ConstE->GetSIntValue());
       return Expr->IRCodegen(IRF);
@@ -1002,7 +1002,7 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
     LoadedValType.DecrementPointerLevel();
     auto LoadedExpr = IRF->CreateLD(LoadedValType, E);
 
-    Instruction* AddSub;
+    Instruction *AddSub;
     if (GetOperationKind() == POST_INCREMENT)
       AddSub = IRF->CreateADD(LoadedExpr, IRF->GetConstant((uint64_t)1));
     else
@@ -1138,7 +1138,7 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
       }
       // TODO: Revisit this. Its not necessary guaranteed that it will be a load
       // for now it seems fine
-      auto Load = dynamic_cast<LoadInstruction*>(L);
+      auto Load = dynamic_cast<LoadInstruction *>(L);
       assert(Load);
       IRF->CreateSTR(OperationResult, Load->GetMemoryLocation());
       return OperationResult;
