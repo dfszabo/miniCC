@@ -17,6 +17,7 @@ add_executable(miniCC
     frontend/parser/SymbolTable.cpp
     frontend/lexer/Lexer.cpp
     frontend/ast/AST.cpp
+    frontend/ast/ASTPrint.cpp
     frontend/ast/Type.cpp
     middle_end/IR/BasicBlock.cpp
     middle_end/IR/Function.cpp

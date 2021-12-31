@@ -11,6 +11,7 @@
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
 #include "preprocessor/PreProcessor.hpp"
+#include "ast/ASTPrint.hpp"
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -114,8 +115,10 @@ int main(int argc, char *argv[]) {
   Parser parser(src, &IRF);
   auto AST = parser.Parse();
 
-  if (DumpAST)
-    AST->ASTDump();
+  if (DumpAST) {
+    auto AstPrinter = std::make_unique<ASTPrint>();
+    AST->Accept(AstPrinter.get());
+  }
 
   AST->IRCodegen(&IRF);
   if (DumpIR)
