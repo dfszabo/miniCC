@@ -184,13 +184,7 @@ void GetElementPointerInstruction::Print() const {
   std::cout << ValueString() << ", ";
   std::cout << Source->ValueString();
   std::string str = ", ";
-  //size_t counter = 0;
-  //for (auto &I : Indexes) {
-  //  if (counter > 0)
-  //    str += ", ";
-    str += Index->ValueString();
-  //  counter++;
-  //}
+  str += Index->ValueString();
   std::cout << str << std::endl;
 }
 

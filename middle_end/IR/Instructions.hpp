@@ -28,11 +28,11 @@ public:
     CMP, // Logical comparison
 
     // Conversions
-    SEXT, // Sign extension
-    ZEXT, // Zero extension
+    SEXT,  // Sign extension
+    ZEXT,  // Zero extension
     TRUNC, // Truncating
-    FTOI, // Float TO Integer
-    ITOF, // Integer TO Float
+    FTOI,  // Float TO Integer
+    ITOF,  // Integer TO Float
 
     // Control flow operations
     CALL,
@@ -186,8 +186,8 @@ private:
 class ReturnInstruction : public Instruction {
 public:
   ReturnInstruction(Value *RV, BasicBlock *P)
-      : Instruction(Instruction::RET, P,
-                    RV ? RV->GetType() :IRType::NONE), RetVal(RV) {
+      : Instruction(Instruction::RET, P, RV ? RV->GetType() : IRType::NONE),
+        RetVal(RV) {
     BasicBlockTerminator = true;
   }
 
@@ -216,14 +216,9 @@ private:
 class GetElementPointerInstruction : public Instruction {
 public:
   GetElementPointerInstruction(IRType T, Value *CompositeObject,
-                               Value* AccessIndex, BasicBlock *P)
-      : Instruction(Instruction::GET_ELEM_PTR, P, T),
-        Source(CompositeObject), Index(AccessIndex) {
-//    auto PtrLVL = this->GetTypeRef().GetPointerLevel();
-//    if (PtrLVL != 0)
-//      PtrLVL--;
-//    this->GetTypeRef().SetPointerLevel(PtrLVL);
-  }
+                               Value *AccessIndex, BasicBlock *P)
+      : Instruction(Instruction::GET_ELEM_PTR, P, T), Source(CompositeObject),
+        Index(AccessIndex) {}
 
   Value *GetSource() const { return Source; }
   Value *GetIndex() { return Index; }
@@ -282,8 +277,10 @@ private:
 
 class MemoryCopyInstruction : public Instruction {
 public:
-  MemoryCopyInstruction(Value *Destination, Value *Source, size_t Bytes, BasicBlock *P)
-      : Instruction(Instruction::MEM_COPY, P, IRType()), Dest(Destination), Src(Source), N(Bytes) { }
+  MemoryCopyInstruction(Value *Destination, Value *Source, size_t Bytes,
+                        BasicBlock *P)
+      : Instruction(Instruction::MEM_COPY, P, IRType()), Dest(Destination),
+        Src(Source), N(Bytes) {}
 
   Value *GetDestination() { return Dest; }
   Value *GetSource() { return Src; }
