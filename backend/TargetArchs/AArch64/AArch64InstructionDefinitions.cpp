@@ -3,14 +3,14 @@
 using namespace AArch64;
 
 AArch64InstructionDefinitions::AArch64InstructionDefinitions() {
-  InstrEnumStrings = {"ADD_rrr",  "ADD_rri", "AND_rri", "EOR_rri",  "LSL_rrr",
-                      "LSL_rri",  "LSR_rrr", "LSR_rri", "SUB_rrr",  "SUB_rri",
-                      "SUBS",     "MUL_rri", "MUL_rrr", "SDIV_rri", "SDIV_rrr",
-                      "UDIV_rrr", "CMP_ri",  "CMP_rr",  "CSET",     "SXTB",
-                      "SXTW",     "UXTB",    "UXTW",    "MOV_rc",   "MOV_rr",
-                      "ADRP",     "LDR",     "LDRB",    "STR",      "STRB",
-                      "BEQ",      "BNE",     "BGE",     "BGT",      "BLE",
-                      "BLT",      "B",       "BL",      "RET"};
+  InstrEnumStrings = {
+      "ADD_rrr", "ADD_rri",  "AND_rri",  "EOR_rri",  "LSL_rrr", "LSL_rri",
+      "LSR_rrr", "LSR_rri",  "SUB_rrr",  "SUB_rri",  "SUBS",    "MUL_rri",
+      "MUL_rrr", "SDIV_rri", "SDIV_rrr", "UDIV_rrr", "CMP_ri",  "CMP_rr",
+      "CSET",    "SXTB",     "SXTW",     "UXTB",     "UXTW",    "MOV_rc",
+      "MOV_rr",  "ADRP",     "LDR",      "LDRB",     "LDRH",    "STR",
+      "STRB",    "STRH",     "BEQ",      "BNE",      "BGE",     "BGT",
+      "BLE",     "BLT",      "B",        "BL",       "RET"};
 }
 
 AArch64InstructionDefinitions::IRToTargetInstrMap
@@ -53,6 +53,11 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
                    "ldrb\t$1, [$2, #$3]",
                    {GPR, GPR, SIMM12},
                    TargetInstruction::LOAD};
+      ret[LDRH] = {LDRH,
+                   32,
+                   "ldrh\t$1, [$2, #$3]",
+                   {GPR, GPR, SIMM12},
+                   TargetInstruction::LOAD};
       ret[STR] = {STR,
                   32,
                   "str\t$1, [$2, #$3]",
@@ -61,6 +66,11 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[STRB] = {STRB,
                    32,
                    "strb\t$1, [$2, #$3]",
+                   {GPR, GPR, SIMM12},
+                   TargetInstruction::STORE};
+      ret[STRH] = {STRH,
+                   32,
+                   "strh\t$1, [$2, #$3]",
                    {GPR, GPR, SIMM12},
                    TargetInstruction::STORE};
       ret[BGE] = {BGE, 32, "b.ge\t$1", {SIMM21_LSB0}};
