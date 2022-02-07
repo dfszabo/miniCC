@@ -374,6 +374,11 @@ bool AArch64TargetMachine::SelectLOAD(MachineInstruction *MI) {
       if (MI->GetOperand(0)->GetSize() < 32)
         MI->GetOperand(0)->GetTypeRef().SetBitWidth(32);
       return true;
+    case 2:
+      MI->SetOpcode(LDRH);
+      if (MI->GetOperand(0)->GetSize() < 32)
+        MI->GetOperand(0)->GetTypeRef().SetBitWidth(32);
+      return true;
     case 4:
       MI->SetOpcode(LDR);
       return true;;
@@ -400,6 +405,13 @@ bool AArch64TargetMachine::SelectSTORE(MachineInstruction *MI) {
       (MI->GetOperandsNumber() == 2 && ParentMF->IsStackSlot(Op0->GetSlot()) &&
        ParentMF->GetStackObjectSize(Op0->GetSlot()) == 1)) {
     MI->SetOpcode(STRB);
+    return true;
+  }
+
+  if (OpLast->GetType().GetBitWidth() == 16 ||
+      (MI->GetOperandsNumber() == 2 && ParentMF->IsStackSlot(Op0->GetSlot()) &&
+       ParentMF->GetStackObjectSize(Op0->GetSlot()) == 2)) {
+    MI->SetOpcode(STRH);
     return true;
   }
 
