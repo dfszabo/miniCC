@@ -74,6 +74,7 @@ public:
     Return,
     Const,
     Char,
+    Short,
     Int,
     Long,
     Double,
@@ -213,6 +214,8 @@ public:
       return "const";
     case Char:
       return "char";
+    case Short:
+      return "short";
     case Int:
       return "int";
     case Long:

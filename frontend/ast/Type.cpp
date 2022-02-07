@@ -13,6 +13,12 @@ std::string Type::ToString(const Type *t) {
   case UnsignedChar:
     Result = "unsigned char";
     break;
+  case Short:
+    Result = "short";
+    break;
+  case UnsignedShort:
+    Result = "unsigned short";
+    break;
   case Int:
     Result = "int";
     break;

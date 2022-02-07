@@ -14,6 +14,8 @@ public:
     Void,
     Char,
     UnsignedChar,
+    Short,
+    UnsignedShort,
     Int,
     UnsignedInt,
     Long,
@@ -66,6 +68,8 @@ public:
     switch (to) {
     case Char:
     case UnsignedChar:
+    case Short:
+    case UnsignedShort:
     case Int:
     case UnsignedInt:
     case Long:
@@ -94,6 +98,8 @@ public:
     switch (to.GetTypeVariant()) {
     case Char:
     case UnsignedChar:
+    case Short:
+    case UnsignedShort:
     case Int:
     case UnsignedInt:
     case Long:
@@ -113,6 +119,8 @@ public:
     switch (v) {
     case Char:
     case UnsignedChar:
+    case Short:
+    case UnsignedShort:
       return true;
     default:
       return false;
@@ -124,6 +132,8 @@ public:
     if ((v1 == Int && v2 == UnsignedInt) || (v2 == Int && v1 == UnsignedInt) ||
         (v1 == Char && v2 == UnsignedChar) ||
         (v2 == Char && v1 == UnsignedChar) ||
+        (v1 == Short && v2 == UnsignedShort) ||
+        (v2 == Short && v1 == UnsignedShort) ||
         ((v1 == Long || v1 == LongLong) &&
          (v2 == UnsignedLong || v2 == UnsignedLongLong)) ||
         ((v2 == Long || v2 == LongLong) &&
@@ -191,6 +201,8 @@ public:
     switch (Ty) {
     case Char:
     case UnsignedChar:
+    case Short:
+    case UnsignedShort:
     case Int:
     case UnsignedInt:
     case Long:
@@ -206,6 +218,7 @@ public:
   bool IsUnsigned() const {
     switch (Ty) {
     case UnsignedChar:
+    case UnsignedShort:
     case UnsignedInt:
     case UnsignedLong:
     case UnsignedLongLong:

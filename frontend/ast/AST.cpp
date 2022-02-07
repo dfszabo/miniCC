@@ -12,6 +12,10 @@ static IRType GetIRTypeFromVK(Type::VariantKind VK) {
     return IRType(IRType::SINT, 8);
   case Type::UnsignedChar:
     return IRType(IRType::UINT, 8);
+  case Type::Short:
+    return IRType(IRType::SINT, 16);
+  case Type::UnsignedShort:
+    return IRType(IRType::UINT, 16);
   case Type::Int:
     return IRType(IRType::SINT);
   case Type::UnsignedInt:
@@ -354,6 +358,12 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
     break;
   case Type::UnsignedChar:
     RetType = IRType(IRType::UINT, 8);
+    break;
+  case Type::Short:
+    RetType = IRType(IRType::SINT, 16);
+    break;
+  case Type::UnsignedShort:
+    RetType = IRType(IRType::UINT, 16);
     break;
   case Type::Int:
     RetType = IRType(IRType::SINT);

@@ -95,6 +95,7 @@ Type Parser::GetUserDefinedType(std::string Name) {
 bool Parser::IsTypeSpecifier(Token T) {
   switch (T.GetKind()) {
   case Token::Char:
+  case Token::Short:
   case Token::Int:
   case Token::Long:
   case Token::Unsigned:
@@ -175,6 +176,9 @@ Type Parser::ParseType(Token::TokenKind tk) {
   case Token::Char:
     Result.SetTypeVariant(Type::Char);
     break;
+  case Token::Short:
+    Result.SetTypeVariant(Type::Short);
+    break;
   case Token::Int:
     Result.SetTypeVariant(Type::Int);
     break;
@@ -191,7 +195,7 @@ Type Parser::ParseType(Token::TokenKind tk) {
   case Token::Unsigned: {
     auto NextTokenKind = lexer.LookAhead(2).GetKind();
     if (NextTokenKind == Token::Int || NextTokenKind == Token::Char ||
-        NextTokenKind == Token::Long)
+        NextTokenKind == Token::Short || NextTokenKind == Token::Long)
       Lex(); // eat 'unsigned'
     // if bare the 'unsigned' is not followed by other type then its an
     // 'unsigned int' by default
@@ -208,6 +212,9 @@ Type Parser::ParseType(Token::TokenKind tk) {
     switch (CurrToken.GetKind()) {
     case Token::Char:
       Result.SetTypeVariant(Type::UnsignedChar);
+      break;
+    case Token::Short:
+      Result.SetTypeVariant(Type::UnsignedShort);
       break;
     case Token::Int:
       Result.SetTypeVariant(Type::UnsignedInt);
