@@ -30,6 +30,7 @@ public:
     GreaterThan,
     Bang,
     And,
+    Caret,
     QuestionMark,
 
     // Multichar operators
@@ -172,6 +173,8 @@ public:
       return "<<";
     case GreaterThanGreaterThan:
       return ">>";
+    case Caret:
+      return "^";
     case Colon:
       return ":";
     case SemiColon:

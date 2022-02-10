@@ -237,6 +237,9 @@ std::optional<Token> Lexer::LexSymbol() {
     } else
       TokenKind = Token::And;
     break;
+  case '^':
+    TokenKind = Token::Caret;
+    break;
   case ':':
     TokenKind = Token::Colon;
     break;
