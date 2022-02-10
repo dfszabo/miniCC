@@ -25,7 +25,11 @@ bool AArch64TargetMachine::SelectXOR(MachineInstruction *MI) {
 
     MI->SetOpcode(EOR_rri);
     return true;
+  } else {
+    MI->SetOpcode(EOR_rrr);
+    return true;
   }
+
   assert(!"Unreachable");
   return false;
 }
