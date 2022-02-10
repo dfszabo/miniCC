@@ -104,6 +104,8 @@ passed_tests_count = 0
 
 # handle program arguments
 for i, arg in enumerate(sys.argv):
+  if i == 0:
+    continue
   if arg == "-save-temps":
     save_temps = True
   else:
