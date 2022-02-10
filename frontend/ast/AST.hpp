@@ -458,6 +458,7 @@ public:
     MOD,
     MODU,
     AND,
+    XOR,
     Not,
     EQ,
     LT,
@@ -500,6 +501,8 @@ public:
       return MOD;
     case Token::And:
       return AND;
+    case Token::Caret:
+      return XOR;
     case Token::Bang:
       return Not;
     case Token::DoubleEqual:

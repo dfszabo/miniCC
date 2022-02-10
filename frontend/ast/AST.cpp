@@ -1167,6 +1167,7 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     switch (GetOperationKind()) {
     case ADD:
     case MUL:
+    case XOR:
     case AND:
     case EQ:
     case NE:
@@ -1203,6 +1204,8 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     return IRF->CreateMODU(L, R);
   case AND:
     return IRF->CreateAND(L, R);
+  case XOR:
+    return IRF->CreateXOR(L, R);
   case EQ:
     return IRF->CreateCMP(CompareInstruction::EQ, L, R);
   case LT:
