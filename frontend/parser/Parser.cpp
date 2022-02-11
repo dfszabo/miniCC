@@ -623,6 +623,11 @@ unsigned Parser::ParseIntegerConstant() {
   auto Str = T.GetString();
   unsigned Result = 0;
 
+  // in case if a hex constant, then its value already parsed, return that
+  if (T.GetValue() > 0 ||
+      (T.GetString().size() > 2 && T.GetString().at(1) == 'x'))
+    return T.GetValue();
+
   for (auto c : Str) {
     Result *= 10;
     Result += c - '0';
