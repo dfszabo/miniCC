@@ -1021,6 +1021,23 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
     IRF->CreateSTR(AddSub, E);
     return LoadedExpr;
   }
+  case PRE_DECREMENT:
+  case PRE_INCREMENT: {
+    // make the assumption that the expression E is an LValue which means
+    // its basically a pointer, so it requires a load first for addition to work
+    auto LoadedValType = E->GetTypeRef();
+    LoadedValType.DecrementPointerLevel();
+    auto LoadedExpr = IRF->CreateLD(LoadedValType, E);
+
+    Instruction *AddSub;
+    if (GetOperationKind() == PRE_INCREMENT)
+      AddSub = IRF->CreateADD(LoadedExpr, IRF->GetConstant((uint64_t)1));
+    else
+      AddSub = IRF->CreateSUB(LoadedExpr, IRF->GetConstant((uint64_t)1));
+
+    IRF->CreateSTR(AddSub, E);
+    return AddSub;
+  }
   default:
     assert(!"Unimplemented");
   }
