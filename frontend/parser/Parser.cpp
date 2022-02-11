@@ -119,12 +119,13 @@ static bool IsUnaryOperator(Token::TokenKind tk) {
   case Token::Astrix:
   case Token::Bang:
   case Token::Minus:
+  case Token::MinusMinus:
+  case Token::PlusPlus:
     return true;
 
   default:
-    break;
+    return false;
   }
-  return false;
 }
 
 bool Parser::IsReturnTypeSpecifier(Token T) {
@@ -955,7 +956,7 @@ std::unique_ptr<Expression> Parser::ParsePostFixExpression() {
       auto Operation = lexer.GetCurrentToken();
       Lex(); // eat the token
       Expr->SetLValueness(true);
-      Expr = std::make_unique<UnaryExpression>(Operation, std::move(Expr));
+      Expr = std::make_unique<UnaryExpression>(Operation, std::move(Expr), true);
     }
     // Parse a CallExpression here
     else if (lexer.Is(Token::LeftParen)) {
@@ -1007,14 +1008,20 @@ std::unique_ptr<Expression> Parser::ParseUnaryExpression() {
 
   std::unique_ptr<Expression> Expr;
 
-  if (IsUnaryOperator((GetCurrentTokenKind())))
-    return std::make_unique<UnaryExpression>(UnaryOperation,
-                                             std::move(ParseUnaryExpression()));
+  if (IsUnaryOperator((GetCurrentTokenKind()))) {
+    auto Expr = ParseUnaryExpression();
+    if (UnaryOperation.GetKind() == Token::PlusPlus ||
+        UnaryOperation.GetKind() == Token::MinusMinus)
+      Expr->SetLValueness(true);
+    return std::make_unique<UnaryExpression>(UnaryOperation, std::move(Expr));
+  }
 
   // TODO: Add semantic check that only pointer types are dereferenced
   Expr = ParsePostFixExpression();
-  return std::make_unique<UnaryExpression>(UnaryOperation,
-                                           std::move(Expr));
+  if (UnaryOperation.GetKind() == Token::PlusPlus ||
+      UnaryOperation.GetKind() == Token::MinusMinus)
+    Expr->SetLValueness(true);
+  return std::make_unique<UnaryExpression>(UnaryOperation, std::move(Expr));
 }
 
 static int GetBinOpPrecedence(Token::TokenKind TK) {
