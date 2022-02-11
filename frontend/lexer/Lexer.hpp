@@ -22,6 +22,7 @@ public:
   std::optional<Token> LexNumber();
   std::optional<Token> LexIdentifier();
   std::optional<Token> LexKeyword();
+  std::optional<Token> LexCharLiteral();
   std::optional<Token> LexSymbol();
   Token LookAhead(unsigned n);
   Token GetCurrentToken() { return LookAhead(1); }

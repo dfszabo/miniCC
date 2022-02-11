@@ -139,6 +139,62 @@ std::optional<Token> Lexer::LexKeyword() {
                StartColumnIndex);
 }
 
+std::optional<Token> Lexer::LexCharLiteral() {
+  unsigned StartLineIndex = LineIndex;
+  unsigned StartColumnIndex = ColumnIndex;
+
+  // It must start with a ' char
+  if (GetNextChar() != '\'')
+    return std::nullopt;
+
+  EatNextChar(); // eat ' char
+
+  bool isEscaped = false;
+  if (GetNextChar() == '\\') {
+    isEscaped = true;
+    EatNextChar();
+  }
+
+  char currentChar = GetNextChar();
+  EatNextChar();
+  unsigned value = -1; // to signal errors
+
+  // TODO: add support for other cases like multiple octal digits, hexa etc
+  if (isEscaped) {
+    if (isdigit(currentChar)) {
+      assert(currentChar < '8' && "Expecting octal digits");
+      value = currentChar - '0';
+    } else if (currentChar == 'a')
+      value = 0x07;
+    else if (currentChar == 'b')
+      value = 0x08;
+    else if (currentChar == 'e')
+      value = 0x1B;
+    else if (currentChar == 'f')
+      value = 0x0C;
+    else if (currentChar == 'n')
+      value = 0x0A;
+    else if (currentChar == 'r')
+      value = 0x0D;
+    else if (currentChar == 't')
+      value = 0x0B;
+    else
+      assert("TODO: add the other ones");
+  } else {
+    value = currentChar;
+  }
+
+  if (GetNextChar() != '\'')
+    return Token(Token::Invalid);
+
+  EatNextChar(); // eat ending ' char
+
+  std::string_view StringValue{&Source[StartLineIndex][StartColumnIndex],
+                               ColumnIndex - StartColumnIndex + 1};
+  return Token(Token::CharacterLiteral, StringValue, StartLineIndex,
+               StartColumnIndex, value);
+}
+
 std::optional<Token> Lexer::LexSymbol() {
   auto TokenKind = Token::Invalid;
   unsigned Size = 1;
@@ -264,6 +320,9 @@ std::optional<Token> Lexer::LexSymbol() {
   case '}':
     TokenKind = Token::RightCurly;
     break;
+  case '\\':
+    TokenKind = Token::BackSlash;
+    break;
   default:
     return std::nullopt;
     break;
@@ -326,6 +385,8 @@ Token Lexer::Lex(bool LookAhead) {
     Result = LexSymbol();
   if (!Result)
     Result = LexNumber();
+  if (!Result)
+    Result = LexCharLiteral();
   if (!Result)
     Result = LexIdentifier();
 

@@ -16,6 +16,7 @@ public:
     // Numbers
     Integer,
     Real,
+    CharacterLiteral,
 
     // Operators
     Dot,
@@ -58,6 +59,7 @@ public:
     RightBracet,
     LeftCurly,
     RightCurly,
+    BackSlash,
 
     // Comment
     DoubleForwardSlash,
@@ -93,17 +95,22 @@ public:
   Token(TokenKind tk, std::string_view sv, unsigned l, unsigned c)
       : Kind(tk), StringValue(sv), LineNumber(l), ColumnNumber(c) {}
 
+  Token(TokenKind tk, std::string_view sv, unsigned l, unsigned c, unsigned v)
+      : Kind(tk), StringValue(sv), LineNumber(l), ColumnNumber(c), Value(v) {}
+
   std::string GetString() const { return std::string(StringValue); }
   TokenKind GetKind() const { return Kind; }
 
   unsigned GetLineNum() const { return LineNumber; }
   unsigned GetColNum() const { return ColumnNumber; }
+  unsigned GetValue() const { return Value; }
 
   std::string ToString() const {
     std::string Result("");
     Result += "\"" + std::string(StringValue) + "\", ";
     Result += "Line: " + std::to_string(LineNumber + 1) + ", ";
-    Result += "Col: " + std::to_string(ColumnNumber + 1);
+    Result += "Col: " + std::to_string(ColumnNumber + 1) + ", ";
+    Result += "Value: " + std::to_string(Value);
     return Result;
   }
 
@@ -119,6 +126,8 @@ public:
       return "Integer";
     case Real:
       return "Float";
+    case CharacterLiteral:
+      return "Character Literal";
     case Dot:
       return ".";
     case Comma:
@@ -191,6 +200,8 @@ public:
       return "{";
     case RightCurly:
       return "}";
+    case BackSlash:
+      return "\\";
     case DoubleForwardSlash:
       return "//";
     case For:
@@ -246,6 +257,7 @@ private:
   std::string_view StringValue;
   unsigned LineNumber;
   unsigned ColumnNumber;
+  unsigned Value = 0;
 };
 
 #endif

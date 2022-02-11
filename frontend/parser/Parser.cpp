@@ -1208,7 +1208,8 @@ std::unique_ptr<Expression> Parser::ParsePrimaryExpression() {
     return Expression;
   } else if (lexer.Is(Token::Identifier)) {
     return ParseIdentifierExpression();
-  } else if (lexer.Is(Token::Real) || lexer.Is(Token::Integer)) {
+  } else if (lexer.Is(Token::Real) || lexer.Is(Token::Integer) ||
+             lexer.Is(Token::CharacterLiteral)) {
     return ParseConstantExpression();
   } else {
     return nullptr;
@@ -1217,6 +1218,7 @@ std::unique_ptr<Expression> Parser::ParsePrimaryExpression() {
 
 // <ConstantExpression> ::= -?[1-9][0-9]*
 //                        | -?[0-9]+.[0-9]+
+//                        | -?'\'' \?. '\''
 std::unique_ptr<Expression> Parser::ParseConstantExpression() {
   // Handle enumerator constant cases
   bool IsNegative = false;
@@ -1225,7 +1227,17 @@ std::unique_ptr<Expression> Parser::ParseConstantExpression() {
     IsNegative = true;
   }
 
-  if (lexer.Is(Token::Identifier)) {
+  // character constant
+  if (lexer.Is(Token::CharacterLiteral)) {
+    auto CharToken = Expect(Token::CharacterLiteral);
+
+    auto IntLit =
+        std::make_unique<IntegerLiteralExpression>(CharToken.GetValue());
+    if (IsNegative)
+      IntLit->SetValue(-IntLit->GetSIntValue());
+
+    return IntLit;
+  } else if (lexer.Is(Token::Identifier)) {
     auto Id = Expect(Token::Identifier);
     auto IdStr = Id.GetString();
 
