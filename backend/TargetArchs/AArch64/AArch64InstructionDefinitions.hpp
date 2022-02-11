@@ -35,6 +35,7 @@ enum Opcodes : unsigned {
   UXTW,
   MOV_rc,
   MOV_rr,
+  MOVK_ri,
   ADRP,
   LDR,
   LDRB,
@@ -55,6 +56,7 @@ enum Opcodes : unsigned {
 
 enum OperandTypes : unsigned {
   GPR,
+  UIMM4,
   SIMM12,
   UIMM12,
   UIMM16,

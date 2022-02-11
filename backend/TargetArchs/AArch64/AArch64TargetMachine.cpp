@@ -336,10 +336,27 @@ bool AArch64TargetMachine::SelectLOAD_IMM(MachineInstruction *MI) {
          "LOAD_IMM must have exactly 2 operands");
 
   assert(MI->GetOperand(1)->IsImmediate() && "Operand #2 must be an immediate");
-  assert(IsInt<16>(MI->GetOperand(1)->GetImmediate()) &&
-         "Ivalid immediate value");
 
-  MI->SetOpcode(MOV_rc);
+  int64_t imm = MI->GetOperand(1)->GetImmediate();
+
+  if (IsInt<16>(imm))
+    MI->SetOpcode(MOV_rc);
+  else if (IsInt<32>(imm)) {
+    auto MBB = MI->GetParent();
+
+    MI->SetOpcode(MOV_rc);
+    MI->GetOperand(1)->SetValue(imm & 0xffffu); // keep lower 16 bit
+
+    MachineInstruction MOVK;
+    MOVK.SetOpcode(MOVK_ri);
+    MOVK.AddRegister(MI->GetOperand(0)->GetReg());
+    MOVK.AddImmediate(((uint64_t)imm) >> 16u); // upper 16 bit
+    MOVK.AddImmediate(16); // left shift amount
+
+    MBB->InsertAfter(MOVK, MI);
+  } else
+    assert(!"Ivalid immediate value");
+
   return true;
 }
 

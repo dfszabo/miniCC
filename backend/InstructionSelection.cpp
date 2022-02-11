@@ -3,9 +3,9 @@
 void InsturctionSelection::InstrSelect() {
   for (auto &MFunc : MIRM->GetFunctions()) {
     for (auto &MBB : MFunc.GetBasicBlocks())
-      for (auto &Instr : MBB.GetInstructions())
+      for (size_t i = 0; i < MBB.GetInstructions().size(); i++)
         // Skip selection if already selected
-        if (!Instr.IsAlreadySelected())
-          TM->SelectInstruction(&Instr);
+        if (!MBB.GetInstructions()[i].IsAlreadySelected())
+          TM->SelectInstruction(&MBB.GetInstructions()[i]);
   }
 }
