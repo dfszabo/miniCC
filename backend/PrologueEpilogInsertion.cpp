@@ -168,7 +168,7 @@ void PrologueEpilogInsertion::ReloadClobberedCalleeSavedRegisters(
 void PrologueEpilogInsertion::Run() {
   for (auto &Func : MIRM->GetFunctions()) {
     // if there is no stack frame then do not emit adjustments
-    if (Func.GetStackFrameSize() == 0 && Func.GetUsedCalleSavedRegs().empty() && Func.IsCaller())
+    if (Func.GetStackFrameSize() == 0 && Func.GetUsedCalleSavedRegs().empty())
       continue;
 
     LocalPhysRegToStackSlotMap.clear();
