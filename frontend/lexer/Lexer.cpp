@@ -66,14 +66,41 @@ std::optional<Token> Lexer::LexNumber() {
   unsigned StartColumnIndex = ColumnIndex;
   unsigned Length = 0;
   auto TokenKind = Token::Integer;
+  unsigned TokenValue = 0;
 
   while (isdigit(GetNextChar())) {
     Length++;
     EatNextChar();
   }
 
+  // hex literal case
+  if (Length == 1 && GetNextChar() == 'x') {
+    Length++;
+    EatNextChar();
+    uint64_t value = 0;
+
+    int c = GetNextChar();
+    while (isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+      Length++;
+      EatNextChar();
+      unsigned currDigit = 0;
+
+      if (isdigit(c))
+        currDigit = c - '0';
+      else if (islower(c))
+        currDigit = c - 'a' + 10;
+      else
+        currDigit = c - 'A' + 10;
+
+      value = (value << 4) + currDigit;
+
+      c = GetNextChar();
+    }
+
+    TokenValue = value;
+  }
   // if its a real value like 3.14
-  if (GetNextChar() == '.') {
+  else if (GetNextChar() == '.') {
     Length++;
     EatNextChar();
     TokenKind = Token::Real;
@@ -92,7 +119,8 @@ std::optional<Token> Lexer::LexNumber() {
 
   std::string_view StringValue{&Source[StartLineIndex][StartColumnIndex],
                                Length};
-  return Token(TokenKind, StringValue, StartLineIndex, StartColumnIndex);
+  return Token(TokenKind, StringValue, StartLineIndex, StartColumnIndex,
+               TokenValue);
 }
 
 std::optional<Token> Lexer::LexIdentifier() {
