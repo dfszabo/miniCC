@@ -13,25 +13,80 @@ void ExtendRegSize(MachineOperand *MO, uint8_t BitWidth = 32) {
     MO->GetTypeRef().SetBitWidth(BitWidth);
 }
 
+/// Materialize the given constant before the MI instruction
+MachineInstruction *MaterializeConstant(MachineInstruction *MI,
+                                        uint64_t Constant, unsigned &Reg) {
+  auto MBB = MI->GetParent();
+  Reg = MBB->GetParent()->GetNextAvailableVReg();
+
+  std::vector<MachineInstruction> MIs;
+
+  MachineInstruction MOV;
+  MOV.SetOpcode(MOV_rc);
+  MOV.AddVirtualRegister(Reg);
+  MOV.AddImmediate(Constant & 0xffffu); // keep lower 16 bit
+  MIs.push_back(MOV);
+
+  if (!IsInt<16>(Constant) && IsInt<32>(Constant)) {
+    MachineInstruction MOVK;
+    MOVK.SetOpcode(MOVK_ri);
+    MOVK.AddVirtualRegister(Reg);
+    MOVK.AddImmediate(Constant >> 16u); // upper 16 bit
+    MOVK.AddImmediate(16);              // left shift amount
+    MIs.push_back(MOVK);
+  }
+
+  return &*MBB->InsertBefore(std::move(MIs), MI);
+}
+
+/// For the given MI the function select its rrr or rri variant based on
+/// the MI form. If the immediate does not fit into the instruction @ImmSize
+/// width long immediate part, then it will be materialized into a register
+bool SelectThreeAddressInstuction(MachineInstruction *MI, Opcodes rrr,
+                                  Opcodes rri, unsigned ImmSize = 12) {
+  if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
+    if (IsInt(ImmMO->GetImmediate(), ImmSize)) {
+      MI->SetOpcode(rri);
+      return true;
+    }
+
+    unsigned Reg;
+    MI = MaterializeConstant(MI, ImmMO->GetImmediate(), Reg);
+    MI->SetOpcode(rrr);
+    MI->RemoveOperand(2);
+    MI->AddVirtualRegister(Reg);
+
+    return true;
+  } else if (MI->GetOperand(2)->IsRegister() ||
+             MI->GetOperand(2)->IsVirtualReg()) {
+    MI->SetOpcode(rrr);
+    return true;
+  }
+  return false;
+}
+
+bool AArch64TargetMachine::SelectAND(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "AND must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
+  if (!SelectThreeAddressInstuction(MI, AND_rrr, AND_rri))
+    assert(!"Cannot select AND");
+
+  return true;
+}
+
 bool AArch64TargetMachine::SelectXOR(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "XOR must have 3 operands");
 
   ExtendRegSize(MI->GetOperand(0));
   ExtendRegSize(MI->GetOperand(1));
 
-  if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
-    assert(IsUInt<12>((int64_t)ImmMO->GetImmediate()) &&
-           "Immediate must be 12 bit wide");
+  if (!SelectThreeAddressInstuction(MI, EOR_rrr, EOR_rri))
+    assert(!"Cannot select XOR");
 
-    MI->SetOpcode(EOR_rri);
-    return true;
-  } else {
-    MI->SetOpcode(EOR_rrr);
-    return true;
-  }
-
-  assert(!"Unreachable");
-  return false;
+  return true;
 }
 
 bool AArch64TargetMachine::SelectLSL(MachineInstruction *MI) {
@@ -40,18 +95,10 @@ bool AArch64TargetMachine::SelectLSL(MachineInstruction *MI) {
   ExtendRegSize(MI->GetOperand(0));
   ExtendRegSize(MI->GetOperand(1));
 
-  if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
-    assert(IsUInt<12>((int64_t)ImmMO->GetImmediate()) &&
-           "Immediate must be 12 bit wide");
+  if (!SelectThreeAddressInstuction(MI, LSL_rrr, LSL_rri))
+    assert(!"Cannot select LSL");
 
-    MI->SetOpcode(LSL_rri);
-    return true;
-  } else {
-    MI->SetOpcode(LSL_rrr);
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 bool AArch64TargetMachine::SelectLSR(MachineInstruction *MI) {
@@ -60,18 +107,10 @@ bool AArch64TargetMachine::SelectLSR(MachineInstruction *MI) {
   ExtendRegSize(MI->GetOperand(0));
   ExtendRegSize(MI->GetOperand(1));
 
-  if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
-    assert(IsUInt<12>((int64_t)ImmMO->GetImmediate()) &&
-           "Immediate must be 12 bit wide");
+  if (!SelectThreeAddressInstuction(MI, LSR_rrr, LSR_rri))
+    assert(!"Cannot select LSR");
 
-    MI->SetOpcode(LSR_rri);
-    return true;
-  } else {
-    MI->SetOpcode(LSR_rrr);
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 bool AArch64TargetMachine::SelectADD(MachineInstruction *MI) {
@@ -193,8 +232,7 @@ bool AArch64TargetMachine::SelectDIVU(MachineInstruction *MI) {
   // If last operand is an immediate then select "addi"
   if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
     assert(!"Immediate not supported");
-  }
-  else {
+  } else {
     MI->SetOpcode(UDIV_rrr);
     return true;
   }
@@ -351,7 +389,7 @@ bool AArch64TargetMachine::SelectLOAD_IMM(MachineInstruction *MI) {
     MOVK.SetOpcode(MOVK_ri);
     MOVK.AddRegister(MI->GetOperand(0)->GetReg());
     MOVK.AddImmediate(((uint64_t)imm) >> 16u); // upper 16 bit
-    MOVK.AddImmediate(16); // left shift amount
+    MOVK.AddImmediate(16);                     // left shift amount
 
     MBB->InsertAfter(MOVK, MI);
   } else
@@ -402,7 +440,8 @@ bool AArch64TargetMachine::SelectLOAD(MachineInstruction *MI) {
       return true;
     case 4:
       MI->SetOpcode(LDR);
-      return true;;
+      return true;
+      ;
     default:
       break;
     }
@@ -441,8 +480,7 @@ bool AArch64TargetMachine::SelectSTORE(MachineInstruction *MI) {
 }
 
 bool AArch64TargetMachine::SelectSTACK_ADDRESS(MachineInstruction *MI) {
-  assert(MI->GetOperandsNumber() == 2 &&
-         "STACK_ADDRESS must have 2 operands");
+  assert(MI->GetOperandsNumber() == 2 && "STACK_ADDRESS must have 2 operands");
 
   MI->SetOpcode(ADD_rri);
   return true;
