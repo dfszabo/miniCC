@@ -25,6 +25,7 @@ public:
 
   bool SelectInstruction(MachineInstruction *MI);
 
+  virtual bool SelectAND(MachineInstruction *MI) { return false; }
   virtual bool SelectXOR(MachineInstruction *MI) { return false; }
   virtual bool SelectLSL(MachineInstruction *MI) { return false; }
   virtual bool SelectLSR(MachineInstruction *MI) { return false; }

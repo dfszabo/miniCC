@@ -8,6 +8,8 @@ template <unsigned BitWidth> bool IsInt(uint64_t Number) {
   return S == 0 || S == -1;
 }
 
+bool IsInt(uint64_t Number, unsigned BitWidth);
+
 template <unsigned BitWidth> bool IsUInt(uint64_t Number) {
   int64_t S = ((int64_t)Number) >> BitWidth;
   return S == 0;

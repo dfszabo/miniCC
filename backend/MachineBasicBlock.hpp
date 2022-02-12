@@ -33,6 +33,10 @@ public:
   InstructionList::iterator InsertBefore(MachineInstruction MI,
                                         MachineInstruction *BeforeMI);
 
+  /// Find where BeforeMI is in the InstructionList and insert MIs before it
+  InstructionList::iterator InsertBefore(std::vector<MachineInstruction> MIs,
+                                         MachineInstruction *BeforeMI);
+
   /// Find where AfterMI is in the InstructionList and insert MI after it
   InstructionList::iterator InsertAfter(MachineInstruction MI,
                                         MachineInstruction *AfterMI);
