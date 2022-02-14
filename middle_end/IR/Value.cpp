@@ -13,6 +13,11 @@ void GlobalVariable::Print() const {
         std::cout << ",";
     }
     std::cout << " }";
+  } else if (!InitString.empty()) {
+    std::cout << " = \"" << InitString << "\"";
+  } else if (auto GV = dynamic_cast<GlobalVariable *>(InitValue);
+             GV != nullptr) {
+    std::cout << " = " << GV->GetName();
   }
 
   std::cout << std::endl << std::endl;

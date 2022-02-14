@@ -17,6 +17,7 @@ public:
     Integer,
     Real,
     CharacterLiteral,
+    StringLiteral,
 
     // Operators
     Dot,
@@ -128,6 +129,8 @@ public:
       return "Float";
     case CharacterLiteral:
       return "Character Literal";
+    case StringLiteral:
+      return "String Literal";
     case Dot:
       return ".";
     case Comma:

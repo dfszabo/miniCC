@@ -223,6 +223,40 @@ std::optional<Token> Lexer::LexCharLiteral() {
                StartColumnIndex, value);
 }
 
+std::optional<Token> Lexer::LexStringLiteral() {
+  unsigned StartLineIndex = LineIndex;
+  unsigned StartColumnIndex = ColumnIndex;
+  unsigned Length = 0;
+
+  // It must start with a " char
+  if (GetNextChar() != '"')
+    return std::nullopt;
+
+  EatNextChar(); // eat " char
+  Length++;
+
+  bool lastCharIsEscape = false; // used to determine if encountered a '\"'
+
+  while ((GetNextChar() != '"' || (GetNextChar() == '"' && lastCharIsEscape)) &&
+         GetNextChar() != EOF) {
+    char c = GetNextChar();
+    lastCharIsEscape = c == '\\';
+    EatNextChar();
+    Length++;
+  }
+
+  if (GetNextChar() != '"')
+    return Token(Token::Invalid);
+
+  EatNextChar(); // eat " char
+  Length++;
+
+  std::string_view StringValue{&Source[StartLineIndex][StartColumnIndex],
+                               Length};
+  return Token(Token::StringLiteral, StringValue, StartLineIndex,
+               StartColumnIndex);
+}
+
 std::optional<Token> Lexer::LexSymbol() {
   auto TokenKind = Token::Invalid;
   unsigned Size = 1;
@@ -415,6 +449,8 @@ Token Lexer::Lex(bool LookAhead) {
     Result = LexNumber();
   if (!Result)
     Result = LexCharLiteral();
+  if (!Result)
+    Result = LexStringLiteral();
   if (!Result)
     Result = LexIdentifier();
 

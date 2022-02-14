@@ -10,8 +10,16 @@
 /// created data used for initializing arrays and structs
 class GlobalData {
 public:
-  enum Directives { NONE = -1, ZERO, BYTE, HALF_WORD, WORD, DOUBLE_WORD };
-  using InfoVector = std::vector<std::pair<Directives, int64_t>>;
+  enum Directives {
+    NONE = -1,
+    ZERO,
+    BYTE,
+    HALF_WORD,
+    WORD,
+    DOUBLE_WORD,
+    STRING
+  };
+  using InfoVector = std::vector<std::pair<Directives, std::string>>;
 
   GlobalData() {}
   GlobalData(const std::string &Name, const size_t Size)
@@ -47,7 +55,11 @@ public:
       } else
        assert(!"Invalid size");
     }
-    InitValues.push_back({D, InitVal});
+    InitValues.push_back({D, std::to_string(InitVal)});
+  }
+
+  void InsertAllocation(std::string str, Directives d = STRING) {
+    InitValues.push_back({d, str});
   }
 
   static std::string DirectiveToString(Directives D) {
@@ -64,6 +76,8 @@ public:
       return "long";
     case DOUBLE_WORD:
       return "quad";
+    case STRING:
+      return "asciz";
     default:
       assert(!"Unreachable");
     }
@@ -71,10 +85,13 @@ public:
 
   void Print() const {
     std::string Str = Name + ":\n";
-    for (auto &[Directive, InitVal] : InitValues)
-      Str += "  ." + DirectiveToString(Directive) + "\t" +
-             std::to_string(InitVal) + "\n";
-
+    for (auto &[Directive, InitVal] : InitValues) {
+      Str += "  ." + DirectiveToString(Directive) + "\t";
+      if (Directive != STRING)
+        Str += InitVal + "\n";
+      else
+        Str += "\"" + InitVal + "\"\n";
+    }
     std::cout << Str << std::endl;
   }
 
