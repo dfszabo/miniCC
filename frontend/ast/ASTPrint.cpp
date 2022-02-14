@@ -24,8 +24,10 @@ void ASTPrint::VisitVariableDeclaration(const VariableDeclaration *node) {
   Print(TypeStr.c_str());
   auto NameStr = "'" + node->GetName() + "'";
   PrintLn(NameStr.c_str());
+  tab += 2;
   if (node->GetInitExpr())
     node->GetInitExpr()->Accept(this);
+  tab -= 2;
 }
 
 void ASTPrint::VisitMemberDeclaration(const MemberDeclaration *node) {
@@ -267,6 +269,14 @@ void ASTPrint::VisitFloatLiteralExpression(const FloatLiteralExpression *node) {
   PrintLn(ValStr.c_str());
 }
 
+void ASTPrint::VisitStringLiteralExpression(const StringLiteralExpression *node) {
+  Print("StringLiteralExpression ", tab);
+  auto TyStr = "'" + node->GetResultType().ToString() + "' ";
+  Print(TyStr.c_str());
+  auto ValStr = "'" + node->GetValue() + "'";
+  PrintLn(ValStr.c_str());
+}
+
 void ASTPrint::VisitArrayExpression(const ArrayExpression *node) {
   Print("ArrayExpression ", tab);
   auto Str = "'" + node->GetResultType().ToString() + "' ";
@@ -278,7 +288,7 @@ void ASTPrint::VisitArrayExpression(const ArrayExpression *node) {
 }
 
 void ASTPrint::VisitImplicitCastExpression(const ImplicitCastExpression *node) {
-  Print("ImplicitCastExpression ", 0);
+  Print("ImplicitCastExpression ", tab);
   auto Str = "'" + node->GetResultType().ToString() + "'";
   PrintLn(Str.c_str());
 

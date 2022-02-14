@@ -20,7 +20,7 @@ def check_file(file_name):
             if m:
                 function_declarations.append(m.group(1))
 
-            m = re.search(r'(?:/{2}|#) *TEST-CASE: (.*) -> (-?\d+)', line)
+            m = re.search(r'(?:/{2}|#) *TEST-CASE: (.*) -> (.*)', line)
             if m:
                 test_cases.append((m.group(1), m.group(2)))
 

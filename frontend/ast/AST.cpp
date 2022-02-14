@@ -530,6 +530,18 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
           ConstExpr != nullptr) {
         InitList.push_back(ConstExpr->GetUIntValue());
       }
+      // string literal case like: char *str = "Hello World"
+      else if (auto StringLitExpr =
+                   dynamic_cast<StringLiteralExpression *>(Init.get());
+               StringLitExpr != nullptr) {
+        // generate code for the string literal -> create a global var for it
+        auto GVStr = StringLitExpr->IRCodegen(IRF);
+
+        // increase to pointer level since now the pointer to the data is stored
+        // and not the data itself
+        Type.IncrementPointerLevel();
+        return IRF->CreateGlobalVar(Name, Type, GVStr);
+      }
     }
     return IRF->CreateGlobalVar(Name, Type, std::move(InitList));
   }
@@ -747,11 +759,13 @@ Value *ArrayExpression::IRCodegen(IRFactory *IRF) {
 
   // case when a pointer is tha base and not an array
   if (ResultType.IsPTR() && !ResultType.IsArray()) {
-    // if the base value is on the stack
-    if (auto SA = dynamic_cast<StackAllocationInstruction *>(BaseValue);
-        SA != nullptr) {
+    // if the base value is on the stack or a global variable
+    if (dynamic_cast<StackAllocationInstruction *>(BaseValue) != nullptr ||
+        dynamic_cast<GlobalVariable *>(BaseValue) != nullptr) {
       // then load it in first
-      BaseValue = IRF->CreateLD(ResultType, SA);
+      BaseValue = IRF->CreateLD(ResultType, BaseValue);
+      // since we loaded it in, therefore the result indirection level decreased
+      // by one
       ResultType.DecrementPointerLevel();
     }
   } else {
@@ -1299,6 +1313,16 @@ Value *IntegerLiteralExpression::IRCodegen(IRFactory *IRF) {
 
 Value *FloatLiteralExpression::IRCodegen(IRFactory *IRF) {
   return IRF->GetConstant(FPValue);
+}
+
+Value *StringLiteralExpression::IRCodegen(IRFactory *IRF) {
+  static unsigned counter = 0; // used to create unique names
+  std::string Name = ".L.str" + std::to_string(counter++);
+  auto Type = GetIRTypeFromASTType(ResultType);
+  // create a global variable for the string literal with the label Name
+  auto GV = IRF->CreateGlobalVar(Name, Type, StringValue);
+  IRF->AddGlobalVariable(GV);
+  return GV;
 }
 
 Value *TranslationUnit::IRCodegen(IRFactory *IRF) {

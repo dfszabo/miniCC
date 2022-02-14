@@ -87,12 +87,20 @@ public:
   GlobalVariable(std::string &Name, IRType Type)
       : Value(GLOBALVAR, Type), Name(Name) {}
 
+  GlobalVariable(std::string &Name, IRType Type, std::string InitStr)
+      : Value(GLOBALVAR, Type), Name(Name), InitString(InitStr) {}
+
+  GlobalVariable(std::string &Name, IRType Type, Value *InitValue)
+      : Value(GLOBALVAR, Type), Name(Name), InitValue(InitValue) {}
+
   GlobalVariable(std::string &Name, IRType Type, std::vector<uint64_t> InitList)
       : Value(GLOBALVAR, Type), Name(Name),
         InitList(std::move(InitList)) {}
 
   std::string &GetName() { return Name; }
   std::vector<uint64_t> &GetInitList() { return InitList; }
+  std::string &GetInitString() { return InitString; }
+  Value *GetInitValue() { return InitValue; }
 
   std::string ValueString() const override {
     return "@" + Name + "<" + ValueType.AsString() + ">";
@@ -103,6 +111,8 @@ public:
 private:
   std::string Name;
   std::vector<uint64_t> InitList;
+  std::string InitString;
+  Value *InitValue = nullptr;
 };
 
 #endif

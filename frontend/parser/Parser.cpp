@@ -289,8 +289,14 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
 
     Type type = ParseType(Token.GetKind());
     type.SetQualifiers(Qualifiers);
-    CurrentFuncRetType = type;
     Lex();
+
+    while (lexer.Is(Token::Astrix)) {
+      type.IncrementPointerLevel();
+      Lex(); // Eat the * character
+    }
+
+    CurrentFuncRetType = type;
 
     auto Name = Expect(Token::Identifier);
     auto NameStr = Name.GetString();
@@ -1221,7 +1227,8 @@ std::unique_ptr<Expression> Parser::ParsePrimaryExpression() {
   } else if (lexer.Is(Token::Identifier)) {
     return ParseIdentifierExpression();
   } else if (lexer.Is(Token::Real) || lexer.Is(Token::Integer) ||
-             lexer.Is(Token::CharacterLiteral)) {
+             lexer.Is(Token::CharacterLiteral) ||
+             lexer.Is(Token::StringLiteral)) {
     return ParseConstantExpression();
   } else {
     return nullptr;
@@ -1249,6 +1256,16 @@ std::unique_ptr<Expression> Parser::ParseConstantExpression() {
       IntLit->SetValue(-IntLit->GetSIntValue());
 
     return IntLit;
+  } else if (lexer.Is(Token::StringLiteral)) {
+    // TODO: we may already parsed a minus which is not valid for string lit
+    // move this whole case maybe at the start of the function 
+    auto StringToken = Expect(Token::StringLiteral);
+
+    assert(StringToken.GetString().length() >= 2);
+    return std::make_unique<StringLiteralExpression>(
+        // removing the quotes (") with substr
+        StringToken.GetString().substr(1,
+                                       StringToken.GetString().length() - 2));
   } else if (lexer.Is(Token::Identifier)) {
     auto Id = Expect(Token::Identifier);
     auto IdStr = Id.GetString();

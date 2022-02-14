@@ -826,6 +826,27 @@ private:
   double FPValue;
 };
 
+class StringLiteralExpression : public Expression {
+public:
+  std::string GetValue() const { return StringValue; }
+  void SetValue(std::string v) { StringValue = v; }
+
+  StringLiteralExpression(std::string s) : StringValue(s) {
+    std::vector<unsigned> d = {(unsigned)s.length() + 1};
+    // string literal is a char array
+    SetType(Type(Type::Char, std::move(d)));
+  }
+
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitStringLiteralExpression(this);
+  }
+
+  Value *IRCodegen(IRFactory *IRF) override;
+
+private:
+  std::string StringValue;
+};
+
 class ArrayExpression : public Expression {
   using ExprPtr = std::unique_ptr<Expression>;
 
