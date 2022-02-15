@@ -387,7 +387,7 @@ bool AArch64TargetMachine::SelectLOAD_IMM(MachineInstruction *MI) {
 
     MachineInstruction MOVK;
     MOVK.SetOpcode(MOVK_ri);
-    MOVK.AddRegister(MI->GetOperand(0)->GetReg());
+    MOVK.AddOperand(*MI->GetOperand(0));
     MOVK.AddImmediate(((uint64_t)imm) >> 16u); // upper 16 bit
     MOVK.AddImmediate(16);                     // left shift amount
 
