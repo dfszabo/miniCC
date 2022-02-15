@@ -794,7 +794,6 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
     assert(SourceTypeVariant == DestTypeVariant);
 
     auto RefExp = dynamic_cast<ReferenceExpression *>(CastableExpression.get());
-    assert(RefExp);
 
     auto Referee = RefExp->GetIdentifier();
     auto Res = IRF->GetSymbolValue(Referee);
@@ -1319,6 +1318,8 @@ Value *StringLiteralExpression::IRCodegen(IRFactory *IRF) {
   static unsigned counter = 0; // used to create unique names
   std::string Name = ".L.str" + std::to_string(counter++);
   auto Type = GetIRTypeFromASTType(ResultType);
+  // the global variable is now a pointer to the data
+  Type.IncrementPointerLevel();
   // create a global variable for the string literal with the label Name
   auto GV = IRF->CreateGlobalVar(Name, Type, StringValue);
   IRF->AddGlobalVariable(GV);
