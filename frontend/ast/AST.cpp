@@ -795,6 +795,14 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
 
     auto RefExp = dynamic_cast<ReferenceExpression *>(CastableExpression.get());
 
+    // StringLiteral case
+    if (RefExp == nullptr) {
+      auto StrLitExpr = dynamic_cast<StringLiteralExpression *>(CastableExpression.get());
+      assert(StrLitExpr && "It must be either a reference or a string literal");
+
+      return StrLitExpr->IRCodegen(IRF);
+    }
+
     auto Referee = RefExp->GetIdentifier();
     auto Res = IRF->GetSymbolValue(Referee);
     if (!Res)
