@@ -65,16 +65,20 @@ bool AArch64InstructionLegalizer::ExpandSTORE(MachineInstruction *MI) {
   assert(Immediate.IsImmediate() && "Operand #2 must be an immediate");
 
   if (Immediate.GetImmediate() == 0) {
+    auto size = Immediate.GetSize();
     MI->RemoveOperand(1);
     auto WZR = TM->GetRegInfo()->GetZeroRegister();
-    MI->AddRegister(WZR, TM->GetRegInfo()->GetRegisterByID(WZR)->GetBitWidth());
+    // TODO: it might be not a good idea to set different bitwidth to this
+    // physical register from its actual bitwidth, for now ExtendRegSize
+    // handle this issue, but need to think this through
+    MI->AddRegister(WZR, size);
     return true;
   }
 
   // Create the result register where the immediate will be loaded
   auto LOAD_IMMResult = ParentFunc->GetNextAvailableVReg();
   auto LOAD_IMMResultVReg =
-      MachineOperand::CreateVirtualRegister(LOAD_IMMResult);
+      MachineOperand::CreateVirtualRegister(LOAD_IMMResult, Immediate.GetSize());
 
   // Replace the immediate operand with the result register
   MI->RemoveOperand(1);

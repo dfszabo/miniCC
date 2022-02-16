@@ -333,8 +333,7 @@ bool AArch64TargetMachine::SelectTRUNC(MachineInstruction *MI) {
     // For now set the result's bitwidth to 32 if its less than that, otherwise
     // no register could be selected for it.
     // FIXME: Enforce this in the legalizer maybe (check LLVM for clues)
-    if (MI->GetOperand(0)->GetSize() < 32)
-      MI->GetOperand(0)->GetTypeRef().SetBitWidth(32);
+    ExtendRegSize(MI->GetOperand(0));
     return true;
   }
 
@@ -376,6 +375,8 @@ bool AArch64TargetMachine::SelectLOAD_IMM(MachineInstruction *MI) {
   assert(MI->GetOperand(1)->IsImmediate() && "Operand #2 must be an immediate");
 
   int64_t imm = MI->GetOperand(1)->GetImmediate();
+
+  ExtendRegSize(MI->GetOperand(0));
 
   if (IsInt<16>(imm))
     MI->SetOpcode(MOV_rc);
@@ -465,17 +466,14 @@ bool AArch64TargetMachine::SelectSTORE(MachineInstruction *MI) {
       (MI->GetOperandsNumber() == 2 && ParentMF->IsStackSlot(Op0->GetSlot()) &&
        ParentMF->GetStackObjectSize(Op0->GetSlot()) == 1)) {
     MI->SetOpcode(STRB);
-    return true;
-  }
-
-  if (OpLast->GetType().GetBitWidth() == 16 ||
+  } else if (OpLast->GetType().GetBitWidth() == 16 ||
       (MI->GetOperandsNumber() == 2 && ParentMF->IsStackSlot(Op0->GetSlot()) &&
        ParentMF->GetStackObjectSize(Op0->GetSlot()) == 2)) {
     MI->SetOpcode(STRH);
-    return true;
-  }
+  } else
+    MI->SetOpcode(STR);
 
-  MI->SetOpcode(STR);
+  ExtendRegSize(MI->GetOperand(1));
   return true;
 }
 
