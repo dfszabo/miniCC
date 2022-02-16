@@ -32,6 +32,7 @@ public:
     GreaterThan,
     Bang,
     And,
+    Or,
     Caret,
     QuestionMark,
     Sizeof,
@@ -43,6 +44,12 @@ public:
     MinusEqual,
     AstrixEqual,
     ForwardSlashEqual,
+    PercentEqual,
+    LessThanLessThanEqual,
+    GreaterThanGreaterThanEqual,
+    AndEqual,
+    OrEqual,
+    CaretEqual,
     BangEqual,
     GreaterEqual,
     LessEqual,
@@ -168,6 +175,18 @@ public:
       return "*=";
     case ForwardSlashEqual:
       return "/=";
+    case PercentEqual:
+      return "%=";
+    case LessThanLessThanEqual:
+      return "<<=";
+    case GreaterThanGreaterThanEqual:
+      return ">>=";
+    case AndEqual:
+      return "&=";
+    case OrEqual:
+      return "|=";
+    case CaretEqual:
+      return "^=";
     case BangEqual:
       return "!=";
     case GreaterEqual:
@@ -176,6 +195,8 @@ public:
       return "<=";
     case And:
       return "&";
+    case Or:
+      return "|";
     case DoubleAnd:
       return "&&";
     case DoubleEqual:

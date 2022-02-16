@@ -310,7 +310,11 @@ std::optional<Token> Lexer::LexSymbol() {
       TokenKind = Token::ForwardSlash;
     break;
   case '%':
-    TokenKind = Token::Percent;
+    if (GetNextNthCharOnSameLine(1) == '=') {
+      TokenKind = Token::PercentEqual;
+      Size = 2;
+    } else
+      TokenKind = Token::Percent;
     break;
   case '=':
     if (GetNextNthCharOnSameLine(1) == '=') {
@@ -321,8 +325,13 @@ std::optional<Token> Lexer::LexSymbol() {
     break;
   case '<':
     if (GetNextNthCharOnSameLine(1) == '<') {
-      TokenKind = Token::LessThanLessThan;
-      Size = 2;
+      if (GetNextNthCharOnSameLine(2) == '=') {
+        TokenKind = Token::LessThanLessThanEqual;
+        Size = 3;
+      } else {
+        TokenKind = Token::LessThanLessThan;
+        Size = 2;
+      }
     } else if (GetNextNthCharOnSameLine(1) == '=') {
       TokenKind = Token::LessEqual;
       Size = 2;
@@ -331,8 +340,14 @@ std::optional<Token> Lexer::LexSymbol() {
     break;
   case '>':
     if (GetNextNthCharOnSameLine(1) == '>') {
-      TokenKind = Token::GreaterThanGreaterThan;
-      Size = 2;
+      if (GetNextNthCharOnSameLine(2) == '=') {
+        TokenKind = Token::GreaterThanGreaterThanEqual;
+        Size = 3;
+      } else {
+        TokenKind = Token::GreaterThanGreaterThan;
+        Size = 2;
+      }
+      break;
     } else if (GetNextNthCharOnSameLine(1) == '=') {
       TokenKind = Token::GreaterEqual;
       Size = 2;
@@ -353,11 +368,25 @@ std::optional<Token> Lexer::LexSymbol() {
     if (GetNextNthCharOnSameLine(1) == '&') {
       TokenKind = Token::DoubleAnd;
       Size = 2;
+    } else if (GetNextNthCharOnSameLine(1) == '=') {
+      TokenKind = Token::AndEqual;
+      Size = 2;
     } else
       TokenKind = Token::And;
     break;
+  case '|':
+    if (GetNextNthCharOnSameLine(1) == '=') {
+      TokenKind = Token::OrEqual;
+      Size = 2;
+    } else
+      TokenKind = Token::Or;
+    break;
   case '^':
-    TokenKind = Token::Caret;
+    if (GetNextNthCharOnSameLine(1) == '=') {
+      TokenKind = Token::CaretEqual;
+      Size = 2;
+    } else
+      TokenKind = Token::Caret;
     break;
   case ':':
     TokenKind = Token::Colon;
@@ -395,7 +424,9 @@ std::optional<Token> Lexer::LexSymbol() {
   auto Result = Token(TokenKind, StringValue, LineIndex, ColumnIndex);
 
   EatNextChar();
-  if (Size == 2)
+  if (Size >= 2)
+    EatNextChar();
+  if (Size == 3)
     EatNextChar();
 
   return Result;

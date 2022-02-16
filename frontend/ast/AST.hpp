@@ -448,6 +448,12 @@ public:
     SUB_ASSIGN,
     MUL_ASSIGN,
     DIV_ASSIGN,
+    MOD_ASSIGN,
+    AND_ASSIGN,
+    OR_ASSIGN,
+    XOR_ASSIGN,
+    LSL_ASSIGN,
+    LSR_ASSIGN,
     LSL,
     LSR,
     ADD,
@@ -458,6 +464,7 @@ public:
     MOD,
     MODU,
     AND,
+    OR,
     XOR,
     Not,
     EQ,
@@ -481,6 +488,18 @@ public:
       return MUL_ASSIGN;
     case Token::ForwardSlashEqual:
       return DIV_ASSIGN;
+    case Token::PercentEqual:
+      return MOD_ASSIGN;
+    case Token::AndEqual:
+      return AND_ASSIGN;
+    case Token::OrEqual:
+      return OR_ASSIGN;
+    case Token::CaretEqual:
+      return XOR_ASSIGN;
+    case Token::LessThanLessThanEqual:
+      return LSL_ASSIGN;
+    case Token::GreaterThanGreaterThanEqual:
+      return LSR_ASSIGN;
     case Token::LessThanLessThan:
       return LSL;
     case Token::GreaterThanGreaterThan:
@@ -501,6 +520,8 @@ public:
       return MOD;
     case Token::And:
       return AND;
+    case Token::Or:
+      return OR;
     case Token::Caret:
       return XOR;
     case Token::Bang:

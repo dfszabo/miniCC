@@ -1078,31 +1078,39 @@ static int GetBinOpPrecedence(Token::TokenKind TK) {
   case Token::MinusEqual:
   case Token::AstrixEqual:
   case Token::ForwardSlashEqual:
+  case Token::PercentEqual:
+  case Token::AndEqual:
+  case Token::OrEqual:
+  case Token::CaretEqual:
+  case Token::LessThanLessThanEqual:
+  case Token::GreaterThanGreaterThanEqual:
     return 10;
   case Token::DoubleAnd:
     return 20;
-  case Token::Caret:
+  case Token::Or:
     return 30;
-  case Token::And:
+  case Token::Caret:
     return 40;
+  case Token::And:
+    return 50;
   case Token::DoubleEqual:
   case Token::BangEqual:
   case Token::GreaterEqual:
   case Token::LessEqual:
-    return 50;
+    return 60;
   case Token::LessThan:
   case Token::GreaterThan:
-    return 60;
+    return 70;
   case Token::LessThanLessThan:
   case Token::GreaterThanGreaterThan:
-    return 70;
+    return 80;
   case Token::Plus:
   case Token::Minus:
-    return 80;
+    return 90;
   case Token::Astrix:
   case Token::ForwardSlash:
   case Token::Percent:
-    return 90;
+    return 100;
   default:
     return -1;
   }
@@ -1218,6 +1226,12 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
       case Token::MinusEqual:
       case Token::AstrixEqual:
       case Token::ForwardSlashEqual:
+      case Token::PercentEqual:
+      case Token::AndEqual:
+      case Token::OrEqual:
+      case Token::CaretEqual:
+      case Token::LessThanLessThanEqual:
+      case Token::GreaterThanGreaterThanEqual:
         IsCompositeAssignment = true;
         break;
       default:
