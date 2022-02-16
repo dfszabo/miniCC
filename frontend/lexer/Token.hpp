@@ -54,6 +54,7 @@ public:
     GreaterEqual,
     LessEqual,
     DoubleAnd,
+    DoubleOr,
     DoubleEqual,
     MinusGreaterThan,
     LessThanLessThan,
@@ -199,6 +200,8 @@ public:
       return "|";
     case DoubleAnd:
       return "&&";
+    case DoubleOr:
+      return "||";
     case DoubleEqual:
       return "==";
     case MinusGreaterThan:

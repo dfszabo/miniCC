@@ -375,7 +375,10 @@ std::optional<Token> Lexer::LexSymbol() {
       TokenKind = Token::And;
     break;
   case '|':
-    if (GetNextNthCharOnSameLine(1) == '=') {
+    if (GetNextNthCharOnSameLine(1) == '|') {
+      TokenKind = Token::DoubleOr;
+      Size = 2;
+    } else if (GetNextNthCharOnSameLine(1) == '=') {
       TokenKind = Token::OrEqual;
       Size = 2;
     } else
