@@ -9,9 +9,9 @@ AArch64InstructionDefinitions::AArch64InstructionDefinitions() {
       "SUB_rrr",  "SUB_rri",  "SUBS",    "MUL_rri", "MUL_rrr", "SDIV_rri",
       "SDIV_rrr", "UDIV_rrr", "CMP_ri",  "CMP_rr",  "CSET",    "SXTB",
       "SXTW",     "UXTB",     "UXTW",    "MOV_rc",  "MOV_rr",  "MOVK_ri",
-      "ADRP",     "LDR",      "LDRB",    "LDRH",    "STR",     "STRB",
-      "STRH",     "BEQ",      "BNE",     "BGE",     "BGT",     "BLE",
-      "BLT",      "B",        "BL",      "RET"};
+      "MVN_rr",   "ADRP",     "LDR",     "LDRB",    "LDRH",    "STR",
+      "STRB",     "STRH",     "BEQ",     "BNE",     "BGE",     "BGT",
+      "BLE",      "BLT",      "B",       "BL",      "RET"};
 }
 
 AArch64InstructionDefinitions::IRToTargetInstrMap
@@ -48,6 +48,7 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[MOV_rc] = {MOV_rc, 32, "mov\t$1, #$2", {GPR, UIMM16}};
       ret[MOV_rr] = {MOV_rr, 32, "mov\t$1, $2", {GPR, GPR}};
       ret[MOVK_ri] = {MOVK_ri, 32, "movk\t$1, #$2, lsl #$3", {GPR, GPR, UIMM4}};
+      ret[MVN_rr] = {MVN_rr, 32, "mvn\t$1, $2", {GPR, GPR}};
       ret[ADRP] = {ADRP, 32, "adrp\t$1, $2", {GPR, GPR}};
       ret[LDR] = {LDR,
                   32,
