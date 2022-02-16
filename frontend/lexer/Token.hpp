@@ -34,6 +34,7 @@ public:
     And,
     Caret,
     QuestionMark,
+    Sizeof,
 
     // Multichar operators
     PlusPlus,
@@ -249,8 +250,10 @@ public:
       return "enum";
     case Typedef:
       return "typedef";
+    case Sizeof:
+      return "sizeof";
     default:
-      assert(false && "Unhandled token type.");
+      assert(!"Unhandled token type.");
       break;
     }
   }

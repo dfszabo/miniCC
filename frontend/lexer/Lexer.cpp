@@ -4,17 +4,17 @@
 
 std::unordered_map<std::string, Token::TokenKind> Lexer::Keywords =
     std::unordered_map<std::string, Token::TokenKind>{
-        {"const", Token::Const},   {"int", Token::Int},
-        {"short", Token::Short},   {"long", Token::Long},
-        {"double", Token::Double}, {"unsigned", Token::Unsigned},
-        {"void", Token::Void},     {"char", Token::Char},
-        {"if", Token::If},         {"switch", Token::Switch},
-        {"case", Token::Case},     {"default", Token::Default},
-        {"break", Token::Break},   {"else", Token::Else},
-        {"for", Token::For},       {"while", Token::While},
-        {"return", Token::Return}, {"struct", Token::Struct},
-        {"enum", Token::Enum},     {"typedef", Token::Typedef},
-        {"continue", Token::Continue},
+        {"const", Token::Const},     {"int", Token::Int},
+        {"short", Token::Short},     {"long", Token::Long},
+        {"double", Token::Double},   {"unsigned", Token::Unsigned},
+        {"void", Token::Void},       {"char", Token::Char},
+        {"if", Token::If},           {"switch", Token::Switch},
+        {"case", Token::Case},       {"default", Token::Default},
+        {"break", Token::Break},     {"else", Token::Else},
+        {"for", Token::For},         {"while", Token::While},
+        {"return", Token::Return},   {"struct", Token::Struct},
+        {"sizeof", Token::Sizeof},   {"enum", Token::Enum},
+        {"typedef", Token::Typedef}, {"continue", Token::Continue},
     };
 
 Lexer::Lexer(std::vector<std::string> &s) {
@@ -147,8 +147,9 @@ std::optional<Token> Lexer::LexIdentifier() {
 }
 
 std::optional<Token> Lexer::LexKeyword() {
-  std::size_t WordEnd =
-      Source[LineIndex].substr(ColumnIndex).find_first_of("\t\n\v\f\r;: ");
+  std::size_t WordEnd = Source[LineIndex]
+                            .substr(ColumnIndex)
+                            .find_first_of("\t\n\v\f\r;(){}[]:* ");
 
   auto Word = Source[LineIndex].substr(ColumnIndex, WordEnd);
 
