@@ -673,9 +673,10 @@ public:
     POST_DECREMENT,
     PRE_INCREMENT,
     PRE_DECREMENT,
+    SIZEOF,
   };
 
-  UnaryOperation GetOperationKind() {
+  UnaryOperation GetOperationKind() const {
     switch (Operation.GetKind()) {
     case Token::And:
       return ADDRESS;
@@ -689,6 +690,8 @@ public:
       return IsPostFix ? POST_INCREMENT : PRE_INCREMENT;
     case Token::MinusMinus:
       return IsPostFix ? POST_DECREMENT : PRE_DECREMENT;
+    case Token::Sizeof:
+      return SIZEOF;
     default:
       assert(!"Invalid unary operator kind.");
       break;
@@ -703,7 +706,8 @@ public:
 
   UnaryExpression(Token Op, ExprPtr E, bool PostFix = false) {
     Operation = Op;
-    Expr = std::move(E);
+    if (E)
+      Expr = std::move(E);
     IsPostFix = PostFix;
 
     switch (GetOperationKind()) {
@@ -725,6 +729,10 @@ public:
     case PRE_INCREMENT:
       ResultType = Expr->GetResultType();
       break;
+    case SIZEOF:
+      if (Expr)
+        ResultType = Expr->GetResultType();
+      break;
     default:
       assert(!"Unimplemented!");
     }
@@ -740,7 +748,7 @@ public:
 
 private:
   Token Operation;
-  std::unique_ptr<Expression> Expr;
+  std::unique_ptr<Expression> Expr = nullptr;
   bool IsPostFix = false;
 };
 

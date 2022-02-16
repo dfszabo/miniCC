@@ -121,6 +121,7 @@ static bool IsUnaryOperator(Token::TokenKind tk) {
   case Token::Minus:
   case Token::MinusMinus:
   case Token::PlusPlus:
+  case Token::Sizeof:
     return true;
 
   default:
@@ -256,6 +257,11 @@ Type Parser::ParseType(Token::TokenKind tk) {
   default:
     assert(!"Unknown token kind.");
     break;
+  }
+
+  while (lexer.LookAhead(2).GetKind() == Token::Astrix) {
+    Lex();
+    Result.IncrementPointerLevel();
   }
 
   return Result;
@@ -1013,9 +1019,40 @@ std::unique_ptr<Expression> Parser::ParseUnaryExpression() {
   Lex(); // eat the unary operation char
 
   std::unique_ptr<Expression> Expr;
+  bool hasSizeofParenthesis = false;
+
+  // 'sizeof' handling
+  if (UnaryOperation.GetKind() == Token::Sizeof) {
+    if (lexer.GetCurrentToken().GetKind() == Token::LeftParen) {
+      Lex();
+      hasSizeofParenthesis = true;
+    }
+
+    if (IsTypeSpecifier(lexer.GetCurrentToken())) {
+      auto type = ParseType(lexer.GetCurrentToken().GetKind());
+      Lex();
+      if (hasSizeofParenthesis)
+        Expect(Token::RightParen);
+      auto UE = std::make_unique<UnaryExpression>(UnaryOperation, nullptr);
+
+      // TODO: for now the type which size is queried by sizeof is saved to
+      // the UnaryExpression return type, which is fine for now, but also
+      // make the code ambiguous, since this type is referring to the
+      // expression's return type, but since for sizeof thats known this trick
+      // is employed so no need to make further members for UnaryExpression or a
+      // different Expression class for sizeof, but still this should be
+      // improved since its a hack and make the code more convoluted
+      UE->SetType(type);
+      return UE;
+    }
+  }
 
   if (IsUnaryOperator((GetCurrentTokenKind()))) {
     auto Expr = ParseUnaryExpression();
+
+    if (hasSizeofParenthesis)
+      Expect(Token::RightParen);
+
     if (UnaryOperation.GetKind() == Token::PlusPlus ||
         UnaryOperation.GetKind() == Token::MinusMinus)
       Expr->SetLValueness(true);
@@ -1024,6 +1061,10 @@ std::unique_ptr<Expression> Parser::ParseUnaryExpression() {
 
   // TODO: Add semantic check that only pointer types are dereferenced
   Expr = ParsePostFixExpression();
+
+  if (hasSizeofParenthesis)
+    Expect(Token::RightParen);
+
   if (UnaryOperation.GetKind() == Token::PlusPlus ||
       UnaryOperation.GetKind() == Token::MinusMinus)
     Expr->SetLValueness(true);
@@ -1170,7 +1211,20 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
              !Type::OnlySigndnessDifference(LeftType, RightType)) {
       // if an assingment, then try to cast the right hand side to type of the
       // left hand side
-      if (BinaryOperator.GetKind() == Token::Equal) {
+
+      bool IsCompositeAssignment = false;
+      switch (BinaryOperator.GetKind()) {
+      case Token::PlusEqual:
+      case Token::MinusEqual:
+      case Token::AstrixEqual:
+      case Token::ForwardSlashEqual:
+        IsCompositeAssignment = true;
+        break;
+      default:
+        break;
+      }
+
+      if (BinaryOperator.GetKind() == Token::Equal || IsCompositeAssignment) {
         if (!Type::IsImplicitlyCastable(RightType, LeftType))
           EmitError("Type mismatch", lexer, BinaryOperator);
         else {

@@ -224,12 +224,22 @@ void ASTPrint::VisitStructInitExpression(const StructInitExpression *node) {
 
 void ASTPrint::VisitUnaryExpression(const UnaryExpression *node) {
   Print("UnaryExpression ", tab);
-  auto Str = "'" + node->GetResultType().ToString() + "' ";
+  std::string Str;
+  if (node->GetOperationKind() == UnaryExpression::SIZEOF)
+    Str += "'" + Type(Type::UnsignedInt).ToString() + "' ";
+  else
+    Str += "'" + node->GetResultType().ToString() + "' ";
+
   Str += "'" + node->GetOperation().GetString() + "'";
+
+  if (!node->GetExpr())
+    Str += " '" + node->GetResultType().ToString() + "'";
+
   PrintLn(Str.c_str());
 
   tab += 2;
-  node->GetExpr()->Accept(this);
+  if (node->GetExpr())
+    node->GetExpr()->Accept(this);
   tab -= 2;
 }
 
