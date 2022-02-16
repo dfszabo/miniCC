@@ -1134,12 +1134,13 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
 Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
   // TODO: simplify this, specially in case if there are actually multiple
   // logical operations like "a > 0 && a < 10 && a != 5"
-  if (GetOperationKind() == ANDL) {
+  if (GetOperationKind() == ANDL || GetOperationKind() == ORL) {
     // goal IR:
     //    # L generated here
     //    sa $result
     //    cmp.eq $c1, $L, 0
-    //    br $c1, <false>
+    //    br $c1, ANDL ? <false> : <TestRhsBB>
+    //    j <true>  # only for ORL
     // <test_R>
     //    # R generated here
     //    cmp.eq $c2, $R, 0
@@ -1150,6 +1151,8 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     // <false>
     //    str [$result], 0
     // <end>
+
+    const bool IsAND = GetOperationKind() == ANDL;
 
     const auto FuncPtr = IRF->GetCurrentFunction();
 
@@ -1167,12 +1170,15 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     // if L was a compare instruction then just revert its relation
     if (auto LCMP = dynamic_cast<CompareInstruction *>(L); LCMP != nullptr) {
       LCMP->InvertRelation();
-      IRF->CreateBR(L, FalseBB.get());
+      IRF->CreateBR(L, IsAND ? FalseBB.get() : TestRhsBB.get());
     } else {
       auto LHSTest = IRF->CreateCMP(CompareInstruction::EQ, L,
                                     IRF->GetConstant((uint64_t)0));
-      IRF->CreateBR(LHSTest, FalseBB.get());
+      IRF->CreateBR(LHSTest, IsAND ? FalseBB.get() : TestRhsBB.get());
     }
+
+    if (!IsAND)
+      IRF->CreateJUMP(TrueBB.get());
 
     // RHS Test
     IRF->InsertBB(std::move(TestRhsBB));

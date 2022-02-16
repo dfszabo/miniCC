@@ -473,7 +473,8 @@ public:
     NE,
     GE,
     LE,
-    ANDL
+    ANDL,
+    ORL,
   };
 
   BinaryOperation GetOperationKind() {
@@ -540,6 +541,8 @@ public:
       return LE;
     case Token::DoubleAnd:
       return ANDL;
+    case Token::DoubleOr:
+      return ORL;
     default:
       assert(false && "Invalid binary operator kind.");
       break;
