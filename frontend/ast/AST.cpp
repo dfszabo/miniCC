@@ -1064,6 +1064,9 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
     // the result seems to be always an rvalue so loading it also
     return IRF->CreateLD(IRType::CreateBool(), Result);
   }
+  case BITWISE_NOT: {
+    return IRF->CreateXOR(E, IRF->GetConstant((u_int64_t)-1ll));
+  }
   case MINUS: {
     if (auto ConstE = dynamic_cast<IntegerLiteralExpression *>(Expr.get());
         ConstE != nullptr) {

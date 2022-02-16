@@ -34,6 +34,7 @@ public:
     And,
     Or,
     Caret,
+    Tilde,
     QuestionMark,
     Sizeof,
 
@@ -212,6 +213,8 @@ public:
       return ">>";
     case Caret:
       return "^";
+    case Tilde:
+      return "~";
     case Colon:
       return ":";
     case SemiColon:
