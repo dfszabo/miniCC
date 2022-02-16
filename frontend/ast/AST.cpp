@@ -1220,7 +1220,10 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
   }
 
   if (GetOperationKind() == ADD_ASSIGN || GetOperationKind() == SUB_ASSIGN ||
-      GetOperationKind() == MUL_ASSIGN || GetOperationKind() == DIV_ASSIGN) {
+      GetOperationKind() == MUL_ASSIGN || GetOperationKind() == DIV_ASSIGN ||
+      GetOperationKind() == MOD_ASSIGN || GetOperationKind() == AND_ASSIGN ||
+      GetOperationKind() == OR_ASSIGN || GetOperationKind() == XOR_ASSIGN ||
+      GetOperationKind() == LSL_ASSIGN || GetOperationKind() == LSR_ASSIGN) {
     // Assignment right associative so generate R first
     auto R = Right->IRCodegen(IRF);
     auto L = Left->IRCodegen(IRF);
@@ -1245,6 +1248,25 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
         break;
       case DIV_ASSIGN:
         OperationResult = IRF->CreateDIV(L, R);
+        break;
+      case MOD_ASSIGN:
+        // TODO: what about MODU?
+        OperationResult = IRF->CreateMOD(L, R);
+        break;
+      case AND_ASSIGN:
+        OperationResult = IRF->CreateAND(L, R);
+        break;
+      case OR_ASSIGN:
+        OperationResult = IRF->CreateOR(L, R);
+        break;
+      case XOR_ASSIGN:
+        OperationResult = IRF->CreateXOR(L, R);
+        break;
+      case LSL_ASSIGN:
+        OperationResult = IRF->CreateLSL(L, R);
+        break;
+      case LSR_ASSIGN:
+        OperationResult = IRF->CreateLSR(L, R);
         break;
       default:
         assert(!"Unreachable");
@@ -1272,6 +1294,7 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     case MUL:
     case XOR:
     case AND:
+    case OR:
     case EQ:
     case NE:
       // then swap the operands, since most architecture supports immediate
@@ -1307,6 +1330,8 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     return IRF->CreateMODU(L, R);
   case AND:
     return IRF->CreateAND(L, R);
+  case OR:
+    return IRF->CreateOR(L, R);
   case XOR:
     return IRF->CreateXOR(L, R);
   case EQ:
