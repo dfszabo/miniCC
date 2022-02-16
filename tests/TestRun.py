@@ -121,6 +121,8 @@ if len(test_set) == 0:
           if filepath.endswith(".c") or filepath.endswith(".s"):
               test_set.append(filepath)
 
+test_set.sort() # sort them alphabetically
+
 # run the tests
 for filepath in test_set:
   arch, function_declarations, test_cases = check_file(filepath)
