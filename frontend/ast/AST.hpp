@@ -693,6 +693,7 @@ public:
     DEREF,
     MINUS,
     NOT,
+    BITWISE_NOT,
     POST_INCREMENT,
     POST_DECREMENT,
     PRE_INCREMENT,
@@ -716,6 +717,8 @@ public:
       return IsPostFix ? POST_DECREMENT : PRE_DECREMENT;
     case Token::Sizeof:
       return SIZEOF;
+    case Token::Tilde:
+      return BITWISE_NOT;
     default:
       assert(!"Invalid unary operator kind.");
       break;
@@ -744,6 +747,7 @@ public:
       ResultType.DecrementPointerLevel();
       break;
     case NOT:
+    case BITWISE_NOT:
       ResultType = Type(Type::Int);
       break;
     case MINUS:

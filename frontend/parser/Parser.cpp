@@ -122,6 +122,7 @@ static bool IsUnaryOperator(Token::TokenKind tk) {
   case Token::MinusMinus:
   case Token::PlusPlus:
   case Token::Sizeof:
+  case Token::Tilde:
     return true;
 
   default:
