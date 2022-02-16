@@ -95,6 +95,14 @@ bool AArch64TargetMachine::SelectXOR(MachineInstruction *MI) {
   ExtendRegSize(MI->GetOperand(0));
   ExtendRegSize(MI->GetOperand(1));
 
+  // in case of bitwise not
+  if (MI->GetOperand(2)->IsImmediate() &&
+      MI->GetOperand(2)->GetImmediate() == -1) {
+    MI->RemoveOperand(2);
+    MI->SetOpcode(MVN_rr);
+    return true;
+  }
+
   if (!SelectThreeAddressInstuction(MI, EOR_rrr, EOR_rri))
     assert(!"Cannot select XOR");
 

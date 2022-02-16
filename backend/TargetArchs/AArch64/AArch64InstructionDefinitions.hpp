@@ -39,6 +39,7 @@ enum Opcodes : unsigned {
   MOV_rc,
   MOV_rr,
   MOVK_ri,
+  MVN_rr,
   ADRP,
   LDR,
   LDRB,
