@@ -77,6 +77,18 @@ bool AArch64TargetMachine::SelectAND(MachineInstruction *MI) {
   return true;
 }
 
+bool AArch64TargetMachine::SelectOR(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "OR must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
+  if (!SelectThreeAddressInstuction(MI, ORR_rrr, ORR_rri))
+    assert(!"Cannot select OR");
+
+  return true;
+}
+
 bool AArch64TargetMachine::SelectXOR(MachineInstruction *MI) {
   assert(MI->GetOperandsNumber() == 3 && "XOR must have 3 operands");
 
