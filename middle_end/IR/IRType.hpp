@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+class TargetMachine;
+
 class IRType {
 public:
   enum TKind : uint8_t { INVALID, NONE, FP, UINT, SINT, PTR, STRUCT };
@@ -78,7 +80,7 @@ public:
     return BitWidth;
   }
 
-  size_t GetByteSize() const;
+  size_t GetByteSize(TargetMachine *TM = nullptr) const;
 
   IRType GetBaseType() const { return IRType(Kind, BitWidth); }
 

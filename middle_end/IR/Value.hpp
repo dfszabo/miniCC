@@ -45,22 +45,15 @@ protected:
 class Constant : public Value {
 public:
   Constant() = delete;
-  Constant(uint64_t V) : Value(Value::CONST, IRType::UINT), Val(V) {}
+  Constant(uint64_t V, uint8_t BW = 32)
+      : Value(Value::CONST, IRType(IRType::UINT, BW)), Val(V) {}
   Constant(double V) : Value(Value::CONST, IRType(IRType::FP, 64)), Val(V) {}
 
   bool IsFPConst() const { return ValueType.IsFP(); }
 
-  uint64_t GetIntValue() {
-    assert(ValueType.IsINT());
-    return std::get<uint64_t>(Val);
-  }
+  uint64_t GetIntValue() const;
 
-  std::string ValueString() const override {
-    if (IsFPConst())
-      return std::to_string(std::get<double>(Val));
-    else
-      return std::to_string((int64_t)std::get<uint64_t>(Val));
-  }
+  std::string ValueString() const override;
 
 private:
   std::variant<uint64_t, double> Val;

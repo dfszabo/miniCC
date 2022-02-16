@@ -347,12 +347,16 @@ public:
     return SymbolTable[Identifier];
   }
 
-  Constant *GetConstant(uint64_t C) {
-    if (auto ConstVal = IntConstantPool[C].get(); ConstVal != nullptr)
+  Constant *GetConstant(uint64_t C, uint8_t BW = 32) {
+    std::pair<uint64_t, uint8_t> RequestedConst = {C, BW};
+
+    if (auto ConstVal = IntConstantPool[RequestedConst].get();
+        ConstVal != nullptr)
       return ConstVal;
 
-    IntConstantPool[C] = std::make_unique<Constant>(C);
-    return IntConstantPool[C].get();
+    IntConstantPool[RequestedConst] =
+        std::make_unique<Constant>(RequestedConst.first, RequestedConst.second);
+    return IntConstantPool[RequestedConst].get();
   }
 
   Constant *GetConstant(double C) {
@@ -385,7 +389,8 @@ private:
   bool GlobalScope = false;
 
   /// To store already created integer constants
-  std::map<uint64_t, std::unique_ptr<Constant>> IntConstantPool;
+  std::map<std::pair<uint64_t, uint8_t>, std::unique_ptr<Constant>>
+      IntConstantPool;
 
   /// To store already created floating point constants
   std::map<double, std::unique_ptr<Constant>> FPConstantPool;
