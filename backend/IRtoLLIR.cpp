@@ -77,7 +77,7 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
     auto C = dynamic_cast<Constant *>(Val);
     assert(!C->IsFPConst() && "TODO");
     auto Result = MachineOperand::CreateImmediate(C->GetIntValue());
-    Result.SetType(LowLevelType::CreateINT(32));
+    Result.SetType(LowLevelType::CreateINT(C->GetBitWidth()));
     return Result;
   } else {
     assert(!"Unhandled MO case");
