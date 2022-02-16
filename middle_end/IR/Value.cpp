@@ -1,5 +1,35 @@
 #include "Value.hpp"
 
+uint64_t Constant::GetIntValue() const {
+  assert(ValueType.IsINT());
+  int64_t result = 0;
+  uint64_t val = std::get<uint64_t>(Val);
+
+  // sign extend it
+  // TODO: maybe Val should be stored as int64_t not uint64_t
+  if (GetBitWidth() == 8)
+    result = (int8_t)val;
+  else if (GetBitWidth() == 16)
+    result = (int16_t)val;
+  else if (GetBitWidth() == 32)
+    result = (int32_t)val;
+  else
+    result = val;
+
+  return result;
+}
+
+std::string Constant::ValueString() const {
+  std::string str;
+
+  if (IsFPConst())
+    str += std::to_string(std::get<double>(Val));
+  else
+    str += std::to_string((int64_t)GetIntValue());
+
+  str += "<" + ValueType.AsString() + ">";
+  return str;
+}
 
 void GlobalVariable::Print() const {
   std::cout << "global var (" << GetType().AsString() << "):" << std::endl

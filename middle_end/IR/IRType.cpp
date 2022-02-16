@@ -1,11 +1,12 @@
 #include "IRType.hpp"
+#include "../../backend/TargetMachine.hpp"
 
 void IRType::ReduceDimension() {
   if (Dimensions.size() > 0)
     Dimensions.erase(Dimensions.begin());
 }
 
-size_t IRType::GetByteSize() const {
+size_t IRType::GetByteSize(TargetMachine *TM) const {
   unsigned NumberOfElements = 1;
 
   if (Dimensions.size() > 0)
@@ -21,8 +22,14 @@ size_t IRType::GetByteSize() const {
 
   if (PointerLevel == 0)
     return (BitWidth * NumberOfElements + 7) / 8;
-  // TODO: Change the hard coded 32 to the target pointer size
-  return (32 * NumberOfElements + 7) / 8;
+
+  // in case if it is a pointer type, then ask the target for the pointer size
+  // or if it was not given then the default size is 64
+  unsigned PtrSize = 64;
+  if (TM)
+    PtrSize = TM->GetPointerSize();
+
+  return (PtrSize * NumberOfElements + 7) / 8;
 }
 
 std::string IRType::AsString() const {
