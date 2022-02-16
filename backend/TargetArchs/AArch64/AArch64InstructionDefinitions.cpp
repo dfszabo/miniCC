@@ -3,15 +3,15 @@
 using namespace AArch64;
 
 AArch64InstructionDefinitions::AArch64InstructionDefinitions() {
-  InstrEnumStrings = {"ADD_rrr",  "ADD_rri",  "AND_rrr",  "AND_rri", "EOR_rrr",
-                      "EOR_rri",  "LSL_rrr",  "LSL_rri",  "LSR_rrr", "LSR_rri",
-                      "SUB_rrr",  "SUB_rri",  "SUBS",     "MUL_rri", "MUL_rrr",
-                      "SDIV_rri", "SDIV_rrr", "UDIV_rrr", "CMP_ri",  "CMP_rr",
-                      "CSET",     "SXTB",     "SXTW",     "UXTB",    "UXTW",
-                      "MOV_rc",   "MOV_rr",   "MOVK_ri",  "ADRP",    "LDR",
-                      "LDRB",     "LDRH",     "STR",      "STRB",    "STRH",
-                      "BEQ",      "BNE",      "BGE",      "BGT",     "BLE",
-                      "BLT",      "B",        "BL",       "RET"};
+  InstrEnumStrings = {
+      "ADD_rrr",  "ADD_rri",  "AND_rrr", "AND_rri", "ORR_rrr", "ORR_rri",
+      "EOR_rrr",  "EOR_rri",  "LSL_rrr", "LSL_rri", "LSR_rrr", "LSR_rri",
+      "SUB_rrr",  "SUB_rri",  "SUBS",    "MUL_rri", "MUL_rrr", "SDIV_rri",
+      "SDIV_rrr", "UDIV_rrr", "CMP_ri",  "CMP_rr",  "CSET",    "SXTB",
+      "SXTW",     "UXTB",     "UXTW",    "MOV_rc",  "MOV_rr",  "MOVK_ri",
+      "ADRP",     "LDR",      "LDRB",    "LDRH",    "STR",     "STRB",
+      "STRH",     "BEQ",      "BNE",     "BGE",     "BGT",     "BLE",
+      "BLT",      "B",        "BL",      "RET"};
 }
 
 AArch64InstructionDefinitions::IRToTargetInstrMap
@@ -22,6 +22,8 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[ADD_rri] = {ADD_rri, 32, "add\t$1, $2, #$3", {GPR, GPR, UIMM12}};
       ret[AND_rrr] = {ADD_rrr, 32, "and\t$1, $2, $3", {GPR, GPR, GPR}};
       ret[AND_rri] = {ADD_rri, 32, "and\t$1, $2, #$3", {GPR, GPR, UIMM12}};
+      ret[ORR_rrr] = {ORR_rrr, 32, "orr\t$1, $2, $3", {GPR, GPR, GPR}};
+      ret[ORR_rri] = {ORR_rri, 32, "orr\t$1, $2, #$3", {GPR, GPR, UIMM12}};
       ret[EOR_rrr] = {EOR_rrr, 32, "eor\t$1, $2, $3", {GPR, GPR, GPR}};
       ret[EOR_rri] = {EOR_rri, 32, "eor\t$1, $2, #$3", {GPR, GPR, UIMM12}};
       ret[LSL_rrr] = {LSL_rrr, 32, "lsl\t$1, $2, $3", {GPR, GPR, GPR}};
