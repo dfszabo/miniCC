@@ -591,7 +591,9 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
     } else {
       auto InitExpr = Init->IRCodegen(IRF);
 
-      if (InitExpr->GetType().IsStruct())
+      if (InitExpr->GetType().IsStruct() &&
+          InitExpr->GetType().GetPointerLevel() ==
+              SA->GetType().GetPointerLevel())
         IRF->CreateMEMCOPY(SA, InitExpr, InitExpr->GetType().GetByteSize());
       else
         IRF->CreateSTR(InitExpr, SA);
@@ -837,6 +839,16 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
     return IRF->GetConstant(val, DestBitSize);
   }
 
+  // cast one pointer type to another, for now casting is just changing the
+  // expression type
+  // TODO: maybe introduce a new cast instruction like LLVM's bitcast
+  if (CastableExpression->GetResultType().IsPointerType() &&
+      GetResultType().IsPointerType()) {
+    IRType t = GetIRTypeFromASTType(GetResultType());
+    Val->SetType(t);
+    return Val;
+  }
+
   if (Type::OnlySigndnessDifference(SourceTypeVariant, DestTypeVariant))
     return Val;
 
@@ -920,6 +932,9 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
     if ((DestTypeVariant == Type::Char ||
          DestTypeVariant == Type::UnsignedChar))
       return IRF->CreateTRUNC(Val, 8);
+    if ((DestTypeVariant == Type::Short ||
+         DestTypeVariant == Type::UnsignedShort))
+      return IRF->CreateTRUNC(Val, 16);
     if ((DestTypeVariant == Type::Int || DestTypeVariant == Type::UnsignedInt))
       return IRF->CreateTRUNC(Val, 32);
     assert(!"Invalid conversion.");
@@ -1221,7 +1236,8 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     if (!L || !R)
       return nullptr;
 
-    if (R->GetTypeRef().IsStruct())
+    if (R->GetTypeRef().IsStruct() &&
+        L->GetType().GetPointerLevel() == R->GetType().GetPointerLevel())
       IRF->CreateMEMCOPY(L, R, R->GetTypeRef().GetByteSize());
     else
       IRF->CreateSTR(R, L);
