@@ -912,13 +912,14 @@ private:
 
 class ImplicitCastExpression : public Expression {
 public:
-  ImplicitCastExpression(std::unique_ptr<Expression> e, Type t)
-      : CastableExpression(std::move(e)), Expression(t) {}
+  ImplicitCastExpression(std::unique_ptr<Expression> e, Type t, bool c = false)
+      : CastableExpression(std::move(e)), Expression(t), IsExplicitCast(c) {}
 
   Type GetSourceType() { return CastableExpression->GetResultType(); }
   std::unique_ptr<Expression> &GetCastableExpression() {
     return CastableExpression;
   }
+  bool IsExplicit() const { return IsExplicitCast; }
 
   std::unique_ptr<Expression> const &GetCastableExpression() const {
     return CastableExpression;
@@ -932,6 +933,7 @@ public:
 
 private:
   std::unique_ptr<Expression> CastableExpression;
+  bool IsExplicitCast = false;
 };
 
 class InitializerListExpression : public Expression {

@@ -298,8 +298,8 @@ void ASTPrint::VisitArrayExpression(const ArrayExpression *node) {
 }
 
 void ASTPrint::VisitImplicitCastExpression(const ImplicitCastExpression *node) {
-  Print("ImplicitCastExpression ", tab);
-  auto Str = "'" + node->GetResultType().ToString() + "'";
+  Print(node->IsExplicit() ? "CastExpression" : "ImplicitCastExpression", tab);
+  auto Str = " '" + node->GetResultType().ToString() + "'";
   PrintLn(Str.c_str());
 
   tab += 2;

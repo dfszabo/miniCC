@@ -184,6 +184,7 @@ public:
     PointerLevel = ct.PointerLevel;
     Ty = ct.Ty;
     Kind = ct.Kind;
+    Qualifiers = ct.Qualifiers;
     Dimensions = std::move(ct.Dimensions);
     TypeList = std::move(ct.TypeList);
     ParameterList = std::move(ct.ParameterList);
