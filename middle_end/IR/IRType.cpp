@@ -46,7 +46,7 @@ std::string IRType::AsString() const {
     Str += "i";
     break;
   case STRUCT:
-    Str += StructName;
+    Str += "struct." + StructName;
     break;
   case NONE:
     return "void";
