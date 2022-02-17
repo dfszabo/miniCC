@@ -304,6 +304,9 @@ bool AArch64TargetMachine::SelectSEXT(MachineInstruction *MI) {
   } else if (MI->GetOperand(1)->GetType().GetBitWidth() == 8) {
     MI->SetOpcode(SXTB);
     return true;
+  } else if (MI->GetOperand(1)->GetType().GetBitWidth() == 16) {
+    MI->SetOpcode(SXTH);
+    return true;
   } else if (MI->GetOperand(1)->GetType().GetBitWidth() == 32) {
     MI->SetOpcode(SXTW);
     return true;
@@ -327,6 +330,9 @@ bool AArch64TargetMachine::SelectZEXT(MachineInstruction *MI) {
   } else if (MI->GetOperand(1)->GetType().GetBitWidth() == 8) {
     MI->SetOpcode(UXTB);
     return true;
+  } else if (MI->GetOperand(1)->GetType().GetBitWidth() == 16) {
+    MI->SetOpcode(UXTH);
+    return true;
   } else if (MI->GetOperand(1)->GetType().GetBitWidth() == 64) {
     MI->SetOpcode(MOV_rr);
     return true;
@@ -349,6 +355,22 @@ bool AArch64TargetMachine::SelectTRUNC(MachineInstruction *MI) {
     } else { // else issue an AND with the mask of 0xFF
       MI->SetOpcode(AND_rri);
       MI->AddImmediate(0xFFu);
+    }
+    // For now set the result's bitwidth to 32 if its less than that, otherwise
+    // no register could be selected for it.
+    // FIXME: Enforce this in the legalizer maybe (check LLVM for clues)
+    ExtendRegSize(MI->GetOperand(0));
+    return true;
+  } else if (MI->GetOperand(0)->GetType().GetBitWidth() == 16) {
+    // if the operand is an immediate
+    if (MI->GetOperand(1)->IsImmediate()) {
+      // then calculate the truncated immediate value and issue a MOV
+      int64_t ResultImm = MI->GetOperand(1)->GetImmediate() & 0xFFFFu;
+      MI->GetOperand(1)->SetValue(ResultImm);
+      MI->SetOpcode(MOV_rc);
+    } else { // else issue an AND with the mask of 0xFF
+      MI->SetOpcode(AND_rri);
+      MI->AddImmediate(0xFFFFu);
     }
     // For now set the result's bitwidth to 32 if its less than that, otherwise
     // no register could be selected for it.

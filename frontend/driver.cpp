@@ -4,8 +4,8 @@
 #include "../backend/MachineInstructionLegalizer.hpp"
 #include "../backend/PrologueEpilogInsertion.hpp"
 #include "../backend/RegisterAllocator.hpp"
-#include "../backend/TargetArchs/AArch64/AArch64MOVFixPass.hpp"
 #include "../backend/TargetArchs/AArch64/AArch64TargetMachine.hpp"
+#include "../backend/TargetArchs/AArch64/AArch64XRegToWRegFixPass.hpp"
 #include "../backend/TargetArchs/RISCV/RISCVTargetMachine.hpp"
 #include "../middle_end/IR/IRFactory.hpp"
 #include "../middle_end/Transforms/PassManager.hpp"
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
   PEI.Run();
 
   if (TargetArch == "aarch64")
-    AArch64MOVFixPass(&LLIRModule, TM.get()).Run();
+    AArch64XRegToWRegFixPass(&LLIRModule, TM.get()).Run();
 
   if (PrintBeforePasses) {
     std::cout << "<<<<< Before Emitting Assembly >>>>>" << std::endl

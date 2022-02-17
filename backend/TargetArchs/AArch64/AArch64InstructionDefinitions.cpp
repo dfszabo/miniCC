@@ -3,15 +3,16 @@
 using namespace AArch64;
 
 AArch64InstructionDefinitions::AArch64InstructionDefinitions() {
-  InstrEnumStrings = {
-      "ADD_rrr",  "ADD_rri",  "AND_rrr", "AND_rri", "ORR_rrr", "ORR_rri",
-      "EOR_rrr",  "EOR_rri",  "LSL_rrr", "LSL_rri", "LSR_rrr", "LSR_rri",
-      "SUB_rrr",  "SUB_rri",  "SUBS",    "MUL_rri", "MUL_rrr", "SDIV_rri",
-      "SDIV_rrr", "UDIV_rrr", "CMP_ri",  "CMP_rr",  "CSET",    "SXTB",
-      "SXTW",     "UXTB",     "UXTW",    "MOV_rc",  "MOV_rr",  "MOVK_ri",
-      "MVN_rr",   "ADRP",     "LDR",     "LDRB",    "LDRH",    "STR",
-      "STRB",     "STRH",     "BEQ",     "BNE",     "BGE",     "BGT",
-      "BLE",      "BLT",      "B",       "BL",      "RET"};
+  InstrEnumStrings = {"ADD_rrr", "ADD_rri", "AND_rrr",  "AND_rri",  "ORR_rrr",
+                      "ORR_rri", "EOR_rrr", "EOR_rri",  "LSL_rrr",  "LSL_rri",
+                      "LSR_rrr", "LSR_rri", "SUB_rrr",  "SUB_rri",  "SUBS",
+                      "MUL_rri", "MUL_rrr", "SDIV_rri", "SDIV_rrr", "UDIV_rrr",
+                      "CMP_ri",  "CMP_rr",  "CSET",     "SXTB",     "SXTH",
+                      "SXTW",    "UXTB",    "UXTH",     "UXTW",     "MOV_rc",
+                      "MOV_rr",  "MOVK_ri", "MVN_rr",   "ADRP",     "LDR",
+                      "LDRB",    "LDRH",    "STR",      "STRB",     "STRH",
+                      "BEQ",     "BNE",     "BGE",      "BGT",      "BLE",
+                      "BLT",     "B",       "BL",       "RET"};
 }
 
 AArch64InstructionDefinitions::IRToTargetInstrMap
@@ -42,8 +43,10 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[CMP_ri] = {CMP_ri, 32, "cmp\t$1, #$2", {GPR, UIMM12}};
       ret[CSET] = {CSET, 32, "cset\t$1, $2, $3", {GPR, GPR, GPR}};
       ret[SXTB] = {SXTB, 32, "sxtb\t$1, $2", {GPR, GPR}};
+      ret[SXTH] = {SXTH, 32, "sxth\t$1, $2", {GPR, GPR}};
       ret[SXTW] = {SXTW, 32, "sxtw\t$1, $2", {GPR, GPR}};
       ret[UXTB] = {UXTB, 32, "uxtb\t$1, $2", {GPR, GPR}};
+      ret[UXTH] = {UXTH, 32, "uxth\t$1, $2", {GPR, GPR}};
       ret[UXTW] = {UXTW, 32, "uxtw\t$1, $2", {GPR, GPR}};
       ret[MOV_rc] = {MOV_rc, 32, "mov\t$1, #$2", {GPR, UIMM16}};
       ret[MOV_rr] = {MOV_rr, 32, "mov\t$1, $2", {GPR, GPR}};
