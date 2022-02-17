@@ -20,6 +20,8 @@ public:
   IRType &GetTypeRef() { return ValueType; }
   IRType GetType() const { return ValueType; }
 
+  void SetType(IRType t) { ValueType = t; }
+
   unsigned GetID() const { return UniqeID; }
   void SetID(const unsigned i) { UniqeID = i; }
 
