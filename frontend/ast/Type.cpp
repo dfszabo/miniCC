@@ -3,45 +3,48 @@
 std::string Type::ToString(const Type *t) {
   std::string Result = "";
 
+  if (t->IsConst())
+    Result += "const ";
+
   switch (t->GetTypeVariant()) {
   case Double:
-    Result = "double";
+    Result += "double";
     break;
   case Char:
-    Result = "char";
+    Result += "char";
     break;
   case UnsignedChar:
-    Result = "unsigned char";
+    Result += "unsigned char";
     break;
   case Short:
-    Result = "short";
+    Result += "short";
     break;
   case UnsignedShort:
-    Result = "unsigned short";
+    Result += "unsigned short";
     break;
   case Int:
-    Result = "int";
+    Result += "int";
     break;
   case UnsignedInt:
-    Result = "unsigned int";
+    Result += "unsigned int";
     break;
   case Long:
-    Result = "long";
+    Result += "long";
     break;
   case UnsignedLong:
-    Result = "unsigned long";
+    Result += "unsigned long";
     break;
   case LongLong:
-    Result = "long long";
+    Result += "long long";
     break;
   case UnsignedLongLong:
-    Result = "unsigned long long";
+    Result += "unsigned long long";
     break;
   case Void:
-    Result = "void";
+    Result += "void";
     break;
   case Composite:
-    Result = t->GetName();
+    Result += t->GetName();
     break;
   case Invalid:
     return "invalid";
@@ -66,8 +69,11 @@ std::string Type::ToString() const {
       TyStr += Type::ToString(&ParameterList[i]);
       if (i + 1 < ArgSize)
         TyStr += ",";
-      else
+      else {
+        if (VarArg)
+          TyStr += ", ...";
         TyStr += ")";
+      }
     }
     return TyStr;
   } else if (Kind == Array) {

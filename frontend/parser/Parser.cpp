@@ -364,11 +364,15 @@ Parser::ParseFunctionDeclaration(const Type &ReturnType, const Token &Name) {
   // Creating new scope by pushing a new symbol table to the stack
   SymTabStack.PushSymTable();
 
-  auto PL = ParseParameterList();
+  bool HasVarArg = false;
+  auto PL = ParseParameterList(HasVarArg);
 
   Expect(Token::RightParen);
 
   auto FuncType = FunctionDeclaration::CreateType(ReturnType, PL);
+  if (HasVarArg)
+    FuncType.SetVarArg(true);
+
   auto NameStr = Name.GetString();
   InsertToSymTable(NameStr, FuncType, true);
 
@@ -386,9 +390,10 @@ Parser::ParseFunctionDeclaration(const Type &ReturnType, const Token &Name) {
                                                ReturnsNumber);
 }
 
-// <ParameterList> ::= <ParameterDeclaration>? {',' <ParameterDeclaration>}*
+// <ParameterList> ::= <ParameterDeclaration>?
+//                      {',' <ParameterDeclaration> }* (',' '...')?
 std::vector<std::unique_ptr<FunctionParameterDeclaration>>
-Parser::ParseParameterList() {
+Parser::ParseParameterList(bool &HasVarArg) {
   std::vector<std::unique_ptr<FunctionParameterDeclaration>> Params;
 
   if (!IsTypeSpecifier(GetCurrentToken()) && !IsQualifier(GetCurrentTokenKind()))
@@ -397,7 +402,13 @@ Parser::ParseParameterList() {
   Params.push_back(ParseParameterDeclaration());
   while (lexer.Is(Token::Comma)) {
     Lex(); // consume ','
-    Params.push_back(ParseParameterDeclaration());
+
+    // ellipse (...) case
+    if (GetCurrentToken().GetKind() == Token::DotDotDot) {
+      Lex(); // consume '...'
+      HasVarArg = true;
+    } else
+      Params.push_back(ParseParameterDeclaration());
   }
   return Params;
 }
@@ -1429,7 +1440,7 @@ std::unique_ptr<Expression> Parser::ParseCallExpression(Token Id) {
   auto FuncArgNum = FuncArgTypes.size();
   if (!(CallArgs.size() == 0 && FuncArgNum == 1 &&
         FuncArgTypes[0] == Type::Void)) {
-    if (FuncArgNum != CallArgs.size())
+    if (!FuncType.HasVarArg() && FuncArgNum != CallArgs.size())
       EmitError("arguments number mismatch", lexer);
 
     for (size_t i = 0; i < FuncArgNum; i++) {

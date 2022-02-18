@@ -50,6 +50,9 @@ public:
 
   bool IsPointerType() const { return PointerLevel != 0; }
 
+  bool HasVarArg() const { return VarArg; }
+  void SetVarArg(bool p) { VarArg = p; }
+
   static std::string ToString(const Type *t);
 
   /// Given two type variants it return the stronger one.
@@ -180,17 +183,7 @@ public:
     Ty = t.GetTypeVariant();
   }
 
-  Type(Type &&ct) {
-    PointerLevel = ct.PointerLevel;
-    Ty = ct.Ty;
-    Kind = ct.Kind;
-    Qualifiers = ct.Qualifiers;
-    Dimensions = std::move(ct.Dimensions);
-    TypeList = std::move(ct.TypeList);
-    ParameterList = std::move(ct.ParameterList);
-    Name = ct.Name;
-  }
-
+  Type(Type &&ct) = default;
   Type(const Type &ct) = default;
   Type &operator=(const Type &ct) = default;
 
@@ -290,6 +283,9 @@ private:
   std::vector<Type> TypeList;
   std::vector<Type> ParameterList;
   std::vector<unsigned> Dimensions;
+
+  /// To indicate whether the function type has variable arguments or not
+  bool VarArg = false;
 };
 
 // Hold an integer or a float value
