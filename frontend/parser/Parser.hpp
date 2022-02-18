@@ -52,7 +52,7 @@ public:
   std::unique_ptr<EnumDeclaration> ParseEnumDeclaration(unsigned Qualifiers);
   Node ParseReturnTypeSpecifier();
   std::vector<std::unique_ptr<FunctionParameterDeclaration>>
-  ParseParameterList();
+  ParseParameterList(bool &HasVarArg);
   std::unique_ptr<FunctionParameterDeclaration> ParseParameterDeclaration();
   Type ParseTypeSpecifier();
   std::unique_ptr<CompoundStatement> ParseCompoundStatement();

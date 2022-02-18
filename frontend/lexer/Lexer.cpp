@@ -264,7 +264,12 @@ std::optional<Token> Lexer::LexSymbol() {
 
   switch (GetNextChar()) {
   case '.':
-    TokenKind = Token::Dot;
+    if (GetNextNthCharOnSameLine(1) == '.' &&
+        GetNextNthCharOnSameLine(2) == '.') {
+      TokenKind = Token::DotDotDot;
+      Size = 3;
+    } else
+      TokenKind = Token::Dot;
     break;
   case ',':
     TokenKind = Token::Comma;

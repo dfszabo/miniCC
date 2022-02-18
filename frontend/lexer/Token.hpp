@@ -71,6 +71,7 @@ public:
     LeftCurly,
     RightCurly,
     BackSlash,
+    DotDotDot,
 
     // Comment
     DoubleForwardSlash,
@@ -231,6 +232,8 @@ public:
       return "{";
     case RightCurly:
       return "}";
+    case DotDotDot:
+      return "...";
     case BackSlash:
       return "\\";
     case DoubleForwardSlash:
