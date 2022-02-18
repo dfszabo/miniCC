@@ -31,7 +31,7 @@ MachineInstruction *MaterializeConstant(MachineInstruction *MI,
     MachineInstruction MOVK;
     MOVK.SetOpcode(MOVK_ri);
     MOVK.AddVirtualRegister(Reg);
-    MOVK.AddImmediate(Constant >> 16u); // upper 16 bit
+    MOVK.AddImmediate((uint32_t)Constant >> 16u); // upper 16 bit
     MOVK.AddImmediate(16);              // left shift amount
     MIs.push_back(MOVK);
   }
@@ -277,7 +277,15 @@ bool AArch64TargetMachine::SelectCMP(MachineInstruction *MI) {
   ExtendRegSize(MI->GetOperand(1));
 
   if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
-    MI->SetOpcode(CMP_ri);
+    if (IsInt<12>(ImmMO->GetImmediate()))
+      MI->SetOpcode(CMP_ri);
+    else {
+      unsigned Reg;
+      MI = MaterializeConstant(MI, ImmMO->GetImmediate(), Reg);
+      MI->SetOpcode(CMP_rr);
+      MI->RemoveOperand(2);
+      MI->AddVirtualRegister(Reg);
+    }
     // remove the destination hence the implicit condition register is
     // overwritten
     MI->RemoveOperand(0);
