@@ -95,6 +95,16 @@ MachineInstruction *MachineBasicBlock::GetPrecedingInstr(MachineInstruction *MI)
   return nullptr;
 }
 
+MachineInstruction *MachineBasicBlock::GetNextInstr(MachineInstruction *MI) {
+  size_t Counter = 0;
+  for (; Counter < Instructions.size() - 1; Counter++) {
+    auto Ptr = &Instructions[Counter];
+    if (Ptr == MI)
+      return &Instructions[Counter + 1];
+  }
+  return nullptr;
+}
+
 void MachineBasicBlock::Erase(MachineInstruction *MI) {
   size_t i = 0;
   for (; i < Instructions.size(); i++)

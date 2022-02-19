@@ -14,6 +14,26 @@ public:
   bool Check(MachineInstruction *MI) override;
   bool IsExpandable(const MachineInstruction *MI) override;
 
+  /// If the CMP result is NOT used for a subsequent jump, then a CSET
+  /// must be issued to materialize the compare result into an actual GPR.
+  /// example IR:
+  ///         cmp.eq  $1<i1>, $2<u32>, 420<u32>
+  ///         ret     $2<i1>
+  ///
+  /// here the comparison result should be returned, but the cmp.xx is
+  /// selected to cmp, which only set an implicit register, so the above
+  /// code will results in (maybe with other non w0 registers):
+  ///         cmp     w1, w2
+  ///         ret
+  ///
+  /// the cmp set the implicit compare result register, but thats not enough,
+  /// the result should be in the return register. Therefore the following
+  /// sequence is desired:
+  ///         cmp     w1, w2
+  ///         cset    w0, eq
+  ///         ret
+  bool ExpandCMP(MachineInstruction *MI) override;
+
   /// Use wzr register if the stored immediate is 0
   bool ExpandSTORE(MachineInstruction *MI) override;
 

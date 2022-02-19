@@ -88,6 +88,8 @@ bool TargetInstructionLegalizer::ExpandSTORE(MachineInstruction *MI) {
 
 bool TargetInstructionLegalizer::Expand(MachineInstruction *MI) {
   switch (MI->GetOpcode()) {
+  case MachineInstruction::CMP:
+    return ExpandCMP(MI);
   case MachineInstruction::MOD:
   case MachineInstruction::MODU:
     return ExpandMOD(MI, MI->GetOpcode() == MachineInstruction::MODU);

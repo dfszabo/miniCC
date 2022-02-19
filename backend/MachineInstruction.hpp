@@ -65,6 +65,7 @@ public:
   enum Flags : unsigned {
     IS_LOAD = 1,
     IS_STORE = 1 << 1,
+    IS_EXPANDED = 1 << 2,
   };
 
   MachineInstruction() {}
@@ -175,6 +176,10 @@ public:
   bool IsStore() const {
     return Opcode == STORE || (OtherAttributes & IS_STORE);
   }
+  bool IsAlreadyExpanded() const { return OtherAttributes & IS_EXPANDED; }
+
+  /// flag the MI as expanded, so the legalizer can ignore it
+  void FlagAsExpanded() { OtherAttributes |= IS_EXPANDED; }
   bool IsLoadOrStore() const { return IsLoad() || IsStore(); }
   bool IsAlreadySelected() const { return Opcode < 65536; }
   bool IsInvalid() const { return  Opcode == INVALID_OP; }

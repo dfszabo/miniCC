@@ -31,7 +31,7 @@ enum Opcodes : unsigned {
   UDIV_rrr,
   CMP_ri,
   CMP_rr,
-  CSET,
+  CSET_eq,
   SXTB,
   SXTH,
   SXTW,
