@@ -266,14 +266,14 @@ public:
     return InstPtr;
   }
 
-  GlobalVariable *CreateGlobalVar(std::string &Identifier, IRType Type) {
+  GlobalVariable *CreateGlobalVar(std::string &Identifier, IRType &Type) {
     auto GlobalVar = new GlobalVariable(Identifier, Type);
     GlobalVar->SetID(ID++);
 
     return GlobalVar;
   }
 
-  GlobalVariable *CreateGlobalVar(std::string &Identifier, IRType Type,
+  GlobalVariable *CreateGlobalVar(std::string &Identifier, IRType &Type,
                                   std::string Value) {
     auto GlobalVar = new GlobalVariable(Identifier, Type, Value);
     GlobalVar->SetID(ID++);
@@ -281,7 +281,7 @@ public:
     return GlobalVar;
   }
 
-  GlobalVariable *CreateGlobalVar(std::string &Identifier, IRType Type,
+  GlobalVariable *CreateGlobalVar(std::string &Identifier, IRType &Type,
                                   Value *Val) {
     auto GlobalVar = new GlobalVariable(Identifier, Type, Val);
     GlobalVar->SetID(ID++);
@@ -289,7 +289,7 @@ public:
     return GlobalVar;
   }
 
-  GlobalVariable *CreateGlobalVar(std::string &Identifier, IRType Type,
+  GlobalVariable *CreateGlobalVar(std::string &Identifier, IRType &Type,
                                   std::vector<uint64_t> InitList) {
     auto GlobalVar = new GlobalVariable(Identifier, Type, std::move(InitList));
     GlobalVar->SetID(ID++);
