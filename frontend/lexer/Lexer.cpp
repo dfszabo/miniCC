@@ -301,12 +301,18 @@ std::optional<Token> Lexer::LexSymbol() {
     if (GetNextNthCharOnSameLine(1) == '=') {
       TokenKind = Token::AstrixEqual;
       Size = 2;
+    } else if (GetNextNthCharOnSameLine(1) == '/') {
+      TokenKind = Token::AstrixForwardSlash;
+      Size = 2;
     } else
       TokenKind = Token::Astrix;
     break;
   case '/':
     if (GetNextNthCharOnSameLine(1) == '/') {
       TokenKind = Token::DoubleForwardSlash;
+      Size = 2;
+    } else if (GetNextNthCharOnSameLine(1) == '*') {
+      TokenKind = Token::ForwardSlashAstrix;
       Size = 2;
     } else if (GetNextNthCharOnSameLine(1) == '=') {
       TokenKind = Token::ForwardSlashEqual;
@@ -503,6 +509,19 @@ Token Lexer::Lex(bool LookAhead) {
       Result.value().GetKind() == Token::DoubleForwardSlash) {
     LineIndex++;
     ColumnIndex = 0;
+    return Lex();
+  }
+
+  // Handle multiline comments like /* ... */
+  if (Result.has_value() &&
+      Result.value().GetKind() == Token::ForwardSlashAstrix) {
+    while (GetNextChar() != EOF &&
+           (GetNextChar() != '*' || GetNextNthCharOnSameLine(1) != '/')) {
+      EatNextChar();
+    }
+    EatNextChar();
+    EatNextChar();
+
     return Lex();
   }
 

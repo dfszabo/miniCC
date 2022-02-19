@@ -75,6 +75,8 @@ public:
 
     // Comment
     DoubleForwardSlash,
+    ForwardSlashAstrix,
+    AstrixForwardSlash,
   
     // Keywords
     For,
@@ -238,6 +240,10 @@ public:
       return "\\";
     case DoubleForwardSlash:
       return "//";
+    case ForwardSlashAstrix:
+      return "/*";
+    case AstrixForwardSlash:
+      return "*/";
     case For:
       return "for";
     case While:
