@@ -18,8 +18,10 @@ void MachineInstructionLegalizer::Run() {
         auto *MI =
             &Func.GetBasicBlocks()[BBIndex].GetInstructions()[InstrIndex];
 
-        // If the instruction is not legal on the target
-        if (!Legalizer->Check(MI)) {
+        // If the instruction is not legal on the target and not selected yet
+        // and has not yet been expanded
+        if (!Legalizer->Check(MI) && !MI->IsAlreadySelected() &&
+            !MI->IsAlreadyExpanded()) {
           // but if it is expandable to hopefully legal ones, then do it
           if (Legalizer->IsExpandable(MI)) {
             if (Legalizer->Expand(MI)) {

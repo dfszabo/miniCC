@@ -7,7 +7,7 @@ AArch64InstructionDefinitions::AArch64InstructionDefinitions() {
                       "ORR_rri", "EOR_rrr", "EOR_rri",  "LSL_rrr",  "LSL_rri",
                       "LSR_rrr", "LSR_rri", "SUB_rrr",  "SUB_rri",  "SUBS",
                       "MUL_rri", "MUL_rrr", "SDIV_rri", "SDIV_rrr", "UDIV_rrr",
-                      "CMP_ri",  "CMP_rr",  "CSET",     "SXTB",     "SXTH",
+                      "CMP_ri",  "CMP_rr",  "CSET_eq",  "SXTB",     "SXTH",
                       "SXTW",    "UXTB",    "UXTH",     "UXTW",     "MOV_rc",
                       "MOV_rr",  "MOVK_ri", "MVN_rr",   "ADRP",     "LDR",
                       "LDRB",    "LDRH",    "STR",      "STRB",     "STRH",
@@ -41,7 +41,7 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[MUL_rri] = {MUL_rrr, 32, "mul\t$1, $2, #$3", {GPR, GPR, UIMM12}};
       ret[CMP_rr] = {CMP_rr, 32, "cmp\t$1, $2", {GPR, GPR}};
       ret[CMP_ri] = {CMP_ri, 32, "cmp\t$1, #$2", {GPR, UIMM12}};
-      ret[CSET] = {CSET, 32, "cset\t$1, $2, $3", {GPR, GPR, GPR}};
+      ret[CSET_eq] = {CSET_eq, 32, "cset\t$1, eq", {GPR}};
       ret[SXTB] = {SXTB, 32, "sxtb\t$1, $2", {GPR, GPR}};
       ret[SXTH] = {SXTH, 32, "sxth\t$1, $2", {GPR, GPR}};
       ret[SXTW] = {SXTW, 32, "sxtw\t$1, $2", {GPR, GPR}};

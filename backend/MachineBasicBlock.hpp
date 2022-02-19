@@ -48,6 +48,9 @@ public:
   /// Return the instruction before MI
   MachineInstruction *GetPrecedingInstr(MachineInstruction *MI);
 
+  /// Return the instruction after MI
+  MachineInstruction *GetNextInstr(MachineInstruction *MI);
+
   void Erase(MachineInstruction *MI);
 
   void Print(TargetMachine *TM) const;

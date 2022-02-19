@@ -10,6 +10,7 @@ using namespace AArch64;
 // Modulo operation is not legal on ARM, has to be expanded
 bool AArch64InstructionLegalizer::Check(MachineInstruction *MI) {
   switch (MI->GetOpcode()) {
+  case MachineInstruction::CMP:
   case MachineInstruction::MOD:
   case MachineInstruction::MODU:
     return false;
@@ -38,6 +39,7 @@ bool AArch64InstructionLegalizer::Check(MachineInstruction *MI) {
 
 bool AArch64InstructionLegalizer::IsExpandable(const MachineInstruction *MI) {
   switch (MI->GetOpcode()) {
+  case MachineInstruction::CMP:
   case MachineInstruction::MOD:
   case MachineInstruction::MODU:
   case MachineInstruction::STORE:
@@ -53,6 +55,31 @@ bool AArch64InstructionLegalizer::IsExpandable(const MachineInstruction *MI) {
   }
 
   return false;
+}
+
+bool AArch64InstructionLegalizer::ExpandCMP(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "CMP must have exactly 3 operands");
+  auto ParentBB = MI->GetParent();
+
+  auto NextMI = ParentBB->GetNextInstr(MI);
+
+  // since the function will return true either way, this can be set here
+  // already
+  MI->FlagAsExpanded();
+
+  // If the next MI is a branch, then nothing to do
+  if (NextMI != nullptr && NextMI->GetOpcode() == MachineInstruction::BRANCH)
+    return true;
+
+  // otherwise a CSET must be emitted
+  // TODO: add support for other relation cases like ne, gt etc.
+  auto CSET = MachineInstruction(AArch64::CSET_eq, nullptr);
+  CSET.AddOperand(*MI->GetOperand(0));
+
+  // insert after MI
+  ParentBB->InsertAfter(std::move(CSET), MI);
+
+  return true;
 }
 
 bool AArch64InstructionLegalizer::ExpandSTORE(MachineInstruction *MI) {
