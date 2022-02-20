@@ -41,6 +41,7 @@ public:
   Type ParseType(Token::TokenKind tk);
   bool IsTypeSpecifier(Token T);
   bool IsReturnTypeSpecifier(Token T);
+  void ParseArrayDimensions(Type &type);
 
   std::unique_ptr<Node> ParseTranslationUnit();
   std::unique_ptr<Node> ParseExternalDeclaration();
