@@ -199,6 +199,17 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         GlobalAddress.AddGlobalSymbol(((GlobalVariable*)I->GetSavedValue())->GetName());
         BB->InsertInstr(GlobalAddress);
         ResultMI.AddVirtualRegister(SourceReg, TM->GetPointerSize());
+    }
+    // if the source is a SA instruction, then its address which needs to be
+    // stored, therefore it has to be materialized by STACK_ADDRESS instruction
+    else if (dynamic_cast<StackAllocationInstruction *>(I->GetSavedValue())) {
+      assert(ParentFunction->IsStackSlot(I->GetSavedValue()->GetID()));
+      auto SA = MachineInstruction(MachineInstruction::STACK_ADDRESS, BB);
+      auto SourceReg = ParentFunction->GetNextAvailableVReg();
+      SA.AddVirtualRegister(SourceReg, TM->GetPointerSize());
+      SA.AddStackAccess(I->GetSavedValue()->GetID());
+      BB->InsertInstr(SA);
+      ResultMI.AddVirtualRegister(SourceReg, TM->GetPointerSize());
     } else
       ResultMI.AddOperand(GetMachineOperandFromValue(I->GetSavedValue(), BB));
   }
