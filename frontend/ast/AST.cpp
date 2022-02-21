@@ -250,12 +250,15 @@ Value *ForStatement::IRCodegen(IRFactory *IRF) {
   auto LoopEnd = std::make_unique<BasicBlock>("loop_end", FuncPtr);
   auto HeaderPtr = Header.get();
 
-  // Generating code for the initializing expression or the variable declaration
-  // and adding and explicit unconditional jump to the loop header basic block
+  // Generating code for the initializing expression or the variable
+  // declarations and adding and explicit unconditional jump to the loop header
+  // basic block
   if (Init)
     Init->IRCodegen(IRF);
   else
-    VarDecl->IRCodegen(IRF);
+    for (auto &VarDecl : VarDecls)
+      VarDecl->IRCodegen(IRF);
+
   IRF->CreateJUMP(Header.get());
 
   // Inserting the loop header basicblock and generating the code for the
@@ -1029,14 +1032,17 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
     assert(RefExp);
     auto Referee = RefExp->GetIdentifier();
     auto Res = IRF->GetSymbolValue(Referee);
-    if (!Res) {
+    if (!Res)
       Res = IRF->GetGlobalVar(Referee);
-      Res->GetTypeRef().IncrementPointerLevel();
-    }
+
     return Res;
   }
   case DEREF: {
     auto ResultType = E->GetType();
+    // global vars technically pointer like, which means an "int a;"
+    // should be treated as a i32* and not i32 for loads an stores
+    if (E->IsGlobalVar())
+      ResultType.IncrementPointerLevel();
     return IRF->CreateLD(ResultType, E);
   }
   case NOT: {
@@ -1452,8 +1458,10 @@ Value *StringLiteralExpression::IRCodegen(IRFactory *IRF) {
 Value *TranslationUnit::IRCodegen(IRFactory *IRF) {
   for (auto &Declaration : Declarations) {
     IRF->SetGlobalScope();
-    if (auto Decl = Declaration->IRCodegen(IRF); Decl != nullptr)
+    if (auto Decl = Declaration->IRCodegen(IRF); Decl != nullptr) {
+      assert(dynamic_cast<GlobalVariable*>(Decl));
       IRF->AddGlobalVariable(Decl);
+    }
   }
   return nullptr;
 }

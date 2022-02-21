@@ -286,8 +286,10 @@ private:
 
 class ForStatement : public Statement {
 public:
-  std::unique_ptr<Statement> const &GetVarDecl() const { return VarDecl; }
-  void SetVarDecl(std::unique_ptr<Statement> v) { VarDecl = std::move(v); }
+  using StmtVec = std::vector<std::unique_ptr<Statement>>;
+
+  StmtVec const &GetVarDecls() const { return VarDecls; }
+  void SetVarDecls(StmtVec v) { VarDecls = std::move(v); }
 
   std::unique_ptr<Expression> const &GetInit() const { return Init; }
   void SetInit(std::unique_ptr<Expression> c) { Init = std::move(c); }
@@ -308,7 +310,7 @@ public:
   Value *IRCodegen(IRFactory *IRF) override;
 
 private:
-  std::unique_ptr<Statement> VarDecl = nullptr;
+  StmtVec VarDecls;
   std::unique_ptr<Expression> Init = nullptr;
   std::unique_ptr<Expression> Condition;
   std::unique_ptr<Expression> Increment;

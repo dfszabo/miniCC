@@ -223,6 +223,7 @@ public:
   }
 
   bool IsConst() const { return Qualifiers & Const; }
+  bool IsTypedef() const { return Qualifiers & Typedef; }
 
   std::vector<Type> &GetTypeList() { return TypeList; }
   std::vector<Type> &GetParameterList() { return ParameterList; }
