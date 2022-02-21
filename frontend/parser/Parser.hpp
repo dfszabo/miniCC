@@ -42,12 +42,14 @@ public:
   bool IsTypeSpecifier(Token T);
   bool IsReturnTypeSpecifier(Token T);
   void ParseArrayDimensions(Type &type);
+  bool IsQualifiedType(Token T);
 
   std::unique_ptr<Node> ParseTranslationUnit();
   std::unique_ptr<Node> ParseExternalDeclaration();
   std::unique_ptr<FunctionDeclaration>
   ParseFunctionDeclaration(const Type &ReturnType, const Token &Name);
-  std::unique_ptr<VariableDeclaration> ParseVariableDeclaration();
+  std::unique_ptr<VariableDeclaration> ParseVariableDeclaration(Type type);
+  std::vector<std::unique_ptr<Statement>> ParseVariableDeclarationList();
   std::unique_ptr<MemberDeclaration> ParseMemberDeclaration();
   std::unique_ptr<StructDeclaration> ParseStructDeclaration(unsigned Qualifiers);
   std::unique_ptr<EnumDeclaration> ParseEnumDeclaration(unsigned Qualifiers);
