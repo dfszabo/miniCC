@@ -1567,10 +1567,13 @@ Parser::ParseArrayExpression(std::unique_ptr<Expression> Base) {
   /// then the result type of 'arr[0]' is 'int[10]'. N is the
   /// amount of index expressions used when referencing the array here
   /// 'arr'. In the example its 1.
-  if (!type.IsPointerType())
+  if (!type.IsPointerType()) {
     type.GetDimensions().erase(type.GetDimensions().begin(),
                                type.GetDimensions().begin() + 1);
-  else
+    // if the result is now a scalar, then change the type to Simple (scalar)
+    if (type.GetDimensions().empty())
+      type.SetTypeKind(Type::Simple);
+  } else
     type.DecrementPointerLevel();
 
   Base->SetLValueness(true);
