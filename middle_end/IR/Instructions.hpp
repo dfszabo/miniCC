@@ -253,7 +253,9 @@ public:
   LoadInstruction(IRType T, Value *S, Value *O, BasicBlock *P)
       : Instruction(Instruction::LOAD, P, T), Source(S), Offset(O) {
     auto PtrLVL = this->GetTypeRef().GetPointerLevel();
-    if (PtrLVL != 0)
+    // Globals are handled differently, it is implicitly assumed that they
+    // have 1 pointer level more, even though their IRType does not reflect this
+    if (PtrLVL != 0 && !S->IsGlobalVar())
       PtrLVL--;
     this->GetTypeRef().SetPointerLevel(PtrLVL);
   }
@@ -261,7 +263,7 @@ public:
   LoadInstruction(IRType T, Value *S, BasicBlock *P)
       : Instruction(Instruction::LOAD, P, T), Source(S), Offset(nullptr) {
     auto PtrLVL = this->GetTypeRef().GetPointerLevel();
-    if (PtrLVL != 0)
+    if (PtrLVL != 0 && !S->IsGlobalVar())
       PtrLVL--;
     this->GetTypeRef().SetPointerLevel(PtrLVL);
   }
