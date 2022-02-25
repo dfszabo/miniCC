@@ -38,6 +38,15 @@ public:
   virtual bool SelectMOD(MachineInstruction *MI) { return false; }
   virtual bool SelectMODU(MachineInstruction *MI) { return false; }
   virtual bool SelectCMP(MachineInstruction *MI) { return false; }
+  
+  virtual bool SelectCMPF(MachineInstruction *MI) { return false; }
+  virtual bool SelectADDF(MachineInstruction *MI) { return false; }
+  virtual bool SelectSUBF(MachineInstruction *MI) { return false; }
+  virtual bool SelectMULF(MachineInstruction *MI) { return false; }
+  virtual bool SelectDIVF(MachineInstruction *MI) { return false; }
+  virtual bool SelectITOF(MachineInstruction *MI) { return false; }
+  virtual bool SelectFTOI(MachineInstruction *MI) { return false; }
+
   virtual bool SelectSEXT(MachineInstruction *MI) { return false; }
   virtual bool SelectZEXT(MachineInstruction *MI) { return false; }
   virtual bool SelectTRUNC(MachineInstruction *MI) { return false; }
@@ -45,6 +54,7 @@ public:
   virtual bool SelectLOAD(MachineInstruction *MI) { return false; }
   virtual bool SelectLOAD_IMM(MachineInstruction *MI) { return false; }
   virtual bool SelectMOV(MachineInstruction *MI) { return false; }
+  virtual bool SelectMOVF(MachineInstruction *MI) { return false; }
   virtual bool SelectSTORE(MachineInstruction *MI) { return false; }
   virtual bool SelectSTACK_ADDRESS(MachineInstruction *MI) { return false; }
   virtual bool SelectGLOBAL_ADDRESS(MachineInstruction *MI) { return false; }

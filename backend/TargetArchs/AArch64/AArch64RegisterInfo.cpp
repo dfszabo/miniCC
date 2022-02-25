@@ -1,4 +1,5 @@
 #include "AArch64RegisterInfo.hpp"
+#include "AArch64InstructionDefinitions.hpp"
 #include <cassert>
 
 using namespace AArch64;
@@ -71,9 +72,45 @@ AArch64RegisterInfo::AArch64RegisterInfo() {
   Registers[62] = TargetRegister::Create(X30, 64, "x30", "", {W30});
   Registers[63] = TargetRegister::Create(X31, 64, "x31", "sp", {W31});
 
-  Registers[64] = TargetRegister::Create(SP, 64, "sp", "");
-  Registers[65] = TargetRegister::Create(XZR, 64, "wzr", "");
-  Registers[66] = TargetRegister::Create(PC, 64, "pc", "");
+  Registers[64] = TargetRegister::Create(D0, 64, "d0", "", {}, true);
+  Registers[65] = TargetRegister::Create(D1, 64, "d1", "", {}, true);
+  Registers[66] = TargetRegister::Create(D2, 64, "d2", "", {}, true);
+  Registers[67] = TargetRegister::Create(D3, 64, "d3", "", {}, true);
+  Registers[68] = TargetRegister::Create(D4, 64, "d4", "", {}, true);
+  Registers[69] = TargetRegister::Create(D5, 64, "d5", "", {}, true);
+  Registers[70] = TargetRegister::Create(D6, 64, "d6", "", {}, true);
+  Registers[71] = TargetRegister::Create(D7, 64, "d7", "", {}, true);
+  Registers[72] = TargetRegister::Create(D8, 64, "d8", "", {}, true);
+  Registers[73] = TargetRegister::Create(D9, 64, "d9", "", {}, true);
+  Registers[74] = TargetRegister::Create(D10, 64, "d10", "", {}, true);
+  Registers[75] = TargetRegister::Create(D11, 64, "d11", "", {}, true);
+  Registers[76] = TargetRegister::Create(D12, 64, "d12", "", {}, true);
+  Registers[77] = TargetRegister::Create(D13, 64, "d13", "", {}, true);
+  Registers[78] = TargetRegister::Create(D14, 64, "d14", "", {}, true);
+  Registers[79] = TargetRegister::Create(D15, 64, "d15", "", {}, true);
+  Registers[80] = TargetRegister::Create(D16, 64, "d16", "", {}, true);
+  Registers[81] = TargetRegister::Create(D17, 64, "d17", "", {}, true);
+  Registers[82] = TargetRegister::Create(D18, 64, "d18", "", {}, true);
+  Registers[83] = TargetRegister::Create(D19, 64, "d19", "", {}, true);
+  Registers[84] = TargetRegister::Create(D20, 64, "d20", "", {}, true);
+  Registers[85] = TargetRegister::Create(D21, 64, "d21", "", {}, true);
+  Registers[86] = TargetRegister::Create(D22, 64, "d22", "", {}, true);
+  Registers[87] = TargetRegister::Create(D23, 64, "d23", "", {}, true);
+  Registers[88] = TargetRegister::Create(D24, 64, "d24", "", {}, true);
+  Registers[89] = TargetRegister::Create(D25, 64, "d25", "", {}, true);
+  Registers[90] = TargetRegister::Create(D26, 64, "d26", "", {}, true);
+  Registers[91] = TargetRegister::Create(D27, 64, "d27", "", {}, true);
+  Registers[92] = TargetRegister::Create(D28, 64, "d28", "", {}, true);
+  Registers[93] = TargetRegister::Create(D29, 64, "d29", "", {}, true);
+  Registers[94] = TargetRegister::Create(D30, 64, "d30", "", {}, true);
+  Registers[95] = TargetRegister::Create(D31, 64, "d31", "", {}, true);
+
+  Registers[96] = TargetRegister::Create(SP, 64, "sp", "");
+  Registers[97] = TargetRegister::Create(WZR, 32, "wzr", "");
+  Registers[98] = TargetRegister::Create(XZR, 64, "xzr", "");
+  Registers[99] = TargetRegister::Create(PC, 64, "pc", "");
+
+  RegClassEnumStrings = {"gpr", "gpr32", "gpr64", "fpr", "fpr32", "fpr64"};
 }
 
 TargetRegister *AArch64RegisterInfo::GetParentReg(unsigned ID) {
@@ -87,12 +124,12 @@ TargetRegister *AArch64RegisterInfo::GetParentReg(unsigned ID) {
 }
 
 TargetRegister *AArch64RegisterInfo::GetRegister(unsigned i) {
-  assert(i < 67 && "Out of bound access");
+  assert(i < REGISTERS_END - 1 && "Out of bound access");
   return &Registers[i];
 }
 
 TargetRegister *AArch64RegisterInfo::GetRegisterByID(unsigned i) {
-  assert(i != 0 && i < 67 && "Out of bound access");
+  assert(i != 0 && i < REGISTERS_END && "Out of bound access");
   return &Registers[i - 1];
 }
 
@@ -104,4 +141,61 @@ unsigned AArch64RegisterInfo::GetStackRegister() { return X31; }
 
 unsigned AArch64RegisterInfo::GetStructPtrRegister() { return X8; }
 
-unsigned AArch64RegisterInfo::GetZeroRegister() { return XZR; }
+unsigned AArch64RegisterInfo::GetZeroRegister(const unsigned BitWidth) {
+  if (BitWidth <= 32)
+    return WZR; 
+  return XZR;
+}
+
+unsigned AArch64RegisterInfo::GetRegisterClass(const unsigned BitWidth,
+                                               const bool IsFP) {
+  if (IsFP) {
+    if (BitWidth <= 32)
+      return FPR32;
+    else
+      return FPR64;
+  } else {
+    if (BitWidth <= 32)
+      return GPR32;
+    else
+      return GPR64;
+  }
+}
+
+std::string AArch64RegisterInfo::GetRegClassString(const unsigned RegClass) {
+  assert(RegClass < RegClassEnumStrings.size());
+  return RegClassEnumStrings[RegClass];
+}
+
+unsigned AArch64RegisterInfo::GetRegClassFromReg(const unsigned Reg) {
+  if (Reg >= W0 && Reg <= W31)
+    return GPR32;
+  else if (Reg >= X0 && Reg <= X31)
+    return GPR64;
+  else if (Reg >= D0 && Reg <= D31)
+    return FPR64;
+  else if (Reg == XZR || Reg == SP)
+    return GPR64;
+  else if (Reg == WZR)
+    return GPR32;
+
+  assert(!"Unknown register");
+  return ~0;
+}
+
+unsigned AArch64RegisterInfo::GetRegClassRegsSize(const unsigned RegClass) {
+  switch (RegClass) {
+  case GPR32:
+  case FPR32:
+    return 32;
+  case GPR:
+  case GPR64:
+  case FPR:
+  case FPR64:
+    return 64;
+  default:
+    assert(!"Unknown register class");
+  }
+
+  return ~0;
+}

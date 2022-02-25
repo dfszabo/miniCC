@@ -14,6 +14,7 @@ public:
     NONE,
     REGISTER,
     INT_IMMEDIATE,
+    FP_IMMEDIATE,
     MEMORY_ADDRESS,
     STACK_ACCESS,
     PARAMETER,
@@ -27,6 +28,7 @@ public:
   void SetToVirtualRegister() { Type = REGISTER; Virtual = true; }
   void SetToRegister() { Type = REGISTER; Virtual = false; }
   void SetToIntImm() { Type = INT_IMMEDIATE; }
+  void SetToFPImm() { Type = FP_IMMEDIATE; }
   void SetToMemAddr() { Type = MEMORY_ADDRESS; Virtual = true; }
   void SetToStackAccess() { Type = STACK_ACCESS; }
   void SetToParameter() { Type = PARAMETER; }
@@ -34,14 +36,19 @@ public:
   void SetToFunctionName() { Type = FUNCTION_NAME; }
   void SetToGlobalSymbol() { Type = GLOBAL_SYMBOL; }
 
-  int64_t GetImmediate() const { return Value; }
-  int64_t GetReg() const { return Value; }
-  uint64_t GetSlot() const { return Value; }
+  int64_t GetImmediate() const { return IntVal; }
+  double GetFPImmediate() const { return FloatVal; }
+  int64_t GetReg() const { return IntVal; }
+  uint64_t GetSlot() const { return IntVal; }
   void SetReg(uint64_t V) { SetValue(V); }
-  void SetValue(uint64_t V) { Value = V; }
+  void SetValue(uint64_t V) { IntVal = V; }
+  void SetFPValue(double V) { FloatVal = V; }
 
   void SetOffset(int o) { Offset = o; }
   int GetOffset() const { return Offset; }
+
+  void SetRegClass(unsigned rc) { RegisterClass = rc; }
+  unsigned GetRegClass() const { return RegisterClass; }
 
   void SetType(LowLevelType LLT) { this->LLT = LLT; }
   LowLevelType GetType() const { return LLT; }
@@ -59,7 +66,8 @@ public:
   /// Returns true if the operand is a physical register
   bool IsRegister() const { return Type == REGISTER && !Virtual; }
   bool IsVirtualReg() const { return Type == REGISTER && Virtual; }
-  bool IsImmediate() const { return Type == INT_IMMEDIATE; }
+  bool IsImmediate() const { return Type == INT_IMMEDIATE || Type == FP_IMMEDIATE; }
+  bool IsFPImmediate() const { return Type == FP_IMMEDIATE; }
   bool IsMemory() const { return Type == MEMORY_ADDRESS; }
   bool IsStackAccess() const { return Type == STACK_ACCESS; }
   bool IsParameter() const { return Type == PARAMETER; }
@@ -72,14 +80,14 @@ public:
 
   /// To be able to use this class in a set
   bool operator<(const MachineOperand& rhs) const {
-    return Value < rhs.Value;
+    return IntVal < rhs.IntVal;
   }
 
   static MachineOperand CreateRegister(uint64_t Reg, unsigned BitWidth = 32) {
     MachineOperand MO;
     MO.SetToRegister();
     MO.SetReg(Reg);
-    MO.SetType(LowLevelType::CreateINT(BitWidth));
+    MO.SetType(LowLevelType::CreateScalar(BitWidth));
     return MO;
   }
 
@@ -87,7 +95,7 @@ public:
     MachineOperand MO;
     MO.SetToVirtualRegister();
     MO.SetReg(Reg);
-    MO.SetType(LowLevelType::CreateINT(BitWidth));
+    MO.SetType(LowLevelType::CreateScalar(BitWidth));
     return MO;
   }
 
@@ -95,7 +103,15 @@ public:
     MachineOperand MO;
     MO.SetToIntImm();
     MO.SetValue(Val);
-    MO.SetType(LowLevelType::CreateINT(BitWidth));
+    MO.SetType(LowLevelType::CreateScalar(BitWidth));
+    return MO;
+  }
+
+  static MachineOperand CreateFPImmediate(double Val, unsigned BitWidth = 32) {
+    MachineOperand MO;
+    MO.SetToFPImm();
+    MO.SetFPValue(Val);
+    MO.SetType(LowLevelType::CreateScalar(BitWidth));
     return MO;
   }
 
@@ -157,12 +173,16 @@ public:
 
 private:
   unsigned Type = NONE;
-  uint64_t Value = ~0;
+  union {
+    uint64_t IntVal;
+    double FloatVal;
+    const char *Label;
+  };
   int Offset = 0;
   LowLevelType LLT;
-  const char *Label = nullptr;
   std::string GlobalSymbol;
   bool Virtual = false;
+  unsigned RegisterClass = ~0;
 };
 
 #endif

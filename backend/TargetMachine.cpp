@@ -32,6 +32,20 @@ bool TargetMachine::SelectInstruction(MachineInstruction *MI) {
     return SelectMOD(MI);
   case MachineInstruction::MODU:
     return SelectMODU(MI);
+  case MachineInstruction::CMPF:
+    return SelectCMPF(MI);
+  case MachineInstruction::ADDF:
+    return SelectADDF(MI);
+  case MachineInstruction::SUBF:
+    return SelectSUBF(MI);
+  case MachineInstruction::MULF:
+    return SelectMULF(MI);
+  case MachineInstruction::DIVF:
+    return SelectDIVF(MI);
+  case MachineInstruction::ITOF:
+    return SelectITOF(MI);
+  case MachineInstruction::FTOI:
+    return SelectFTOI(MI);
   case MachineInstruction::SEXT:
     return SelectSEXT(MI);
   case MachineInstruction::ZEXT:
@@ -44,6 +58,8 @@ bool TargetMachine::SelectInstruction(MachineInstruction *MI) {
     return SelectLOAD_IMM(MI);
   case MachineInstruction::MOV:
     return SelectMOV(MI);
+  case MachineInstruction::MOVF:
+    return SelectMOVF(MI);
   case MachineInstruction::LOAD:
     return SelectLOAD(MI);
   case MachineInstruction::STORE:

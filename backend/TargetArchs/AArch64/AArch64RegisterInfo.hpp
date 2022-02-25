@@ -10,6 +10,7 @@ enum Registers : unsigned {
   INVALID,
 #define AARCH64_REGISTER(ID, WIDTH, NAME, ALIAS) ID,
 #include "AArch64Registers.def"
+  REGISTERS_END,
 };
 
 class AArch64RegisterInfo : public RegisterInfo {
@@ -24,10 +25,15 @@ public:
   unsigned GetLinkRegister() override;
   unsigned GetStackRegister() override;
   unsigned GetStructPtrRegister() override;
-  unsigned GetZeroRegister() override;
+  unsigned GetZeroRegister(const unsigned BitWidth) override;
+  unsigned GetRegisterClass(const unsigned BitWidth, const bool IsFP) override;
+  virtual std::string GetRegClassString(const unsigned RegClass) override;
+  unsigned GetRegClassFromReg(const unsigned Reg) override;
+  unsigned GetRegClassRegsSize(const unsigned RegClass) override;
 
 private:
-  TargetRegister Registers[67];
+  TargetRegister Registers[REGISTERS_END - 1];
+  std::vector<std::string> RegClassEnumStrings;
 };
 
 } // namespace AArch64

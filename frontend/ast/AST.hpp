@@ -463,6 +463,11 @@ public:
     MUL,
     DIV,
     DIVU,
+    ADDF,
+    SUBF,
+    MULF,
+    DIVF,
+    CMPF,
     MOD,
     MODU,
     AND,
@@ -508,15 +513,24 @@ public:
     case Token::GreaterThanGreaterThan:
       return LSR;
     case Token::Plus:
+      if (GetResultType().IsFloatingPoint())
+        return ADDF;
       return ADD;
     case Token::Minus:
+      if (GetResultType().IsFloatingPoint())
+        return SUBF;
       return SUB;
     case Token::Astrix:
+      if (GetResultType().IsFloatingPoint())
+        return MULF;
       return MUL;
     case Token::ForwardSlash:
-      if (GetResultType().IsUnsigned())
+      if (GetResultType().IsFloatingPoint())
+        return DIVF;
+      else if (GetResultType().IsUnsigned())
         return DIVU;
-      return DIV;
+      else
+        return DIV;
     case Token::Percent:
       if (GetResultType().IsUnsigned())
         return MODU;

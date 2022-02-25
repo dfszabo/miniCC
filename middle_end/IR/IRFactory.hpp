@@ -94,11 +94,51 @@ public:
     return CreateBinaryInstruction(Instruction::MODU, LHS, RHS);
   }
 
+  Instruction *CreateADDF(Value *LHS, Value *RHS) {
+    if (LHS->IsConstant() && RHS->IsConstant()) {
+      auto ConstLHS = dynamic_cast<Constant *>(LHS);
+      auto ConstRHS = dynamic_cast<Constant *>(RHS);
+      assert(ConstLHS && ConstRHS);
+
+      const auto Val = ConstLHS->GetFloatValue() + ConstRHS->GetFloatValue();
+      return CreateMOVF(GetConstant(Val));
+    }
+    return CreateBinaryInstruction(Instruction::ADDF, LHS, RHS);
+  }
+
+  Instruction *CreateSUBF(Value *LHS, Value *RHS) {
+    return CreateBinaryInstruction(Instruction::SUBF, LHS, RHS);
+  }
+
+  Instruction *CreateMULF(Value *LHS, Value *RHS) {
+    if (LHS->IsConstant() && RHS->IsConstant()) {
+      const auto Val = ((Constant *)LHS)->GetFloatValue() *
+                       ((Constant *)RHS)->GetFloatValue();
+      return CreateMOVF(GetConstant(Val));
+    }
+    return CreateBinaryInstruction(Instruction::MULF, LHS, RHS);
+  }
+
+  Instruction *CreateDIVF(Value *LHS, Value *RHS) {
+    return CreateBinaryInstruction(Instruction::DIVF, LHS, RHS);
+  }
+
   // FIXME: revisit this, it may be better to make a unique instruction variant
   // for 'mov' instead of using UnaryInstruction
   UnaryInstruction *CreateMOV(Value *Operand, uint8_t BitWidth = 32) {
     auto Inst = std::make_unique<UnaryInstruction>(
         Instruction::MOV, IRType::CreateInt(BitWidth), Operand,
+        GetCurrentBB());
+    Inst->SetID(ID++);
+    auto InstPtr = Inst.get();
+    Insert(std::move(Inst));
+
+    return InstPtr;
+  }
+
+  UnaryInstruction *CreateMOVF(Value *Operand, uint8_t BitWidth = 32) {
+    auto Inst = std::make_unique<UnaryInstruction>(
+        Instruction::MOVF, IRType::CreateFloat(BitWidth), Operand,
         GetCurrentBB());
     Inst->SetID(ID++);
     auto InstPtr = Inst.get();
@@ -140,9 +180,9 @@ public:
     return InstPtr;
   }
 
-  UnaryInstruction *CreateFTOI(Value *Operand, uint8_t FloatBitWidth = 32) {
+  UnaryInstruction *CreateFTOI(Value *Operand, uint8_t BitWidth = 32) {
     auto Inst = std::make_unique<UnaryInstruction>(
-        Instruction::FTOI, IRType::CreateFloat(FloatBitWidth), Operand,
+        Instruction::FTOI, IRType::CreateInt(BitWidth), Operand,
         GetCurrentBB());
     Inst->SetID(ID++);
     auto InstPtr = Inst.get();
@@ -151,9 +191,9 @@ public:
     return InstPtr;
   }
 
-  UnaryInstruction *CreateITOF(Value *Operand, uint8_t IntBitWidth = 32) {
+  UnaryInstruction *CreateITOF(Value *Operand, uint8_t BitWidth = 32) {
     auto Inst = std::make_unique<UnaryInstruction>(
-        Instruction::ITOF, IRType::CreateInt(IntBitWidth), Operand,
+        Instruction::ITOF, IRType::CreateFloat(BitWidth), Operand,
         GetCurrentBB());
     Inst->SetID(ID++);
     auto InstPtr = Inst.get();

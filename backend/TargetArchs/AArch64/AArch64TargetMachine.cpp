@@ -14,23 +14,28 @@ void ExtendRegSize(MachineOperand *MO, uint8_t BitWidth = 32) {
 }
 
 /// Materialize the given constant before the MI instruction
-MachineInstruction *MaterializeConstant(MachineInstruction *MI,
-                                        uint64_t Constant, unsigned &Reg) {
+MachineInstruction *AArch64TargetMachine::MaterializeConstant(
+    MachineInstruction *MI, const uint64_t Constant, MachineOperand &VReg) {
   auto MBB = MI->GetParent();
-  Reg = MBB->GetParent()->GetNextAvailableVReg();
+  auto Reg = MBB->GetParent()->GetNextAvailableVReg();
+  VReg = MachineOperand::CreateVirtualRegister(Reg);
+  // define its size by the size of the destination register of the MI for now
+  // and assume an integer constant
+  VReg.SetRegClass(
+      RegInfo->GetRegisterClass(MI->GetOperand(0)->GetSize(), false));
 
   std::vector<MachineInstruction> MIs;
 
   MachineInstruction MOV;
   MOV.SetOpcode(MOV_rc);
-  MOV.AddVirtualRegister(Reg);
+  MOV.AddOperand(VReg);
   MOV.AddImmediate(Constant & 0xffffu); // keep lower 16 bit
   MIs.push_back(MOV);
 
   if (!IsInt<16>(Constant) && IsInt<32>(Constant)) {
     MachineInstruction MOVK;
     MOVK.SetOpcode(MOVK_ri);
-    MOVK.AddVirtualRegister(Reg);
+    MOVK.AddOperand(VReg);
     MOVK.AddImmediate((uint32_t)Constant >> 16u); // upper 16 bit
     MOVK.AddImmediate(16);              // left shift amount
     MIs.push_back(MOVK);
@@ -42,19 +47,20 @@ MachineInstruction *MaterializeConstant(MachineInstruction *MI,
 /// For the given MI the function select its rrr or rri variant based on
 /// the MI form. If the immediate does not fit into the instruction @ImmSize
 /// width long immediate part, then it will be materialized into a register
-bool SelectThreeAddressInstuction(MachineInstruction *MI, Opcodes rrr,
-                                  Opcodes rri, unsigned ImmSize = 12) {
+bool AArch64TargetMachine::SelectThreeAddressInstruction(
+    MachineInstruction *MI, const Opcodes rrr, const Opcodes rri,
+    const unsigned ImmSize) {
   if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
     if (IsInt(ImmMO->GetImmediate(), ImmSize)) {
       MI->SetOpcode(rri);
       return true;
     }
 
-    unsigned Reg;
-    MI = MaterializeConstant(MI, ImmMO->GetImmediate(), Reg);
+    MachineOperand VReg;
+    MI = MaterializeConstant(MI, ImmMO->GetImmediate(), VReg);
     MI->SetOpcode(rrr);
     MI->RemoveOperand(2);
-    MI->AddVirtualRegister(Reg);
+    MI->AddOperand(VReg);
 
     return true;
   } else if (MI->GetOperand(2)->IsRegister() ||
@@ -71,7 +77,7 @@ bool AArch64TargetMachine::SelectAND(MachineInstruction *MI) {
   ExtendRegSize(MI->GetOperand(0));
   ExtendRegSize(MI->GetOperand(1));
 
-  if (!SelectThreeAddressInstuction(MI, AND_rrr, AND_rri))
+  if (!SelectThreeAddressInstruction(MI, AND_rrr, AND_rri))
     assert(!"Cannot select AND");
 
   return true;
@@ -83,7 +89,7 @@ bool AArch64TargetMachine::SelectOR(MachineInstruction *MI) {
   ExtendRegSize(MI->GetOperand(0));
   ExtendRegSize(MI->GetOperand(1));
 
-  if (!SelectThreeAddressInstuction(MI, ORR_rrr, ORR_rri))
+  if (!SelectThreeAddressInstruction(MI, ORR_rrr, ORR_rri))
     assert(!"Cannot select OR");
 
   return true;
@@ -103,7 +109,7 @@ bool AArch64TargetMachine::SelectXOR(MachineInstruction *MI) {
     return true;
   }
 
-  if (!SelectThreeAddressInstuction(MI, EOR_rrr, EOR_rri))
+  if (!SelectThreeAddressInstruction(MI, EOR_rrr, EOR_rri))
     assert(!"Cannot select XOR");
 
   return true;
@@ -115,7 +121,7 @@ bool AArch64TargetMachine::SelectLSL(MachineInstruction *MI) {
   ExtendRegSize(MI->GetOperand(0));
   ExtendRegSize(MI->GetOperand(1));
 
-  if (!SelectThreeAddressInstuction(MI, LSL_rrr, LSL_rri))
+  if (!SelectThreeAddressInstruction(MI, LSL_rrr, LSL_rri))
     assert(!"Cannot select LSL");
 
   return true;
@@ -127,7 +133,7 @@ bool AArch64TargetMachine::SelectLSR(MachineInstruction *MI) {
   ExtendRegSize(MI->GetOperand(0));
   ExtendRegSize(MI->GetOperand(1));
 
-  if (!SelectThreeAddressInstuction(MI, LSR_rrr, LSR_rri))
+  if (!SelectThreeAddressInstruction(MI, LSR_rrr, LSR_rri))
     assert(!"Cannot select LSR");
 
   return true;
@@ -280,11 +286,11 @@ bool AArch64TargetMachine::SelectCMP(MachineInstruction *MI) {
     if (IsInt<12>(ImmMO->GetImmediate()))
       MI->SetOpcode(CMP_ri);
     else {
-      unsigned Reg;
+      MachineOperand Reg;
       MI = MaterializeConstant(MI, ImmMO->GetImmediate(), Reg);
       MI->SetOpcode(CMP_rr);
       MI->RemoveOperand(2);
-      MI->AddVirtualRegister(Reg);
+      MI->AddOperand(Reg);
     }
     // remove the destination hence the implicit condition register is
     // overwritten
@@ -299,6 +305,100 @@ bool AArch64TargetMachine::SelectCMP(MachineInstruction *MI) {
   }
 
   return false;
+}
+
+bool SelectThreeAddressFPInstuction(MachineInstruction *MI, Opcodes rrr) {
+  if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
+    return false;
+  } else {
+    MI->SetOpcode(rrr);
+    return true;
+  }
+}
+
+bool AArch64TargetMachine::SelectCMPF(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "CMP must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
+  if (auto ImmMO = MI->GetOperand(2); ImmMO->IsImmediate()) {
+    MI->SetOpcode(FCMP_ri);
+    MI->RemoveOperand(0);
+    return true;
+  } else {
+    MI->SetOpcode(FCMP_rr);
+    MI->RemoveOperand(0);
+    return true;
+  }
+
+  return false;
+}
+
+bool AArch64TargetMachine::SelectADDF(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "ADDF must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
+  if (!SelectThreeAddressFPInstuction(MI, FADD_rrr))
+    assert(!"Immedaite operand is not allowed for FADD");
+
+  return true;
+}
+
+bool AArch64TargetMachine::SelectSUBF(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "SUBF must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
+  if (!SelectThreeAddressFPInstuction(MI, FSUB_rrr))
+    assert(!"Immedaite operand is not allowed for FSUB");
+
+  return true;
+}
+
+bool AArch64TargetMachine::SelectMULF(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "MULF must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
+  if (!SelectThreeAddressFPInstuction(MI, FMUL_rrr))
+    assert(!"Immedaite operand is not allowed for FMUL");
+
+  return true;
+}
+
+bool AArch64TargetMachine::SelectDIVF(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 3 && "DIVF must have 3 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+  ExtendRegSize(MI->GetOperand(1));
+
+  if (!SelectThreeAddressFPInstuction(MI, FDIV_rrr))
+    assert(!"Immedaite operand is not allowed for FDIV");
+
+  return true;
+}
+
+bool AArch64TargetMachine::SelectITOF(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 2 && "ITOF must have 2 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+
+  MI->SetOpcode(SCVTF_rr);
+  return true;
+}
+
+bool AArch64TargetMachine::SelectFTOI(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 2 && "FTOI must have 2 operands");
+
+  ExtendRegSize(MI->GetOperand(0));
+
+  MI->SetOpcode(FCVTZS_rr);
+  return true;
 }
 
 bool AArch64TargetMachine::SelectSEXT(MachineInstruction *MI) {
@@ -458,6 +558,17 @@ bool AArch64TargetMachine::SelectMOV(MachineInstruction *MI) {
     MI->SetOpcode(MOV_rc);
   } else
     MI->SetOpcode(MOV_rr);
+
+  return true;
+}
+
+bool AArch64TargetMachine::SelectMOVF(MachineInstruction *MI) {
+  assert(MI->GetOperandsNumber() == 2 && "MOVF must have exactly 2 operands");
+
+  if (MI->GetOperand(1)->IsImmediate()) {
+    MI->SetOpcode(FMOV_ri);
+  } else
+    MI->SetOpcode(FMOV_rr);
 
   return true;
 }

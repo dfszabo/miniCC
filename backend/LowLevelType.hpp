@@ -2,14 +2,14 @@
 #define LOW_LEVEL_TYPE_HPP
 
 #include <string>
+#include <cassert>
 
 class LowLevelType {
 public:
   enum Type : unsigned {
     INVALID,
     POINTER,
-    INTEGER,
-    FLOATING_POINT,
+    SCALAR,
   };
 
   LowLevelType() : Type(INVALID) {}
@@ -18,8 +18,8 @@ public:
   void SetBitWidth(unsigned BW) { BitWidth = BW; }
   unsigned GetBitWidth() const { return BitWidth; }
 
-  static LowLevelType CreateINT(unsigned BitWidth) {
-    LowLevelType LLT(INTEGER);
+  static LowLevelType CreateScalar(unsigned BitWidth) {
+    LowLevelType LLT(SCALAR);
     LLT.SetBitWidth(BitWidth);
     return LLT;
   }
@@ -31,18 +31,18 @@ public:
   }
 
   bool IsValid() const { return Type != INVALID; }
-  bool IsInteger() const { return Type == INTEGER; }
+  bool IsScalar() const { return Type == SCALAR; }
   bool IsPointer() const { return Type == POINTER; }
 
   std::string ToString() const {
     std::string str;
 
-    if (Type == INTEGER)
-      str = "i";
-    else if (Type == FLOATING_POINT)
-      str = "f";
+    if (Type == SCALAR)
+      str = "s";
     else if (Type == POINTER)
       str = "p";
+    else
+      assert(!"Invalid type");
 
     str += std::to_string(BitWidth);
 

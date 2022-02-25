@@ -790,6 +790,8 @@ Value *ArrayExpression::IRCodegen(IRFactory *IRF) {
 Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
   auto SourceTypeVariant = CastableExpression->GetResultType().GetTypeVariant();
   auto DestTypeVariant = GetResultType().GetTypeVariant();
+  assert(CastableExpression->GetResultType() != GetResultType() &&
+         "Pointless cast");
 
   // If its an array to pointer decay
   // Note: its only allowed if the expression is a ReferenceExpression
@@ -907,7 +909,7 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
   }
   case Type::Int: {
     if (DestTypeVariant == Type::Double)
-      return IRF->CreateITOF(Val, 32);
+      return IRF->CreateITOF(Val, 64);
     if ((DestTypeVariant == Type::Char ||
          DestTypeVariant == Type::UnsignedChar))
       return IRF->CreateTRUNC(Val, 8);
@@ -1323,6 +1325,8 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     switch (GetOperationKind()) {
     case ADD:
     case MUL:
+    case ADDF:
+    case MULF:
     case XOR:
     case AND:
     case OR:
@@ -1337,8 +1341,11 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     }
   }
 
-  if (L->IsConstant())
+  if (L->IsConstant() && L->IsIntType())
     L = IRF->CreateMOV(L, R->GetBitWidth());
+  else if (L->IsConstant() && L->IsFPType())
+    L = IRF->CreateMOVF(L, R->GetBitWidth());
+
 
   switch (GetOperationKind()) {
   case LSL:
@@ -1377,6 +1384,14 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     return IRF->CreateCMP(CompareInstruction::GE, L, R);
   case LE:
     return IRF->CreateCMP(CompareInstruction::LE, L, R);
+  case ADDF:
+    return IRF->CreateADDF(L, R);
+  case SUBF:
+    return IRF->CreateSUBF(L, R);
+  case MULF:
+    return IRF->CreateMULF(L, R);
+  case DIVF:
+    return IRF->CreateDIVF(L, R);
   default:
     assert(!"Unhandled binary instruction type");
     break;

@@ -4,6 +4,7 @@
 #include "../backend/MachineInstructionLegalizer.hpp"
 #include "../backend/PrologueEpilogInsertion.hpp"
 #include "../backend/RegisterAllocator.hpp"
+#include "../backend/RegisterClassSelection.hpp"
 #include "../backend/TargetArchs/AArch64/AArch64TargetMachine.hpp"
 #include "../backend/TargetArchs/AArch64/AArch64XRegToWRegFixPass.hpp"
 #include "../backend/TargetArchs/RISCV/RISCVTargetMachine.hpp"
@@ -94,7 +95,8 @@ int main(int argc, char *argv[]) {
   }
 
   std::vector<std::string> src;
-  getFileContent(FilePath.c_str(), src);
+  auto Success = getFileContent(FilePath.c_str(), src);
+  assert(Success && "Unable to open file");
 
   PreProcessor(src, FilePath).Run();
 
@@ -140,6 +142,16 @@ int main(int argc, char *argv[]) {
 
   MachineInstructionLegalizer Legalizer(&LLIRModule, TM.get());
   Legalizer.Run();
+
+  if (PrintBeforePasses) {
+    std::cout << "<<<<< Before Register Class Selection >>>>>" << std::endl
+              << std::endl;
+    LLIRModule.Print(TM.get());
+    std::cout << std::endl;
+  }
+
+  RegisterClassSelection RCS(&LLIRModule, TM.get());
+  RCS.Run();
 
   if (PrintBeforePasses) {
     std::cout << "<<<<< Before Instruction Selection >>>>>" << std::endl
