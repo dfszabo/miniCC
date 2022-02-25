@@ -12,7 +12,7 @@ class BasicBlock;
 class Instruction : public Value {
 public:
   enum IKind {
-    // Arithmetic and Logical
+    // Integer Arithmetic and Logical
     AND,
     OR,
     XOR,
@@ -27,6 +27,13 @@ public:
     MODU,
     CMP, // Logical comparison
 
+    // Floating point Arithmetic and Logical
+    ADDF,
+    SUBF,
+    MULF,
+    DIVF,
+    CMPF,
+
     // Conversions
     SEXT,  // Sign extension
     ZEXT,  // Zero extension
@@ -40,14 +47,15 @@ public:
     BRANCH,
     RET,
 
+    MOV = RET + 2,
+    MOVF,
+
     // Memory operations
     LOAD,
     STORE,
     MEM_COPY,
     STACK_ALLOC,
     GET_ELEM_PTR,
-
-    MOV,
   };
 
   IKind GetInstructionKind() { return InstKind; }
@@ -105,8 +113,10 @@ public:
   enum CompRel : unsigned { INVALID, EQ, NE, LT, GT, LE, GE };
 
   CompareInstruction(Value *L, Value *R, CompRel REL, BasicBlock *P)
-      : Instruction(Instruction::CMP, P, IRType(IRType::SINT, 1)), LHS(L),
-        RHS(R), Relation(REL) {}
+      : Instruction(L->IsFPType() && R->IsFPType() ? Instruction::CMPF
+                                                   : Instruction::CMP,
+                    P, IRType(IRType::SINT, 1)),
+        LHS(L), RHS(R), Relation(REL) {}
 
   const char *GetRelString() const;
 

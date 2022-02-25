@@ -34,12 +34,20 @@ public:
   bool SelectMOD(MachineInstruction *MI) override;
   bool SelectMODU(MachineInstruction *MI) override;
   bool SelectCMP(MachineInstruction *MI) override;
+  bool SelectCMPF(MachineInstruction *MI) override;
+  bool SelectADDF(MachineInstruction *MI) override;
+  bool SelectSUBF(MachineInstruction *MI) override;
+  bool SelectMULF(MachineInstruction *MI) override;
+  bool SelectDIVF(MachineInstruction *MI) override;
+  bool SelectITOF(MachineInstruction *MI) override;
+  bool SelectFTOI(MachineInstruction *MI) override;
   bool SelectSEXT(MachineInstruction *MI) override;
   bool SelectZEXT(MachineInstruction *MI) override;
   bool SelectTRUNC(MachineInstruction *MI) override;
   bool SelectZEXT_LOAD(MachineInstruction *MI) override;
   bool SelectLOAD_IMM(MachineInstruction *MI) override;
   bool SelectMOV(MachineInstruction *MI) override;
+  bool SelectMOVF(MachineInstruction *MI) override;
   bool SelectLOAD(MachineInstruction *MI) override;
   bool SelectSTORE(MachineInstruction *MI) override;
   bool SelectSTACK_ADDRESS(MachineInstruction *MI) override;
@@ -47,6 +55,12 @@ public:
   bool SelectJUMP(MachineInstruction *MI) override;
   bool SelectCALL(MachineInstruction *MI) override;
   bool SelectRET(MachineInstruction *MI) override;
+
+  MachineInstruction *MaterializeConstant(MachineInstruction *MI,
+                                          const uint64_t Constant,
+                                          MachineOperand &Reg);
+  bool SelectThreeAddressInstruction(MachineInstruction *MI, const Opcodes rrr,
+                                     const Opcodes rri, unsigned ImmSize = 12);
 };
 
 } // namespace AArch64

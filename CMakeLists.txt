@@ -41,6 +41,7 @@ add_executable(miniCC
     backend/MachineOperand.cpp
     backend/PrologueEpilogInsertion.cpp
     backend/RegisterAllocator.cpp
+    backend/RegisterClassSelection.cpp
     backend/Support.cpp
     backend/StackFrame.cpp
     backend/TargetInstructionLegalizer.cpp

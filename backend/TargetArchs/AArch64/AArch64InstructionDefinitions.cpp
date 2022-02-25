@@ -3,16 +3,18 @@
 using namespace AArch64;
 
 AArch64InstructionDefinitions::AArch64InstructionDefinitions() {
-  InstrEnumStrings = {"ADD_rrr", "ADD_rri", "AND_rrr",  "AND_rri",  "ORR_rrr",
-                      "ORR_rri", "EOR_rrr", "EOR_rri",  "LSL_rrr",  "LSL_rri",
-                      "LSR_rrr", "LSR_rri", "SUB_rrr",  "SUB_rri",  "SUBS",
-                      "MUL_rri", "MUL_rrr", "SDIV_rri", "SDIV_rrr", "UDIV_rrr",
-                      "CMP_ri",  "CMP_rr",  "CSET_eq",  "SXTB",     "SXTH",
-                      "SXTW",    "UXTB",    "UXTH",     "UXTW",     "MOV_rc",
-                      "MOV_rr",  "MOVK_ri", "MVN_rr",   "ADRP",     "LDR",
-                      "LDRB",    "LDRH",    "STR",      "STRB",     "STRH",
-                      "BEQ",     "BNE",     "BGE",      "BGT",      "BLE",
-                      "BLT",     "B",       "BL",       "RET"};
+  InstrEnumStrings = {
+      "ADD_rrr",  "ADD_rri",  "AND_rrr",  "AND_rri",   "ORR_rrr", "ORR_rri",
+      "EOR_rrr",  "EOR_rri",  "LSL_rrr",  "LSL_rri",   "LSR_rrr", "LSR_rri",
+      "SUB_rrr",  "SUB_rri",  "SUBS",     "MUL_rri",   "MUL_rrr", "SDIV_rri",
+      "SDIV_rrr", "UDIV_rrr", "CMP_ri",   "CMP_rr",    "CSET_eq", "CSET_ne",
+      "CSET_lt",  "CSET_gt",  "SXTB",     "SXTH",      "SXTW",    "UXTB",
+      "UXTH",     "UXTW",     "MOV_rc",   "MOV_rr",    "MOVK_ri", "MVN_rr",
+      "FADD_rrr", "FSUB_rrr", "FDIV_rrr", "FMUL_rrr",  "FMOV_rr", "FMOV_ri",
+      "FCMP_rr",  "FCMP_ri",  "SCVTF_rr", "FCVTZS_rr", "ADRP",    "LDR",
+      "LDRB",     "LDRH",     "STR",      "STRB",      "STRH",    "BEQ",
+      "BNE",      "BGE",      "BGT",      "BLE",       "BLT",     "B",
+      "BL",       "RET"};
 }
 
 AArch64InstructionDefinitions::IRToTargetInstrMap
@@ -42,6 +44,9 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[CMP_rr] = {CMP_rr, 32, "cmp\t$1, $2", {GPR, GPR}};
       ret[CMP_ri] = {CMP_ri, 32, "cmp\t$1, #$2", {GPR, UIMM12}};
       ret[CSET_eq] = {CSET_eq, 32, "cset\t$1, eq", {GPR}};
+      ret[CSET_ne] = {CSET_ne, 32, "cset\t$1, ne", {GPR}};
+      ret[CSET_lt] = {CSET_lt, 32, "cset\t$1, lt", {GPR}};
+      ret[CSET_gt] = {CSET_gt, 32, "cset\t$1, gt", {GPR}};
       ret[SXTB] = {SXTB, 32, "sxtb\t$1, $2", {GPR, GPR}};
       ret[SXTH] = {SXTH, 32, "sxth\t$1, $2", {GPR, GPR}};
       ret[SXTW] = {SXTW, 32, "sxtw\t$1, $2", {GPR, GPR}};
@@ -52,6 +57,19 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[MOV_rr] = {MOV_rr, 32, "mov\t$1, $2", {GPR, GPR}};
       ret[MOVK_ri] = {MOVK_ri, 32, "movk\t$1, #$2, lsl #$3", {GPR, GPR, UIMM4}};
       ret[MVN_rr] = {MVN_rr, 32, "mvn\t$1, $2", {GPR, GPR}};
+
+      // Floating point instructions
+      ret[FADD_rrr] = {FADD_rrr, 32, "fadd\t$1, $2, $3", {FPR, FPR, FPR}};
+      ret[FSUB_rrr] = {FSUB_rrr, 32, "fsub\t$1, $2, $3", {FPR, FPR, FPR}};
+      ret[FMUL_rrr] = {FMUL_rrr, 32, "fmul\t$1, $2, $3", {FPR, FPR, FPR}};
+      ret[FDIV_rrr] = {FDIV_rrr, 32, "fdiv\t$1, $2, $3", {FPR, FPR, FPR}};
+      ret[FMOV_rr] = {FMOV_rr, 32, "fmov\t$1, $2", {FPR, GPR}};
+      ret[FMOV_ri] = {FMOV_ri, 32, "fmov\t$1, #$2", {FPR, UIMM16}};
+      ret[FCMP_rr] = {FCMP_rr, 32, "fcmp\t$1, $2", {FPR, GPR}};
+      ret[FCMP_ri] = {FCMP_ri, 32, "fcmp\t$1, #$2", {FPR, UIMM12}};
+      ret[SCVTF_rr] = {SCVTF_rr, 32, "scvtf\t$1, $2", {FPR, GPR}};
+      ret[FCVTZS_rr] = {FCVTZS_rr, 32, "fcvtzs\t$1, $2", {GPR, FPR}};
+
       ret[ADRP] = {ADRP, 32, "adrp\t$1, $2", {GPR, GPR}};
       ret[LDR] = {LDR,
                   32,

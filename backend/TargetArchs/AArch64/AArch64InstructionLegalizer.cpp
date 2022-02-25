@@ -73,7 +73,25 @@ bool AArch64InstructionLegalizer::ExpandCMP(MachineInstruction *MI) {
 
   // otherwise a CSET must be emitted
   // TODO: add support for other relation cases like ne, gt etc.
-  auto CSET = MachineInstruction(AArch64::CSET_eq, nullptr);
+  unsigned Opcode;
+  switch (MI->GetRelation()) {
+  case MachineInstruction::EQ:
+    Opcode = CSET_eq;
+    break;
+  case MachineInstruction::NE:
+    Opcode = CSET_ne;
+    break;
+  case MachineInstruction::LT:
+    Opcode = CSET_lt;
+    break;
+  case MachineInstruction::GT:
+    Opcode = CSET_gt;
+    break;
+  default:
+    assert(!"Unhandled");
+  }
+
+  auto CSET = MachineInstruction(Opcode, nullptr);
   CSET.AddOperand(*MI->GetOperand(0));
 
   // insert after MI
@@ -94,7 +112,7 @@ bool AArch64InstructionLegalizer::ExpandSTORE(MachineInstruction *MI) {
   if (Immediate.GetImmediate() == 0) {
     auto size = Immediate.GetSize();
     MI->RemoveOperand(1);
-    auto WZR = TM->GetRegInfo()->GetZeroRegister();
+    auto WZR = TM->GetRegInfo()->GetZeroRegister(size);
     // TODO: it might be not a good idea to set different bitwidth to this
     // physical register from its actual bitwidth, for now ExtendRegSize
     // handle this issue, but need to think this through

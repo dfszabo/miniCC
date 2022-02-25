@@ -33,6 +33,7 @@ public:
   bool IsGlobalVar() const { return Kind == GLOBALVAR; }
 
   bool IsIntType() const { return ValueType.IsINT(); }
+  bool IsFPType() const { return ValueType.IsFP(); }
 
   virtual std::string ValueString() const {
     return "$" + std::to_string(UniqeID) + "<" + ValueType.AsString() + ">";
@@ -54,6 +55,7 @@ public:
   bool IsFPConst() const { return ValueType.IsFP(); }
 
   uint64_t GetIntValue() const;
+  double GetFloatValue() const;
 
   std::string ValueString() const override;
 

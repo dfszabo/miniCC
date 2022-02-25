@@ -61,7 +61,11 @@ void AssemblyEmitter::GenerateAssembly() {
           }
           // Immediate case
           else if (CurrentOperand->IsImmediate()) {
-            std::string ImmStr = std::to_string(CurrentOperand->GetImmediate());
+            std::string ImmStr;
+            if (CurrentOperand->IsFPImmediate())
+              ImmStr = std::to_string(CurrentOperand->GetFPImmediate());
+            else
+              ImmStr = std::to_string(CurrentOperand->GetImmediate());
             AssemblyTemplateStr.replace(DollarPos, 2, ImmStr);
           }
           // Label and FunctionName (function call) case

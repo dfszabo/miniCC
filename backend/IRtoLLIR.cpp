@@ -59,7 +59,7 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
     if (Val->GetTypeRef().IsPTR())
       VReg.SetType(LowLevelType::CreatePTR(TM->GetPointerSize()));
     else
-      VReg.SetType(LowLevelType::CreateINT(BitWidth));
+      VReg.SetType(LowLevelType::CreateScalar(BitWidth));
 
     return VReg;
   } else if (Val->IsParameter()) {
@@ -70,14 +70,18 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
     if (Val->GetTypeRef().IsPTR())
       Result.SetType(LowLevelType::CreatePTR(TM->GetPointerSize()));
     else
-      Result.SetType(LowLevelType::CreateINT(BitWidth));
+      Result.SetType(LowLevelType::CreateScalar(BitWidth));
 
     return Result;
   } else if (Val->IsConstant()) {
     auto C = dynamic_cast<Constant *>(Val);
-    assert(!C->IsFPConst() && "TODO");
-    auto Result = MachineOperand::CreateImmediate(C->GetIntValue());
-    Result.SetType(LowLevelType::CreateINT(C->GetBitWidth()));
+
+    MachineOperand Result =
+        C->IsFPConst() ? MachineOperand::CreateFPImmediate(C->GetFloatValue())
+                       : MachineOperand::CreateImmediate(C->GetIntValue());
+
+    Result.SetType(LowLevelType::CreateScalar(C->GetBitWidth()));
+
     return Result;
   } else {
     assert(!"Unhandled MO case");
@@ -501,17 +505,23 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       // default case is to just move into the right parameter register
       else {
         Instr = MachineInstruction(MachineInstruction::MOV, BB);
+        unsigned ParamIdx = ParamCounter;
+
+        if (Param->IsFPType()) {
+          Instr.SetOpcode(MachineInstruction::MOVF);
+          ParamIdx += TM->GetABI()->GetFirstFPRetRegIdx();
+        }
 
         auto Src = GetMachineOperandFromValue(Param, BB);
-        auto ParamPhysReg = TargetArgRegs[ParamCounter]->GetID();
-        auto ParamPhysRegSize = TargetArgRegs[ParamCounter]->GetBitWidth();
+        auto ParamPhysReg = TargetArgRegs[ParamIdx]->GetID();
+        auto ParamPhysRegSize = TargetArgRegs[ParamIdx]->GetBitWidth();
 
         if (Src.GetSize() < ParamPhysRegSize) {
-          ParamPhysReg = TargetArgRegs[ParamCounter]->GetSubRegs()[0];
+          ParamPhysReg = TargetArgRegs[ParamIdx]->GetSubRegs()[0];
           ParamPhysRegSize =
               TM->GetRegInfo()
                   ->GetRegisterByID(
-                      TargetArgRegs[ParamCounter]->GetSubRegs()[0])
+                      TargetArgRegs[ParamIdx]->GetSubRegs()[0])
                   ->GetBitWidth();
         }
 
@@ -552,13 +562,17 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       // find the appropriate return register for the size
       unsigned TargetRetReg;
 
+      size_t ParamIdx = i;
+      if (I->GetTypeRef().IsFP())
+        ParamIdx += TM->GetABI()->GetFirstFPRetRegIdx();
+
       // if the return value can use the return register
       if (std::min(RetBitSize, MaxRegSize) >= TM->GetPointerSize())
-        TargetRetReg = RetRegs[i]->GetID();
+        TargetRetReg = RetRegs[ParamIdx]->GetID();
       // need to find an appropriate sized subregister of the actual return reg
       else
         // FIXME: Temporary solution, only work for AArch64
-        TargetRetReg = RetRegs[i]->GetSubRegs()[0];
+        TargetRetReg = RetRegs[ParamIdx]->GetSubRegs()[0];
 
       Store.AddRegister(TargetRetReg, std::min(RetBitSize, MaxRegSize));
       // TODO: ...
@@ -573,9 +587,6 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     // If return is void
     if (I->GetRetVal() == nullptr)
       return ResultMI;
-
-    auto Result = GetMachineOperandFromValue(I->GetRetVal(), BB);
-    ResultMI.AddOperand(Result);
 
     // insert load to load in the return val to the return registers
     auto &TargetRetRegs = TM->GetABI()->GetReturnRegisters();
@@ -608,8 +619,14 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
                             TM->GetRegInfo()
                                 ->GetRegisterByID(RetRegs[0]->GetSubRegs()[0])
                                 ->GetBitWidth());
+                  
       LoadImm.AddOperand(GetMachineOperandFromValue(I->GetRetVal(), BB));
+      // change ret operand to the destination register of the LOAD_IMM
+      ResultMI.AddOperand(*LoadImm.GetOperand(0));
       BB->InsertInstr(LoadImm);
+    } else {
+      auto Result = GetMachineOperandFromValue(I->GetRetVal(), BB);
+      ResultMI.AddOperand(Result);
     }
   }
   // Memcopy instruction: memcopy dest, source, bytes_number
@@ -687,7 +704,7 @@ void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
         auto NextVReg = Func->GetNextAvailableVReg();
         StructToRegMap[StructName].push_back(NextVReg);
         Func->InsertParameter(NextVReg,
-                              LowLevelType::CreateINT(TM->GetPointerSize()));
+                              LowLevelType::CreateScalar(TM->GetPointerSize()));
       }
 
       continue;
@@ -697,8 +714,8 @@ void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
       Func->InsertParameter(
           ParamID, LowLevelType::CreatePTR(TM->GetPointerSize()), IsStructPtr);
     else
-      Func->InsertParameter(ParamID, LowLevelType::CreateINT(ParamSize),
-                            IsStructPtr);
+      Func->InsertParameter(ParamID, LowLevelType::CreateScalar(ParamSize),
+                            IsStructPtr, Param->GetTypeRef().IsFP());
   }
 }
 

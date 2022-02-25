@@ -25,14 +25,19 @@ public:
   void SetSubRegs(std::vector<unsigned> &N) { SubRegisters = N; }
   std::vector<unsigned> &GetSubRegs() { return SubRegisters; }
 
+  void SetFP(bool p) { FPCapable = p; }
+  bool IsFP() const { return FPCapable; }
+
   static TargetRegister Create(unsigned ID, unsigned BitWidth, const char *Name,
                                const char *Alias,
-                               std::vector<unsigned> SubRegs = {}) {
+                               std::vector<unsigned> SubRegs = {},
+                               bool FP = false) {
     TargetRegister NewReg;
     NewReg.SetID(ID);
     NewReg.SetBitWidth(BitWidth);
     NewReg.SetName(Name);
     NewReg.SetAlias(Alias);
+    NewReg.SetFP(FP);
     NewReg.SetSubRegs(SubRegs);
     return NewReg;
   }
@@ -43,16 +48,7 @@ private:
   std::string Name;
   std::string AliasName;
   std::vector<unsigned> SubRegisters;
-};
-
-class RegisterClass {
-public:
-  void AddRegister(unsigned ID) { Registers.insert(ID); }
-
-  bool Contains(unsigned ID) { return 0 != Registers.count(ID); }
-
-private:
-  std::set<unsigned, std::greater<unsigned>> Registers;
+  bool FPCapable;
 };
 
 #endif

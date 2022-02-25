@@ -29,9 +29,17 @@ public:
   RegList &GetReturnRegisters() { return ReturnRegisters; }
   void SetReturnRegisters(RegList ReturnRegs) { ReturnRegisters = ReturnRegs; }
 
+  size_t GetFirstFPArgRegIdx() const { return FirstFPArgRegIdx; }
+  size_t GetFirstFPRetRegIdx() const { return FirstFPRetRegIdx; }
+
 protected:
   unsigned StackAlignment = ~0;
   unsigned MaxStructSize = ~0;
+  unsigned FirstFPArgRegIdx = 0;
+  unsigned FirstFPRetRegIdx = 0;
+
+  /// Targets should fill this by the general registers they use for passing
+  /// integer values. Then fill it with the floating point registers.
   RegList ArgumentRegisters;
   RegList CalleeSavedRegisters;
   RegList CallerSavedRegisters;

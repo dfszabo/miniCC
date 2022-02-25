@@ -44,6 +44,21 @@ void MachineInstruction::Print(TargetMachine *TM) const {
   case CMP:
     OpcodeStr = "CMP";
     break;
+  case ADDF:
+    OpcodeStr = "ADDF";
+    break;
+  case SUBF:
+    OpcodeStr = "SUBF";
+    break;
+  case MULF:
+    OpcodeStr = "MULF";
+    break;
+  case DIVF:
+    OpcodeStr = "DIVF";
+    break;
+  case CMPF:
+    OpcodeStr = "CMPF";
+    break;
   case SEXT:
     OpcodeStr = "SEXT";
     break;
@@ -52,6 +67,12 @@ void MachineInstruction::Print(TargetMachine *TM) const {
     break;
   case TRUNC:
     OpcodeStr = "TRUNC";
+    break;
+  case FTOI:
+    OpcodeStr = "FTOI";
+    break;
+  case ITOF:
+    OpcodeStr = "ITOF";
     break;
   case ZEXT_LOAD:
     OpcodeStr = "ZEXT_LOAD";
@@ -67,6 +88,9 @@ void MachineInstruction::Print(TargetMachine *TM) const {
     break;
   case MOV:
     OpcodeStr = "MOV";
+    break;
+  case MOVF:
+    OpcodeStr = "MOVF";
     break;
   case STORE:
     OpcodeStr = "STORE";

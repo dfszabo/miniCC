@@ -19,6 +19,15 @@ uint64_t Constant::GetIntValue() const {
   return result;
 }
 
+double Constant::GetFloatValue() const {
+  assert(ValueType.IsFP());
+  double result = std::get<double>(Val);
+
+  assert(GetBitWidth() == 64 && "Only doubles supported");
+
+  return result;
+}
+
 std::string Constant::ValueString() const {
   std::string str;
 

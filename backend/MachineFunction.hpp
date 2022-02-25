@@ -10,7 +10,11 @@ class Function;
 
 class MachineFunction {
   using BasicBlockList = std::vector<MachineBasicBlock>;
-  using ParamList = std::vector<std::tuple<unsigned, LowLevelType, bool>>;
+  /// #1: nth param
+  /// #2: its low level type
+  /// #3: is it an implicit struct pointer?
+  /// #4: is it a floating point value?
+  using ParamList = std::vector<std::tuple<unsigned, LowLevelType, bool, bool>>;
   using PhysRegList = std::vector<unsigned>;
 
 public:
@@ -32,8 +36,9 @@ public:
     SF.InsertStackSlot(ID, Size);
   }
 
-  void InsertParameter(unsigned ID, LowLevelType LLT, bool ImplStructPtr = false) {
-    Parameters.push_back({ID, LLT, ImplStructPtr});
+  void InsertParameter(unsigned ID, LowLevelType LLT,
+                       bool ImplStructPtr = false, bool IsFP = false) {
+    Parameters.push_back({ID, LLT, ImplStructPtr, IsFP});
   }
 
   ParamList GetParameters() { return Parameters; }

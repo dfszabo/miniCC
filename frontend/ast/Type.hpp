@@ -24,6 +24,8 @@ public:
     UnsignedLongLong,
     Double
   };
+  // TODO: investigate if Simple effectively means scalar, if so rename it
+  // to Scalar for clarity
   enum TypeKind { Simple, Array, Struct };
   enum TypeQualifier : unsigned { None, Typedef, Const };
 
@@ -109,6 +111,7 @@ public:
     case UnsignedLong:
     case LongLong:
     case UnsignedLongLong:
+    case Double:
       Result = from.GetTypeVariant() >= Char;
       break;
     default:
@@ -220,6 +223,10 @@ public:
     default:
       return false;
     }
+  }
+
+  bool IsFloatingPoint() const {
+    return Ty == Double;
   }
 
   bool IsConst() const { return Qualifiers & Const; }

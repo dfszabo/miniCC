@@ -21,6 +21,14 @@ std::string Instruction::AsString(IKind IK) {
     return "mul";
   case DIV:
     return "div";
+  case ADDF:
+    return "addf";
+  case SUBF:
+    return "subf";
+  case MULF:
+    return "mulf";
+  case DIVF:
+    return "divf";
   case DIVU:
     return "divu";
   case MOD:
@@ -57,8 +65,12 @@ std::string Instruction::AsString(IKind IK) {
     return "memcopy";
   case CMP:
     return "cmp";
+  case CMPF:
+    return "cmpf";
   case MOV:
     return "mov";
+  case MOVF:
+    return "movf";
   default:
     assert(!"Unknown instruction kind.");
     break;

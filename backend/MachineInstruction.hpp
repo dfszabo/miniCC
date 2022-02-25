@@ -14,7 +14,7 @@ class MachineInstruction {
 
 public:
   enum OperationCode : unsigned {
-    // Arithmetic and Logical
+    // Integer Arithmetic and Logical
     AND = 1 << 16,
     OR,
     XOR,
@@ -29,6 +29,13 @@ public:
     MODU,
     CMP, // Logical comparison
 
+    // Floating point Arithmetic and Logical
+    ADDF,
+    SUBF,
+    MULF,
+    DIVF,
+    CMPF,
+
     // Conversions
     SEXT, // Sign extension
     ZEXT, // Zero extension
@@ -42,16 +49,17 @@ public:
     BRANCH,
     RET,
 
+    // Moves and constant materializations
+    LOAD_IMM,
+    MOV,
+    MOVF,
+
     // Memory operations
     LOAD,
     STORE,
     STACK_ALLOC,
     STACK_ADDRESS,
     GLOBAL_ADDRESS,
-
-    // Moves and constant materializations
-    LOAD_IMM,
-    MOV,
 
     // combined load and sign/zero extension
     SEXT_LOAD,
@@ -127,19 +135,19 @@ public:
 
   void AddVirtualRegister(uint64_t Reg, unsigned BitWidth = 32) {
     auto I = MachineOperand::CreateVirtualRegister(Reg);
-    I.SetType(LowLevelType::CreateINT(BitWidth));
+    I.SetType(LowLevelType::CreateScalar(BitWidth));
     AddOperand(I);
   }
 
   void AddRegister(uint64_t Reg, unsigned BitWidth = 32) {
     auto I = MachineOperand::CreateRegister(Reg);
-    I.SetType(LowLevelType::CreateINT(BitWidth));
+    I.SetType(LowLevelType::CreateScalar(BitWidth));
     AddOperand(I);
   }
 
   void AddImmediate(uint64_t Num, unsigned BitWidth = 32) {
     auto I = MachineOperand::CreateImmediate(Num);
-    I.SetType(LowLevelType::CreateINT(BitWidth));
+    I.SetType(LowLevelType::CreateScalar(BitWidth));
     AddOperand(I);
   }
 
