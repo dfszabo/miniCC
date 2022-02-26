@@ -1043,13 +1043,21 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
 
   switch (GetOperationKind()) {
   case ADDRESS: {
-    auto RefExp = dynamic_cast<ReferenceExpression *>(Expr.get());
-    assert(RefExp);
-    auto Referee = RefExp->GetIdentifier();
-    auto Res = IRF->GetSymbolValue(Referee);
-    if (!Res)
-      Res = IRF->GetGlobalVar(Referee);
+    Value *Res = nullptr;
+    if (auto RefExp = dynamic_cast<ReferenceExpression *>(Expr.get());
+        RefExp != nullptr) {
+      auto Referee = RefExp->GetIdentifier();
 
+      Res = IRF->GetSymbolValue(Referee);
+
+      if (!Res)
+        Res = IRF->GetGlobalVar(Referee);
+    } else {
+      Expr->SetLValueness(true);
+      Res = Expr->IRCodegen(IRF);
+    }
+
+    assert(Res);
     return Res;
   }
   case DEREF: {
