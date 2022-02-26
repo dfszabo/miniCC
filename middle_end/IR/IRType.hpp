@@ -54,7 +54,7 @@ public:
   bool IsPTR() const { return PointerLevel > 0; }
   bool IsStruct() const { return Kind == STRUCT; }
   bool IsArray() const { return !Dimensions.empty(); }
-  bool IsVoid() const { return Kind == NONE; }
+  bool IsVoid() const { return Kind == NONE && PointerLevel == 0; }
 
   void SetDimensions(const std::vector<unsigned>& N) { Dimensions = N; }
   std::vector<unsigned>& GetDimensions() { return Dimensions; }

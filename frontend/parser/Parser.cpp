@@ -103,6 +103,7 @@ bool Parser::IsTypeSpecifier(Token T) {
   case Token::Unsigned:
   case Token::Double:
   case Token::Struct:
+  case Token::Void:
     return true;
   case Token::Identifier: {
     auto Id = T.GetString();
@@ -494,6 +495,10 @@ Parser::ParseParameterDeclaration() {
       type.IncrementPointerLevel();
       Lex(); // Eat the * character
     }
+
+    assert(!(type.GetTypeVariant() == Type::Void && type.GetPointerLevel() == 0
+            && lexer.IsNot(Token::RightParen)) &&
+           "void can only be pointer type for a parameter or standing alone");
 
     FPD->SetType(type);
 
