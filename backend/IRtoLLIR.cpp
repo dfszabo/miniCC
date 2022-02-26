@@ -288,7 +288,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     else if (IsStack)
       GoalInstr = MachineInstruction(MachineInstruction::STACK_ADDRESS, BB);
 
-    auto Dest = GetMachineOperandFromValue((Value *)I, BB);
+    auto Dest = GetMachineOperandFromValue((Value *)I, BB, true);
     GoalInstr.AddOperand(Dest);
 
     if (IsGlobal)
