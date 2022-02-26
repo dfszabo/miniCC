@@ -911,9 +911,6 @@ public:
     ResultType = Ct;
   }
 
-  void SetLValueness(bool p) { IsLValue = p; }
-  bool GetLValueness() { return IsLValue; }
-
   void Accept(ASTVisitor *visitor) const override {
     visitor->VisitArrayExpression(this);
   }
@@ -921,7 +918,6 @@ public:
   Value *IRCodegen(IRFactory *IRF) override;
 
 private:
-  bool IsLValue = false;
   ExprPtr BaseExpression;
   ExprPtr IndexExpression;
 };
