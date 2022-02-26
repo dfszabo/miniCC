@@ -685,7 +685,10 @@ bool AArch64TargetMachine::SelectBRANCH(MachineInstruction *MI) {
       MI->SetOpcode(BGT);
       break;
     default:
-      assert(!"Unimplemented");
+      // if the preceding instruction is not a compare, then simply check for
+      // equality
+      MI->SetOpcode(BEQ);
+      break;
     }
 
     MI->RemoveOperand(0);
