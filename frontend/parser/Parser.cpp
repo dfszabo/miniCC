@@ -500,13 +500,21 @@ Parser::ParseParameterDeclaration() {
             && lexer.IsNot(Token::RightParen)) &&
            "void can only be pointer type for a parameter or standing alone");
 
-    FPD->SetType(type);
-
     if (lexer.Is(Token::Identifier)) {
       auto Name = Lex().GetString();
       FPD->SetName(Name);
+
+      // support only empty dimensions for now like "int foo(int a[])"
+      if (lexer.Is(Token::LeftBracet)) {
+        Lex();
+        type.IncrementPointerLevel();
+        Expect(Token::RightBracet);
+      }
+
       InsertToSymTable(Name, type);
     }
+
+    FPD->SetType(type);
   }
 
   return FPD;
