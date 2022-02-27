@@ -925,6 +925,9 @@ public:
   ExprPtr const &GetIndexExpression() const { return IndexExpression; }
   void SetIndexExpression(ExprPtr &e) { IndexExpression = std::move(e); }
 
+  ExprPtr const &GetBaseExpression() const { return BaseExpression; }
+  void SetBaseExpression(ExprPtr &e) { BaseExpression = std::move(e); }
+
   ArrayExpression(ExprPtr &Base, ExprPtr &Index, Type Ct = Type())
       : BaseExpression(std::move(Base)), IndexExpression(std::move(Index)) {
     ResultType = Ct;

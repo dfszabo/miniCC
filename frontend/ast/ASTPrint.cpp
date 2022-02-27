@@ -304,6 +304,7 @@ void ASTPrint::VisitArrayExpression(const ArrayExpression *node) {
   PrintLn(Str.c_str());
 
   tab += 2;
+  node->GetBaseExpression()->Accept(this);
   node->GetIndexExpression()->Accept(this);
   tab -= 2;
 }
