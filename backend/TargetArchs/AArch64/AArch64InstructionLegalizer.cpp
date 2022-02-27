@@ -84,8 +84,14 @@ bool AArch64InstructionLegalizer::ExpandCMP(MachineInstruction *MI) {
   case MachineInstruction::LT:
     Opcode = CSET_lt;
     break;
+  case MachineInstruction::LE:
+    Opcode = CSET_le;
+    break;
   case MachineInstruction::GT:
     Opcode = CSET_gt;
+    break;
+  case MachineInstruction::GE:
+    Opcode = CSET_ge;
     break;
   default:
     assert(!"Unhandled");
