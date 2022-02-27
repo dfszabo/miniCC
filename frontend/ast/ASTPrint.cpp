@@ -119,6 +119,14 @@ void ASTPrint::VisitWhileStatement(const WhileStatement *node) {
   tab -= 2;
 }
 
+void ASTPrint::VisitDoWhileStatement(const DoWhileStatement *node) {
+  PrintLn("DoWhileStatement", tab);
+  tab += 2;
+  node->GetBody()->Accept(this);
+  node->GetCondition()->Accept(this);
+  tab -= 2;
+}
+
 void ASTPrint::VisitForStatement(const ForStatement *node) {
   PrintLn("ForStatement", tab);
   tab += 2;

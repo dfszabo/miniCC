@@ -78,6 +78,7 @@ public:
   std::unique_ptr<Expression> ParsePrimaryExpression();
   std::unique_ptr<Expression> ParseInitializerListExpression();
   std::unique_ptr<WhileStatement> ParseWhileStatement();
+  std::unique_ptr<DoWhileStatement> ParseDoWhileStatement();
   std::unique_ptr<ForStatement> ParseForStatement();
   std::unique_ptr<IfStatement> ParseIfStatement();
   std::unique_ptr<SwitchStatement> ParseSwitchStatement();

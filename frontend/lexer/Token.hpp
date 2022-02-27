@@ -81,6 +81,7 @@ public:
     // Keywords
     For,
     While,
+    Do,
     If,
     Switch,
     Case,
@@ -248,6 +249,8 @@ public:
       return "for";
     case While:
       return "while";
+    case Do:
+      return "do";
     case If:
       return "if";
     case Switch:
