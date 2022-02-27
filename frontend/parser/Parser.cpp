@@ -769,6 +769,7 @@ double Parser::ParseRealConstant() {
 
 // <Statement> ::= <ExpressionStatement>
 //               | <WhileStatement>
+//               | <DoWhileStatement>
 //               | <ForStatement>
 //               | <IfStatement>
 //               | <SwitchStatement>
@@ -781,6 +782,8 @@ std::unique_ptr<Statement> Parser::ParseStatement() {
     return ParseSwitchStatement();
   if (lexer.Is(Token::While))
     return ParseWhileStatement();
+  if (lexer.Is(Token::Do))
+    return ParseDoWhileStatement();
   if (lexer.Is(Token::For))
     return ParseForStatement();
   if (lexer.Is(Token::LeftCurly))
@@ -883,6 +886,21 @@ std::unique_ptr<WhileStatement> Parser::ParseWhileStatement() {
   WS->SetBody(std::move(ParseStatement()));
 
   return WS;
+}
+
+// <DoWhileStatement> ::= do <Statement> while '(' <Expression> ')' ';'
+std::unique_ptr<DoWhileStatement> Parser::ParseDoWhileStatement() {
+  std::unique_ptr<DoWhileStatement> DWS = std::make_unique<DoWhileStatement>();
+
+  Expect(Token::Do);
+  DWS->SetBody(std::move(ParseStatement()));
+  Expect(Token::While);
+  Expect(Token::LeftParen);
+  DWS->SetCondition(std::move(ParseExpression()));
+  Expect(Token::RightParen);
+  Expect(Token::SemiColon);
+
+  return DWS;
 }
 
 // <ForStatement> ::= for '(' <Expression> ';' <Expression> ';' <Expression> ')'

@@ -18,6 +18,7 @@ public:
   void VisitIfStatement(const IfStatement *node) override;
   void VisitSwitchStatement(const SwitchStatement *node) override;
   void VisitWhileStatement(const WhileStatement *node) override;
+  void VisitDoWhileStatement(const DoWhileStatement *node) override;
   void VisitForStatement(const ForStatement *node) override;
   void VisitReturnStatement(const ReturnStatement *node) override;
   void VisitBreakStatement(const BreakStatement *node) override;

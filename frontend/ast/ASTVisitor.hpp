@@ -10,6 +10,7 @@ class ExpressionStatement;
 class IfStatement;
 class SwitchStatement;
 class WhileStatement;
+class DoWhileStatement;
 class ForStatement;
 class ReturnStatement;
 class BreakStatement;
@@ -44,6 +45,7 @@ public:
   virtual void VisitIfStatement(const IfStatement *node) = 0;
   virtual void VisitSwitchStatement(const SwitchStatement *node) = 0;
   virtual void VisitWhileStatement(const WhileStatement *node) = 0;
+  virtual void VisitDoWhileStatement(const DoWhileStatement *node) = 0;
   virtual void VisitForStatement(const ForStatement *node) = 0;
   virtual void VisitReturnStatement(const ReturnStatement *node) = 0;
   virtual void VisitBreakStatement(const BreakStatement *node) = 0;

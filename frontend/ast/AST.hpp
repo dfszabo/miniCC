@@ -284,6 +284,25 @@ private:
   std::unique_ptr<Statement> Body;
 };
 
+class DoWhileStatement : public Statement {
+public:
+  std::unique_ptr<Expression> const &GetCondition() const { return Condition; }
+  void SetCondition(std::unique_ptr<Expression> c) { Condition = std::move(c); }
+
+  std::unique_ptr<Statement> const &GetBody() const { return Body; }
+  void SetBody(std::unique_ptr<Statement> b) { Body = std::move(b); }
+
+  void Accept(ASTVisitor *visitor) const override {
+    visitor->VisitDoWhileStatement(this);
+  }
+
+  Value *IRCodegen(IRFactory *IRF) override;
+
+private:
+  std::unique_ptr<Expression> Condition;
+  std::unique_ptr<Statement> Body;
+};
+
 class ForStatement : public Statement {
 public:
   using StmtVec = std::vector<std::unique_ptr<Statement>>;
