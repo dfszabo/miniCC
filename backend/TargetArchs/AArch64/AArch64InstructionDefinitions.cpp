@@ -4,17 +4,17 @@ using namespace AArch64;
 
 AArch64InstructionDefinitions::AArch64InstructionDefinitions() {
   InstrEnumStrings = {
-      "ADD_rrr",  "ADD_rri",  "AND_rrr",  "AND_rri",   "ORR_rrr", "ORR_rri",
-      "EOR_rrr",  "EOR_rri",  "LSL_rrr",  "LSL_rri",   "LSR_rrr", "LSR_rri",
-      "SUB_rrr",  "SUB_rri",  "SUBS",     "MUL_rri",   "MUL_rrr", "SDIV_rri",
-      "SDIV_rrr", "UDIV_rrr", "CMP_ri",   "CMP_rr",    "CSET_eq", "CSET_ne",
-      "CSET_lt",  "CSET_gt",  "SXTB",     "SXTH",      "SXTW",    "UXTB",
-      "UXTH",     "UXTW",     "MOV_rc",   "MOV_rr",    "MOVK_ri", "MVN_rr",
-      "FADD_rrr", "FSUB_rrr", "FDIV_rrr", "FMUL_rrr",  "FMOV_rr", "FMOV_ri",
-      "FCMP_rr",  "FCMP_ri",  "SCVTF_rr", "FCVTZS_rr", "ADRP",    "LDR",
-      "LDRB",     "LDRH",     "STR",      "STRB",      "STRH",    "BEQ",
-      "BNE",      "BGE",      "BGT",      "BLE",       "BLT",     "B",
-      "BL",       "RET"};
+      "ADD_rrr",  "ADD_rri",  "AND_rrr",  "AND_rri",  "ORR_rrr",  "ORR_rri",
+      "EOR_rrr",  "EOR_rri",  "LSL_rrr",  "LSL_rri",  "LSR_rrr",  "LSR_rri",
+      "SUB_rrr",  "SUB_rri",  "SUBS",     "MUL_rri",  "MUL_rrr",  "SDIV_rri",
+      "SDIV_rrr", "UDIV_rrr", "CMP_ri",   "CMP_rr",   "CSET_eq",  "CSET_ne",
+      "CSET_lt",  "CSET_le",  "CSET_gt",  "CSET_ge",  "SXTB",     "SXTH",
+      "SXTW",     "UXTB",     "UXTH",     "UXTW",     "MOV_rc",   "MOV_rr",
+      "MOVK_ri",  "MVN_rr",   "FADD_rrr", "FSUB_rrr", "FDIV_rrr", "FMUL_rrr",
+      "FMOV_rr",  "FMOV_ri",  "FCMP_rr",  "FCMP_ri",  "SCVTF_rr", "FCVTZS_rr",
+      "ADRP",     "LDR",      "LDRB",     "LDRH",     "STR",      "STRB",
+      "STRH",     "BEQ",      "BNE",      "BGE",      "BGT",      "BLE",
+      "BLT",      "B",        "BL",       "RET"};
 }
 
 AArch64InstructionDefinitions::IRToTargetInstrMap
@@ -46,7 +46,9 @@ AArch64InstructionDefinitions::IRToTargetInstrMap
       ret[CSET_eq] = {CSET_eq, 32, "cset\t$1, eq", {GPR}};
       ret[CSET_ne] = {CSET_ne, 32, "cset\t$1, ne", {GPR}};
       ret[CSET_lt] = {CSET_lt, 32, "cset\t$1, lt", {GPR}};
+      ret[CSET_le] = {CSET_le, 32, "cset\t$1, le", {GPR}};
       ret[CSET_gt] = {CSET_gt, 32, "cset\t$1, gt", {GPR}};
+      ret[CSET_ge] = {CSET_ge, 32, "cset\t$1, ge", {GPR}};
       ret[SXTB] = {SXTB, 32, "sxtb\t$1, $2", {GPR, GPR}};
       ret[SXTH] = {SXTH, 32, "sxth\t$1, $2", {GPR, GPR}};
       ret[SXTW] = {SXTW, 32, "sxtw\t$1, $2", {GPR, GPR}};
