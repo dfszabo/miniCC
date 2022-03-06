@@ -12,6 +12,8 @@ public:
     FilePath = Path.substr(0, Path.rfind('/'));
     if (FilePath.length() > 0 && FilePath[FilePath.length() - 1] != '/')
       FilePath.push_back('/');
+
+    DefinedMacros["__LINE__"] = {"1", 0};
   }
 
   void ParseDirective(std::string &Line, size_t LineIdx);
