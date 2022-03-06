@@ -42,8 +42,10 @@ void ASTPrint::VisitStructDeclaration(const StructDeclaration *node) {
   Print("StructDeclaration '", tab);
   Print(node->GetName().c_str());
   PrintLn("' ");
+  tab += 2;
   for (auto &M : node->GetMembers())
     M->Accept(this);
+  tab -= 2;
 }
 
 void ASTPrint::VisitEnumDeclaration(const EnumDeclaration *node) {
@@ -74,7 +76,8 @@ void ASTPrint::VisitCompoundStatement(const CompoundStatement *node) {
 void ASTPrint::VisitExpressionStatement(const ExpressionStatement *node) {
   PrintLn("ExpressionStatement", tab);
   tab += 2;
-  node->GetExpression()->Accept(this);
+  if (node->GetExpression() != nullptr)
+    node->GetExpression()->Accept(this);
   tab -= 2;
 }
 
@@ -235,16 +238,14 @@ void ASTPrint::VisitStructInitExpression(const StructInitExpression *node) {
 
 void ASTPrint::VisitUnaryExpression(const UnaryExpression *node) {
   Print("UnaryExpression ", tab);
-  std::string Str;
-  if (node->GetOperationKind() == UnaryExpression::SIZEOF)
-    Str += "'" + Type(Type::UnsignedInt).ToString() + "' ";
-  else
-    Str += "'" + node->GetResultType().ToString() + "' ";
+  std::string Str = "'" + node->GetResultType().ToString() + "' ";
 
   Str += "'" + node->GetOperation().GetString() + "'";
 
   if (!node->GetExpr())
     Str += " '" + node->GetResultType().ToString() + "'";
+  else if (node->GetOperationKind() == UnaryExpression::SIZEOF)
+    Str += " '" + node->GetSizeOfType().ToString() + "'";
 
   PrintLn(Str.c_str());
 

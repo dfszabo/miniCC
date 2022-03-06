@@ -24,6 +24,7 @@ public:
     StructToRegMap.clear();
     StructByIDToRegMap.clear();
     IRVregToLLIRVreg.clear();
+    SpilledReturnValuesStackIDs.clear();
   }
 
 private:
@@ -50,6 +51,10 @@ private:
   /// occasionally new instructions are added with possible new virtual
   /// registers.
   std::map<unsigned, unsigned> IRVregToLLIRVreg;
+
+  /// To keep track which stack slots are used for spilling the return values
+  /// of functions calls.
+  std::set<unsigned> SpilledReturnValuesStackIDs;
 };
 
 #endif

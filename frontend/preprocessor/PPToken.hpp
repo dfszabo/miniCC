@@ -21,6 +21,8 @@ public:
     RightParen,
     DoubleQuote,
     ForwardSlash,
+    LessThan,
+    GreaterThan,
     
     // Keywords
     Define,
@@ -66,6 +68,10 @@ public:
       return "\"";
     case ForwardSlash:
       return "/";
+    case LessThan:
+      return "<";
+    case GreaterThan:
+      return ">";
     case Define:
       return "define";
     case Include:

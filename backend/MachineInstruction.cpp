@@ -1,6 +1,24 @@
 #include "MachineInstruction.hpp"
 #include "TargetMachine.hpp"
 
+void MachineInstruction::UpdateAttributes() {
+  switch (Opcode) {
+  case LOAD:
+  case SEXT_LOAD:
+  case ZEXT_LOAD:
+    AddAttribute(IS_LOAD);
+    break;
+  case STORE:
+    AddAttribute(IS_STORE);
+    break;
+  case RET:
+    AddAttribute(IS_RETURN);
+    break;
+  default:
+    break;
+  }
+}
+
 void MachineInstruction::Print(TargetMachine *TM) const {
   std::string OpcodeStr;
 
@@ -73,6 +91,9 @@ void MachineInstruction::Print(TargetMachine *TM) const {
     break;
   case ITOF:
     OpcodeStr = "ITOF";
+    break;
+  case BITCAST:
+    OpcodeStr = "BITCAST";
     break;
   case ZEXT_LOAD:
     OpcodeStr = "ZEXT_LOAD";

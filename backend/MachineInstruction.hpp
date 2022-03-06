@@ -13,6 +13,7 @@ class MachineInstruction {
   using OperandList = std::vector<MachineOperand>;
 
 public:
+  // LLIR operations
   enum OperationCode : unsigned {
     // Integer Arithmetic and Logical
     AND = 1 << 16,
@@ -42,6 +43,7 @@ public:
     TRUNC, // Truncating
     FTOI, // Float TO Integer
     ITOF, // Integer TO Float
+    BITCAST,
 
     // Control flow operations
     CALL,
@@ -74,27 +76,28 @@ public:
     IS_LOAD = 1,
     IS_STORE = 1 << 1,
     IS_EXPANDED = 1 << 2,
+    IS_RETURN = 1 << 3,
   };
 
   MachineInstruction() {}
   MachineInstruction(unsigned Opcode, MachineBasicBlock *Parent)
       : Opcode(Opcode), Parent(Parent) {
-    switch (Opcode) {
-    case LOAD:
-    case SEXT_LOAD:
-    case ZEXT_LOAD:
-      AddAttribute(IS_LOAD);
-      break;
-    case STORE:
-      AddAttribute(IS_STORE);
-      break;
-    default:
-      break;
-    }
+    UpdateAttributes();
   }
 
+  /// To update the instruction attributes based on the operation code.
+  void UpdateAttributes();
+
   unsigned GetOpcode() const { return Opcode; }
-  void SetOpcode(unsigned Opcode) { this->Opcode = Opcode; }
+
+  void SetOpcode(unsigned Opcode) {
+    this->Opcode = Opcode;
+    // only update attributes if this is a LLIR opcode
+    if (Opcode >= (1 << 16)) {
+      OtherAttributes = 0;
+      UpdateAttributes();
+    }
+  }
 
   size_t GetOperandsNumber() const { return Operands.size(); }
 
@@ -185,6 +188,7 @@ public:
     return Opcode == STORE || (OtherAttributes & IS_STORE);
   }
   bool IsAlreadyExpanded() const { return OtherAttributes & IS_EXPANDED; }
+  bool IsReturn() const { return OtherAttributes & IS_RETURN; }
 
   /// flag the MI as expanded, so the legalizer can ignore it
   void FlagAsExpanded() { OtherAttributes |= IS_EXPANDED; }

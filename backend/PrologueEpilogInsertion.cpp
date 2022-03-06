@@ -3,6 +3,7 @@
 #include "MachineInstruction.hpp"
 #include "MachineOperand.hpp"
 #include "Support.hpp"
+#include "TargetInstruction.hpp"
 
 /// TODO: Solve the stack issue: inserting physregs can collide with existing
 /// stack slot with the same ID
@@ -69,8 +70,9 @@ void PrologueEpilogInsertion::InsertLinkRegisterReload(MachineFunction &Func) {
   if (!TM->SelectInstruction(&LOAD))
     assert(!"Unable to select instruction");
 
-  auto &LastBB = Func.GetBasicBlocks().back();
-  LastBB.InsertInstr(LOAD, LastBB.GetInstructions().size() - 1);
+  auto &RetBB = Func.GetBasicBlocks()[MBBWithRetIdx];
+  RetBB.InsertInstr(LOAD,
+                     std::max(0, (int)RetBB.GetInstructions().size() - 1));
 }
 
 void PrologueEpilogInsertion::InsertStackAdjustmentUpward(
@@ -94,11 +96,9 @@ void PrologueEpilogInsertion::InsertStackAdjustmentDownward(
 
   MachineInstruction ADDToSP = CreateADDInstruction(StackAdjustmentSize);
 
-  // NOTE: for now assuming that there is only one ret instruction and its
-  // the last one of the last basic block, so we want to insert above it
-  auto &LastBB = Func.GetBasicBlocks().back();
-  assert(LastBB.GetInstructions().size() > 0);
-  LastBB.InsertInstr(ADDToSP, LastBB.GetInstructions().size() - 1);
+  auto &RetBB = Func.GetBasicBlocks()[MBBWithRetIdx];
+  assert(RetBB.GetInstructions().size() > 0);
+  RetBB.InsertInstr(ADDToSP, RetBB.GetInstructions().size() - 1);
 }
 
 MachineInstruction PrologueEpilogInsertion::CreateSTORE(MachineFunction &Func,
@@ -156,11 +156,11 @@ void PrologueEpilogInsertion::SpillClobberedCalleeSavedRegisters(
 void PrologueEpilogInsertion::ReloadClobberedCalleeSavedRegisters(
     MachineFunction &Func) {
   unsigned Counter = 0;
-  auto &LastBB = Func.GetBasicBlocks().back();
+  auto &RetBB = Func.GetBasicBlocks()[MBBWithRetIdx];
 
   for (auto Reg : Func.GetUsedCalleSavedRegs()) {
     auto LOAD = CreateLOAD(Func, Reg);
-    LastBB.InsertInstr(LOAD, LastBB.GetInstructions().size() - 1 - Counter);
+    RetBB.InsertInstr(LOAD, RetBB.GetInstructions().size() - 1 - Counter);
     Counter++;
   }
 }
@@ -171,7 +171,9 @@ void PrologueEpilogInsertion::Run() {
     if (Func.GetStackFrameSize() == 0 && Func.GetUsedCalleSavedRegs().empty())
       continue;
 
+    // reset state before processing a new function
     LocalPhysRegToStackSlotMap.clear();
+    MBBWithRetIdx = ~0;
     NextStackSlot = 10000;
 
     for (auto CalleSavedReg : Func.GetUsedCalleSavedRegs()) {
@@ -184,6 +186,20 @@ void PrologueEpilogInsertion::Run() {
       Func.GetStackFrame().InsertStackSlot(NextStackSlot,16);
       LocalPhysRegToStackSlotMap[TM->GetRegInfo()->GetLinkRegister()] = NextStackSlot++;
     }
+
+    // find where the ret is
+    for (size_t i = 0; i < Func.GetBasicBlocks().size(); i++) {
+      for (auto &MI : Func.GetBasicBlocks()[i].GetInstructions())
+        if (TM->GetInstrDefs()->GetTargetInstr(MI.GetOpcode())->IsReturn()) {
+          MBBWithRetIdx = i;
+          break;
+        }
+      // break out from the outer loop aswell
+      if (MBBWithRetIdx != ~0u)
+        break;
+    }
+
+    assert(MBBWithRetIdx != ~0u && "Have not found a return instruction");
 
     InsertStackAdjustmentUpward(Func);
     InsertLinkRegisterSave(Func);

@@ -60,7 +60,7 @@ def execute_tests(file_name, arch, function_declarations, test_cases):
         text_file.write(current_test_main)
         text_file.close()
 
-        compile_ret = subprocess.run([arch + "-linux-gnu-gcc", "test_main.c", "test.s", "-o", "test", "-static"]).returncode
+        compile_ret = subprocess.run([arch + "-linux-gnu-gcc", "test_main.c", "test.s", "-o", "test", "-static", "-lm"]).returncode
         if compile_ret != 0:
             if not save_temps:
               if path.exists("test_main.c"):

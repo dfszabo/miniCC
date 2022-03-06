@@ -321,10 +321,25 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
     auto Qualifiers = ParseQualifiers();
     Token = GetCurrentToken();
 
-    if (lexer.Is(Token::Struct) && lexer.LookAhead(3).GetKind() == Token::LeftCurly) {
-      TU->AddDeclaration(ParseStructDeclaration(Qualifiers));
+    bool IsAlsoStuctVariableDeclaration = false;
+    Type BaseType;
+
+    if (lexer.Is(Token::Struct) &&
+        lexer.LookAhead(3).GetKind() == Token::LeftCurly) {
+      auto SD = ParseStructDeclaration(Qualifiers);
+      auto SDPtr = SD.get();
+
+      TU->AddDeclaration(std::move(SD));
       Token = GetCurrentToken();
-      continue;
+
+      if (Token.GetKind() != Token::SemiColon) {
+        IsAlsoStuctVariableDeclaration = true;
+        BaseType = std::get<0>(UserDefinedTypes[SDPtr->GetName()]);
+      } else {
+        Expect(Token::SemiColon);
+        Token = GetCurrentToken();
+        continue;
+      }
     }
 
     if (lexer.Is(Token::Enum)) {
@@ -332,9 +347,12 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
       Token = GetCurrentToken();
       continue;
     }
+    
+    if (!IsAlsoStuctVariableDeclaration) {
+      BaseType = ParseType(Token.GetKind());
+      Lex();
+    }
 
-    Type BaseType = ParseType(Token.GetKind());
-    Lex();
     BaseType.SetQualifiers(Qualifiers);
     Type CurrentType = BaseType;
 
@@ -605,14 +623,18 @@ std::unique_ptr<VariableDeclaration> Parser::ParseVariableDeclaration(Type type)
       InitExpr = ParseExpression();
       // if the variable type not match the size of the initializer expression
       // then also do an implicit cast
-      if ((type.GetTypeVariant() !=
-           InitExpr->GetResultType().GetTypeVariant()) &&
+      if ((type != InitExpr->GetResultType()) &&
           !Type::OnlySigndnessDifference(
               type.GetTypeVariant(),
               InitExpr->GetResultType().GetTypeVariant())) {
-        if (!Type::IsImplicitlyCastable(
-                InitExpr->GetResultType().GetTypeVariant(),
-                type.GetTypeVariant())) {
+
+        bool IsImplicitlyCastable = Type::IsImplicitlyCastable(
+            InitExpr->GetResultType().GetTypeVariant(), type.GetTypeVariant());
+
+        IsImplicitlyCastable |=
+            type.IsPointerType() && InitExpr->GetResultType().IsIntegerType();
+
+        if (!IsImplicitlyCastable) {
           assert(!"Invalid initialization");
         } else {
           InitExpr = std::make_unique<ImplicitCastExpression>(
@@ -661,7 +683,7 @@ std::unique_ptr<MemberDeclaration> Parser::ParseMemberDeclaration() {
 }
 
 // <StructDeclaration> ::= 'struct' <Identifier>
-//                                  '{' <StructDeclarationList>+ '}' ';'
+//                                  '{' <StructDeclarationList>+ '}'
 std::unique_ptr<StructDeclaration>
 Parser::ParseStructDeclaration(unsigned Qualifiers = 0) {
   Expect(Token::Struct);
@@ -674,6 +696,10 @@ Parser::ParseStructDeclaration(unsigned Qualifiers = 0) {
   Type type(Type::Struct);
   type.SetName(Name);
   type.SetQualifiers(Qualifiers);
+
+  // register the type already even though it is an incomplete type
+  // at this time of parsing
+  UserDefinedTypes[Name] = {type, {}};
 
   std::vector<std::string> StructMemberIdentifiers;
   while (lexer.IsNot(Token::RightCurly)) {
@@ -689,8 +715,6 @@ Parser::ParseStructDeclaration(unsigned Qualifiers = 0) {
     auto AliasName = Expect(Token::Identifier).GetString();
     TypeDefinitions[AliasName] = type;
   }
-
-  Expect(Token::SemiColon);
 
   // saving the struct type and name
   UserDefinedTypes[Name] = {type, std::move(StructMemberIdentifiers)};
@@ -1183,16 +1207,9 @@ std::unique_ptr<Expression> Parser::ParseUnaryExpression() {
 
       if (hasSizeofParenthesis)
         Expect(Token::RightParen);
-      auto UE = std::make_unique<UnaryExpression>(UnaryOperation, nullptr);
 
-      // TODO: for now the type which size is queried by sizeof is saved to
-      // the UnaryExpression return type, which is fine for now, but also
-      // make the code ambiguous, since this type is referring to the
-      // expression's return type, but since for sizeof thats known this trick
-      // is employed so no need to make further members for UnaryExpression or a
-      // different Expression class for sizeof, but still this should be
-      // improved since its a hack and make the code more convoluted
-      UE->SetType(type);
+      auto UE = std::make_unique<UnaryExpression>(UnaryOperation, nullptr);
+      UE->SetSizeOfType(type);
       return UE;
     }
   }
@@ -1304,6 +1321,24 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
       break;
     }
 
+    bool IsCompositeAssignment = false;
+    switch (BinaryOperator.GetKind()) {
+    case Token::PlusEqual:
+    case Token::MinusEqual:
+    case Token::AstrixEqual:
+    case Token::ForwardSlashEqual:
+    case Token::PercentEqual:
+    case Token::AndEqual:
+    case Token::OrEqual:
+    case Token::CaretEqual:
+    case Token::LessThanLessThanEqual:
+    case Token::GreaterThanGreaterThanEqual:
+      IsCompositeAssignment = true;
+      break;
+    default:
+      break;
+    }
+
     if (IsArithmetic &&
         Type::IsSmallerThanInt(LeftExpression->GetResultType().GetTypeVariant())) {
       LeftExpression = std::make_unique<ImplicitCastExpression>(
@@ -1350,6 +1385,13 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
       }
     }
 
+    // convert left expression to RValue if the operation is not assignment
+    if (BinaryOperator.GetKind() != Token::Equal && !IsCompositeAssignment)
+      LeftExpression->SetLValueness(false);
+    
+    // convert right expression to RValue
+    RightExpression->SetLValueness(false);
+
     int NextTokenPrec = GetBinOpPrecedence(GetCurrentTokenKind());
 
     int Associviaty = 1; // left
@@ -1362,8 +1404,8 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
                                                  std::move(RightExpression));
 
     // Implicit cast insertion if needed.
-    auto LeftType = LeftExpression->GetResultType().GetTypeVariant();
-    auto RightType = RightExpression->GetResultType().GetTypeVariant();
+    auto LeftType = LeftExpression->GetResultType();
+    auto RightType = RightExpression->GetResultType();
 
     // if its a modulo operation
     if (BinaryOperator.GetKind() == Token::Percent) {
@@ -1375,28 +1417,10 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
     }
     // Having different types.
     else if (LeftType != RightType &&
-             !Type::OnlySigndnessDifference(LeftType, RightType)) {
-      // if an assingment, then try to cast the right hand side to type of the
-      // left hand side
-
-      bool IsCompositeAssignment = false;
-      switch (BinaryOperator.GetKind()) {
-      case Token::PlusEqual:
-      case Token::MinusEqual:
-      case Token::AstrixEqual:
-      case Token::ForwardSlashEqual:
-      case Token::PercentEqual:
-      case Token::AndEqual:
-      case Token::OrEqual:
-      case Token::CaretEqual:
-      case Token::LessThanLessThanEqual:
-      case Token::GreaterThanGreaterThanEqual:
-        IsCompositeAssignment = true;
-        break;
-      default:
-        break;
-      }
-
+             !Type::OnlySigndnessDifference(LeftType.GetTypeVariant(),
+                                            RightType.GetTypeVariant())) {
+      // if an assignment, then try to cast the right-hand side to type of the
+      // left-hand side
       if (BinaryOperator.GetKind() == Token::Equal || IsCompositeAssignment) {
         if (!Type::IsImplicitlyCastable(RightType, LeftType))
           EmitError("Type mismatch", lexer, BinaryOperator);
@@ -1407,16 +1431,20 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
       }
       // Otherwise cast the one with lower conversion rank to the higher one
       else {
-        auto DesiredType =
-            Type::GetStrongestType(LeftType, RightType).GetTypeVariant();
+        auto DesiredType = Type::GetStrongestType(LeftType.GetTypeVariant(),
+                                                  RightType.GetTypeVariant())
+                               .GetTypeVariant();
 
-        // If left hand side needs the conversion
-        if (LeftType != DesiredType)
+        const bool IsLeftPtr = LeftType.IsPointerType();
+        const bool LeftNeedConv = LeftType != DesiredType && !IsLeftPtr;
+
+        // If left-hand side needs the conversion
+        if (LeftNeedConv)
           LeftExpression = std::make_unique<ImplicitCastExpression>(
-              std::move(LeftExpression), DesiredType);
+              std::move(LeftExpression), RightType);
         else // if the right one
           RightExpression = std::make_unique<ImplicitCastExpression>(
-              std::move(RightExpression), DesiredType);
+              std::move(RightExpression), LeftType);
       }
     }
 

@@ -83,6 +83,17 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
     Result.SetType(LowLevelType::CreateScalar(C->GetBitWidth()));
 
     return Result;
+  } else if (Val->IsGlobalVar()) {
+    auto Instr = MachineInstruction(MachineInstruction::GLOBAL_ADDRESS, MBB);
+    auto NextVReg = MF->GetNextAvailableVReg();
+    Instr.AddVirtualRegister(NextVReg, TM->GetPointerSize());
+    Instr.AddGlobalSymbol(((GlobalVariable *)Val)->GetName());
+    MBB->InsertInstr(Instr);
+
+    auto MO = MachineOperand::CreateVirtualRegister(NextVReg);
+    MO.SetType(LowLevelType::CreatePTR(TM->GetPointerSize()));
+
+    return MO;
   } else {
     assert(!"Unhandled MO case");
   }
@@ -118,7 +129,37 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
   // Two address ALU instructions: INSTR Result, Op
   else if (auto I = dynamic_cast<UnaryInstruction *>(Instr); I != nullptr) {
     auto Result = GetMachineOperandFromValue((Value *)I, BB, true);
-    auto Op = GetMachineOperandFromValue(I->GetOperand(), BB);
+    MachineOperand Op;
+
+    if (Operation == Instruction::BITCAST) {
+      // if a ptr to ptr cast end both pointer at the same ptr level
+      // ex: i32* to i8*, then issue a STACK_ADDRESS instruction
+      if (I->GetTypeRef().IsPTR() && I->GetOperand()->GetTypeRef().IsPTR() &&
+          I->GetTypeRef().GetPointerLevel() ==
+              I->GetOperand()->GetTypeRef().GetPointerLevel() &&
+          ParentFunction->IsStackSlot(I->GetOperand()->GetID())) {
+        if (SpilledReturnValuesStackIDs.count(I->GetOperand()->GetID()) == 0) {
+          ResultMI.SetOpcode(MachineInstruction::STACK_ADDRESS);
+          Op = MachineOperand::CreateStackAccess(I->GetOperand()->GetID());
+        }
+        // If the stack slot is actually a spilled return value, then the cast
+        // actually if for the spilled value, therefore a load must be issued.
+        // Also for casting pointer to pointers at this level no more
+        // instruction is required, therefore the single load is enough here.
+        else {
+          ResultMI.SetOpcode(MachineInstruction::LOAD);
+          Op = MachineOperand::CreateStackAccess(GetIDFromValue(I->GetOperand()));
+        }
+      } else {
+        // otherwise use a move
+        ResultMI.SetOpcode(MachineInstruction::MOV);
+        Op = GetMachineOperandFromValue(
+            I->GetOperand(), BB,
+            (unsigned)Operation == (unsigned)MachineInstruction::BITCAST);
+      }
+    }
+     else
+      Op = GetMachineOperandFromValue(I->GetOperand(), BB);
 
     ResultMI.AddOperand(Result);
     ResultMI.AddOperand(Op);
@@ -180,9 +221,11 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       // function
       else {
         // determine how much register is used to hold the return val
-        unsigned StructBitSize = (I->GetSavedValue()->GetTypeRef().GetByteSize() * 8);
-        unsigned MaxRegSize = TM->GetPointerSize();
-        unsigned RegsCount = GetNextAlignedValue(StructBitSize, MaxRegSize) / MaxRegSize;
+        const unsigned StructBitSize =
+            (I->GetSavedValue()->GetTypeRef().GetBaseTypeByteSize() * 8);
+        const unsigned MaxRegSize = TM->GetPointerSize();
+        const unsigned RegsCount =
+            GetNextAlignedValue(StructBitSize, MaxRegSize) / MaxRegSize;
         auto &RetRegs = TM->GetABI()->GetReturnRegisters();
         assert(RegsCount <= RetRegs.size());
 
@@ -551,9 +594,11 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     auto &RetRegs = TM->GetABI()->GetReturnRegisters();
 
     for (size_t i = 0; i < RegsCount; i++) {
-      // FIXME: actual its not a vreg, but this make sure it will be a unique ID
+      // NOTE: Actual its not a vreg, but this make sure it will be a unique ID.
+      // TODO: Maybe rename GetNextAvailableVReg to GetNextAvailableID
       auto StackSlot = ParentFunction->GetNextAvailableVReg();
       IRVregToLLIRVreg[I->GetID()] = StackSlot;
+      SpilledReturnValuesStackIDs.insert(StackSlot);
       ParentFunction->InsertStackSlot(StackSlot,
                                       std::min(RetBitSize, MaxRegSize) / 8);
       auto Store = MachineInstruction(MachineInstruction::STORE, BB);
@@ -571,7 +616,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         TargetRetReg = RetRegs[ParamIdx]->GetID();
       // need to find an appropriate sized subregister of the actual return reg
       else
-        // FIXME: Temporary solution, only work for AArch64
+        // TODO: Temporary solution, only work for AArch64
         TargetRetReg = RetRegs[ParamIdx]->GetSubRegs()[0];
 
       Store.AddRegister(TargetRetReg, std::min(RetBitSize, MaxRegSize));
@@ -592,9 +637,11 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     auto &TargetRetRegs = TM->GetABI()->GetReturnRegisters();
     if (I->GetRetVal()->GetTypeRef().IsStruct()) {
       // how many register are used to pass this struct
-      unsigned StructBitSize = (I->GetRetVal()->GetTypeRef().GetByteSize() * 8);
+      unsigned StructBitSize =
+          (I->GetRetVal()->GetTypeRef().GetBaseTypeByteSize() * 8);
       unsigned MaxRegSize = TM->GetPointerSize();
-      unsigned RegsCount = GetNextAlignedValue(StructBitSize, MaxRegSize) / MaxRegSize;
+      unsigned RegsCount =
+          GetNextAlignedValue(StructBitSize, MaxRegSize) / MaxRegSize;
 
       for (size_t i = 0; i < RegsCount; i++) {
         auto Instr = MachineInstruction(MachineInstruction::LOAD, BB);
@@ -761,6 +808,13 @@ void IRtoLLIR::GenerateLLIRFromIR() {
         }
         MFuncMBBs[BBCounter].InsertInstr(
             ConvertToMachineInstr(InstrPtr, &MFuncMBBs[BBCounter], MFuncMBBs));
+
+        // everything after a return is dead code so skip those
+        // TODO: add unconditional branch aswell, but it would be better to
+        // just not handle this here but in some optimization pass for
+        // example in dead code elimination
+        if (MFuncMBBs[BBCounter].GetInstructions().back().IsReturn())
+          break;
       }
 
       BBCounter++;

@@ -202,6 +202,16 @@ public:
     return InstPtr;
   }
 
+  UnaryInstruction *CreateBITCAST(Value *Operand, const IRType &To) {
+    auto Inst = std::make_unique<UnaryInstruction>(Instruction::BITCAST, To,
+                                                   Operand, GetCurrentBB());
+    Inst->SetID(ID++);
+    auto InstPtr = Inst.get();
+    Insert(std::move(Inst));
+
+    return InstPtr;
+  }
+
   CallInstruction *CreateCALL(std::string &Name, std::vector<Value *> Args,
                               IRType Type, int StructIdx = -1) {
     auto Inst = std::make_unique<CallInstruction>(Name, Args, Type,

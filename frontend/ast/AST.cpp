@@ -647,9 +647,10 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
 
       if (InitExpr->GetType().IsStruct() &&
           InitExpr->GetType().GetPointerLevel() ==
-              SA->GetType().GetPointerLevel())
-        IRF->CreateMEMCOPY(SA, InitExpr, InitExpr->GetType().GetByteSize());
-      else
+              SA->GetType().GetPointerLevel()) {
+        IRF->CreateMEMCOPY(SA, InitExpr,
+                           InitExpr->GetTypeRef().GetBaseTypeByteSize());
+      } else
         IRF->CreateSTR(InitExpr, SA);
     }
   }
@@ -676,7 +677,7 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
         !Arg->GetResultType().IsPointerType()) {
       // if it possible to pass it by value then issue a load first otherwise
       // it passed by pointer which already is
-      if (!((ArgIR->GetTypeRef().GetByteSize() * 8) >
+      if (!((ArgIR->GetTypeRef().GetBaseTypeByteSize() * 8) >
             IRF->GetTargetMachine()->GetABI()->GetMaxStructSizePassedByValue()))
         ArgIR = IRF->CreateLD(ArgIR->GetType(), ArgIR);
     }
@@ -802,7 +803,7 @@ Value *ReferenceExpression::IRCodegen(IRFactory *IRF) {
   if (GetLValueness())
     return GV;
 
-  if (this->GetResultType().IsStruct())
+  if (this->GetResultType().IsStruct() && !GetResultType().IsPointerType())
     return GV;
 
   return IRF->CreateLD(GV->GetType(), GV);
@@ -898,14 +899,29 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
     return IRF->GetConstant(val, DestBitSize);
   }
 
-  // cast one pointer type to another, for now casting is just changing the
-  // expression type
-  // TODO: maybe introduce a new cast instruction like LLVM's bitcast
+  // cast one pointer type to another
   if (CastableExpression->GetResultType().IsPointerType() &&
       GetResultType().IsPointerType()) {
     IRType t = GetIRTypeFromASTType(GetResultType());
-    Val->SetType(t);
-    return Val;
+    return IRF->CreateBITCAST(Val, t);
+  }
+  // if a pointer type is cast to an integer type
+  else if (GetResultType().IsIntegerType() &&
+           CastableExpression->GetResultType().IsPointerType()) {
+    const auto TargetPtrSize = IRF->GetTargetMachine()->GetPointerSize();
+    const auto IntTypeSize =
+        GetIRTypeFromVK(GetResultType().GetTypeVariant()).GetBitSize();
+
+    // if the pointer size of the target is the same as the destination integer
+    // type size, then no further action required
+    if (TargetPtrSize == IntTypeSize)
+      return Val;
+
+    // else truncation/sign extension needed
+    if (TargetPtrSize < IntTypeSize)
+      return IRF->CreateSEXT(Val, IntTypeSize);
+    else // TargetPtrSize > IntTypeSize
+      return IRF->CreateTRUNC(Val, IntTypeSize);
   }
 
   if (Type::OnlySigndnessDifference(SourceTypeVariant, DestTypeVariant))
@@ -1048,6 +1064,7 @@ Value *StructMemberReference::IRCodegen(IRFactory *IRF) {
     return GEP;
 
   auto ResultIRType = GetIRTypeFromASTType(this->GetResultType());
+  ResultIRType.SetPointerLevel(GEP->GetTypeRef().GetPointerLevel());
 
   return IRF->CreateLD(ResultIRType, GEP);
 }
@@ -1189,7 +1206,8 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
     // make the assumption that the expression E is an LValue which means
     // its basically a pointer, so it requires a load first for addition to work
     auto LoadedValType = E->GetTypeRef();
-    LoadedValType.DecrementPointerLevel();
+    if (!E->IsGlobalVar())
+      LoadedValType.DecrementPointerLevel();
     auto LoadedExpr = IRF->CreateLD(LoadedValType, E);
 
     Instruction *AddSub;
@@ -1203,12 +1221,14 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
   }
   case SIZEOF: {
     uint64_t size = 0;
-    Type TypeToBeExamined = ResultType;
+    Type TypeToBeExamined;
 
     // if there was an expression used with sizeof, use thats result type
     // instead
     if (Expr)
       TypeToBeExamined = Expr->GetResultType();
+    else // else use the given type
+      TypeToBeExamined = SizeOfType.value();
 
     size = GetIRTypeFromASTType(TypeToBeExamined)
                .GetByteSize(IRF->GetTargetMachine());
@@ -1311,10 +1331,12 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     if (!L || !R)
       return nullptr;
 
-    if (R->GetTypeRef().IsStruct() &&
-        L->GetType().GetPointerLevel() == R->GetType().GetPointerLevel())
-      IRF->CreateMEMCOPY(L, R, R->GetTypeRef().GetByteSize());
-    else
+    if (R->GetTypeRef().IsStruct() && L->GetTypeRef().GetPointerLevel() == 1 &&
+        R->GetTypeRef().GetPointerLevel() == 1 &&
+        (dynamic_cast<StackAllocationInstruction *>(L) ||
+         !GetResultType().IsPointerType())) {
+      IRF->CreateMEMCOPY(L, R, R->GetTypeRef().GetBaseTypeByteSize());
+    } else
       IRF->CreateSTR(R, L);
     return R;
   }
@@ -1420,6 +1442,9 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
   case LSR:
     return IRF->CreateLSR(L, R);
   case ADD:
+    // pointer addition: pointer + const expression -> emit a GEP
+    if (L->GetTypeRef().IsPTR() && R->IsConstant())
+      return IRF->CreateGEP(L->GetTypeRef(), L, R);
     return IRF->CreateADD(L, R);
   case SUB:
     return IRF->CreateSUB(L, R);
