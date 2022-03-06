@@ -40,6 +40,7 @@ public:
     TRUNC, // Truncating
     FTOI,  // Float TO Integer
     ITOF,  // Integer TO Float
+    BITCAST,
 
     // Control flow operations
     CALL,

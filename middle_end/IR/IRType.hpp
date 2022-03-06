@@ -35,6 +35,9 @@ public:
 
   void ReduceDimension();
 
+  /// Get the maximum alignment based on the struct members
+  unsigned GetStructMaxAlignment(TargetMachine *TM) const;
+
   static IRType CreateBool() { return IRType(SINT, 1); }
   static IRType CreateFloat(uint8_t BitWidht = 32) {
     return IRType(FP, BitWidht);
@@ -51,6 +54,7 @@ public:
   bool IsInvalid() const { return Kind == INVALID; }
   bool IsFP() const { return Kind == FP; }
   bool IsINT() const { return Kind == SINT || Kind == UINT; }
+  bool IsScalar() const { return IsFP() || IsINT(); }
   bool IsPTR() const { return PointerLevel > 0; }
   bool IsStruct() const { return Kind == STRUCT; }
   bool IsArray() const { return !Dimensions.empty(); }
@@ -61,26 +65,25 @@ public:
   unsigned CalcElemSize(unsigned dim) {
     unsigned result = 1;
     assert((dim == 0 || dim < Dimensions.size()) && "Out of bound");
-    for (size_t i = dim + 1; i < Dimensions.size(); i++)
+    size_t i = PointerLevel > 1 ? dim : dim + 1;
+    for (; i < Dimensions.size(); i++)
       result *= Dimensions[i];
 
     return result * (BitWidth / 8);
   }
-  unsigned GetElemByteOffset(const unsigned StructElemIndex) const {
-    assert(StructElemIndex < MembersTypeList.size() && "Out of bound access");
 
-    unsigned ByteOffset = 0;
-    for (size_t i = 0; i < StructElemIndex; i++)
-      ByteOffset += MembersTypeList[i].GetByteSize();
+  unsigned GetElemByteOffset(const unsigned StructElemIndex,
+                             TargetMachine *TM = nullptr) const;
 
-    return ByteOffset;
-  }
   size_t GetBitSize() const {
 
     return BitWidth;
   }
 
   size_t GetByteSize(TargetMachine *TM = nullptr) const;
+
+  /// Get the size of the base type. Achieving this by ignoring the pointerness.
+  size_t GetBaseTypeByteSize(TargetMachine *TM = nullptr) const;
 
   IRType GetBaseType() const { return IRType(Kind, BitWidth); }
 

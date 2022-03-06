@@ -99,6 +99,10 @@ public:
       return false;
     }
 
+    // from integer type to pointer
+    if (IsToPtr && from.IsIntegerType())
+      return true;
+
     bool Result;
     switch (to.GetTypeVariant()) {
     case Char:

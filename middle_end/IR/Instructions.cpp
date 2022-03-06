@@ -45,6 +45,8 @@ std::string Instruction::AsString(IKind IK) {
     return "ftoi";
   case ITOF:
     return "itof";
+  case BITCAST:
+    return "bitcast";
   case CALL:
     return "call";
   case JUMP:
@@ -183,7 +185,8 @@ void BranchInstruction::Print() const {
 void ReturnInstruction::Print() const {
   std::cout << "\t" << AsString(InstKind) << "\t";
   if (RetVal)
-    std::cout << RetVal->ValueString() << std::endl;
+    std::cout << RetVal->ValueString();
+  std::cout << std::endl;
 }
 
 void StackAllocationInstruction::Print() const {

@@ -2,6 +2,7 @@
 #include "PPLexer.hpp"
 #include <cassert>
 #include <fstream>
+#include <filesystem>
 
 std::string WhiteSpaceChars("\t ");
 
@@ -78,8 +79,9 @@ void PreProcessor::ParseDirective(std::string &Line, size_t LineIdx) {
       DefinedMacros[DefinedID.GetString()] = {RemainingText, 0};
     }
   } else if (Directive.GetKind() == PPToken::Include) {
-    assert(lexer.Is(PPToken::DoubleQuote));
-    lexer.Lex(); // eat '"'
+    assert(lexer.Is(PPToken::DoubleQuote) || lexer.Is(PPToken::LessThan));
+    bool IsSystem = lexer.Is(PPToken::LessThan);
+    lexer.Lex(); // eat the token
 
     std::string FileName = "";
 
@@ -91,7 +93,18 @@ void PreProcessor::ParseDirective(std::string &Line, size_t LineIdx) {
       NextToken = lexer.Lex();
     }
 
-    assert(NextToken.GetKind() == PPToken::DoubleQuote);
+    assert((NextToken.GetKind() == PPToken::DoubleQuote && !IsSystem) ||
+           (NextToken.GetKind() == PPToken::GreaterThan && IsSystem));
+
+    // in case if system headers were used use source_code/include/ as include
+    // path
+    if (IsSystem) {
+      auto Path = std::filesystem::current_path();
+      Path.remove_filename();
+
+      FilePath = Path;
+      FilePath += "include/";
+    }
 
     std::vector<std::string> FileContent;
     auto Success = getFileContent(FilePath + FileName, FileContent);
@@ -111,9 +124,16 @@ void PreProcessor::SubstituteMacros(std::string &Line) {
     auto &[MacroBody, MacroParam] = MacroData;
 
     // simple search and replace of plain macros
-    if (MacroParam == 0)
-      while (Line.find(MacroID) != std::string::npos)
+    if (MacroParam == 0) {
+      int LoopCounter = 0; // make sure not stuck in an endless loop
+
+      while (LoopCounter < 20 && Line.find(MacroID) != std::string::npos) {
         Line.replace(Line.find(MacroID), MacroID.length(), MacroBody);
+        LoopCounter++;
+      }
+
+      assert((LoopCounter < 20) && "Was stuck in an endless loop");
+    }
     // otherwise it a function macro and have to substitute the right values
     // into its parameters
     else {

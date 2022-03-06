@@ -51,26 +51,30 @@ void PreAllocateReturnRegister(
     MachineFunction &Func, TargetMachine *TM,
     std::map<VirtualReg, PhysicalReg> &AllocatedRegisters) {
   auto RetRegs = TM->GetABI()->GetReturnRegisters();
-  auto LastBBInstrs = Func.GetBasicBlocks().back().GetInstructions();
 
-  for (auto It = LastBBInstrs.rbegin(); It != LastBBInstrs.rend(); It++) {
-    // If return instruction
-    auto Opcode = It->GetOpcode();
-    if (auto TargetInstr = TM->GetInstrDefs()->GetTargetInstr(Opcode);
-        TargetInstr->IsReturn()) {
-      // if the ret has no operands it means the function ret type is void and
-      // therefore does not need allocation for return registers
-      if (It->GetOperandsNumber() == 0)
-        continue;
+  for (auto MBBIt = Func.GetBasicBlocks().rbegin();
+       MBBIt != Func.GetBasicBlocks().rend(); MBBIt++)
+    for (auto It = MBBIt->GetInstructions().rbegin();
+         It != MBBIt->GetInstructions().rend(); It++) {
+      // If return instruction
+      const auto Opcode = It->GetOpcode();
+      if (auto TargetInstr = TM->GetInstrDefs()->GetTargetInstr(Opcode);
+          TargetInstr->IsReturn()) {
+        // if the ret has no operands it means the function ret type is void and
+        // therefore does not need allocation for return registers
+        if (It->GetOperandsNumber() == 0)
+          continue;
 
-      auto RetValSize = It->GetOperands()[0].GetSize();
+        const auto RetValSize = It->GetOperands()[0].GetSize();
 
-      if (RetValSize == RetRegs[0]->GetBitWidth())
-        AllocatedRegisters[It->GetOperand(0)->GetReg()] = RetRegs[0]->GetID();
-      else
-        AllocatedRegisters[It->GetOperand(0)->GetReg()] = RetRegs[0]->GetSubRegs()[0];
+        // find the appropriate sized target register for the return value
+        if (RetValSize == RetRegs[0]->GetBitWidth())
+          AllocatedRegisters[It->GetOperand(0)->GetReg()] = RetRegs[0]->GetID();
+        else // TODO: this is AArch64 specific
+          AllocatedRegisters[It->GetOperand(0)->GetReg()] =
+              RetRegs[0]->GetSubRegs()[0];
+      }
     }
-  }
 }
 
 PhysicalReg GetNextAvailableReg(MachineOperand *MOperand,

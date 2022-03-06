@@ -599,15 +599,11 @@ public:
     Left = std::move(L);
     Operation = Op;
     Right = std::move(R);
+
     if (IsConditional())
       ResultType = Type(Type::Int);
-    else {
-      auto Strongest =
-          Type::GetStrongestType(Left->GetResultType().GetTypeVariant(),
-                                 Right->GetResultType().GetTypeVariant());
-      ResultType =
-          Type(Type::GetStrongestType(Strongest.GetTypeVariant(), Type::Int));
-    }
+    else // at this point both type should be equal, so either can be used
+      ResultType = Left->GetResultType();
   }
 
   BinaryExpression() = default;
@@ -793,13 +789,21 @@ public:
       ResultType = Expr->GetResultType();
       break;
     case SIZEOF:
+      ResultType = Type(Type::UnsignedInt);
       if (Expr)
-        ResultType = Expr->GetResultType();
+        SizeOfType = Expr->GetResultType();
       break;
     default:
       assert(!"Unimplemented!");
     }
   }
+
+  Type GetSizeOfType() const {
+    assert(SizeOfType.has_value());
+    return SizeOfType.value();
+  }
+
+  void SetSizeOfType(const Type &t) { SizeOfType = t; }
 
   UnaryExpression() = default;
 
@@ -813,6 +817,7 @@ private:
   Token Operation;
   std::unique_ptr<Expression> Expr = nullptr;
   bool IsPostFix = false;
+  std::optional<Type> SizeOfType = std::nullopt;
 };
 
 class CallExpression : public Expression {

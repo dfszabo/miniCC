@@ -27,6 +27,9 @@ private:
 
   MachineIRModule *MIRM;
   TargetMachine *TM;
+
+  /// The index of the Machine Basic Block, which contains a return instruction.
+  unsigned MBBWithRetIdx = ~0;
 };
 
 #endif
