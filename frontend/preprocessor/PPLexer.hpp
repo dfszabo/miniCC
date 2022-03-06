@@ -32,7 +32,7 @@ public:
     return Source.substr(LineIndex);
   }
 
-  unsigned GetLineNum() const { return LineIndex + 1; }
+  unsigned GetLineIndex() const { return LineIndex; }
 
   PPToken Lex(bool LookAhead = false);
 

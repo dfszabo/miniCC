@@ -41,9 +41,17 @@ void PreProcessor::ParseDirective(std::string &Line, size_t LineIdx) {
     // TODO: solve this problem, maybe with giving tokens the linenumber
     auto RemainingText = lexer.GetRemainingText();
 
+    // The lexer ignores spaces so only looking at tokens currently impossible
+    // to distinguish between something like "assert (" and "assert(". But this
+    // needed to know its a function like macro or a simple find and replace
+    // one.
+    // TODO: Solve this issue in a better way
+    bool NoSpaceBetweenIDAndParen =
+        lexer.GetSource()[lexer.GetLineIndex()] == '(';
+
     if (lexer.Is(PPToken::EndOfFile))
       DefinedMacros[DefinedID.GetString()] = {"", 0};
-    else if (lexer.Is(PPToken::LeftParen)) {
+    else if (lexer.Is(PPToken::LeftParen) && NoSpaceBetweenIDAndParen) {
       lexer.Lex(); // eat '('
       std::vector<std::string> Params;
 
@@ -120,54 +128,80 @@ void PreProcessor::ParseDirective(std::string &Line, size_t LineIdx) {
 }
 
 void PreProcessor::SubstituteMacros(std::string &Line) {
-  for (auto &[MacroID, MacroData] : DefinedMacros) {
-    auto &[MacroBody, MacroParam] = MacroData;
+  // To save the processed line state at the beginning of the iteration.
+  std::string LineCopy;
 
-    // simple search and replace of plain macros
-    if (MacroParam == 0) {
-      int LoopCounter = 0; // make sure not stuck in an endless loop
+  do {
+    LineCopy = Line;
 
-      while (LoopCounter < 20 && Line.find(MacroID) != std::string::npos) {
-        Line.replace(Line.find(MacroID), MacroID.length(), MacroBody);
-        LoopCounter++;
+    for (auto &[MacroID, MacroData] : DefinedMacros) {
+      auto &[MacroBody, MacroParam] = MacroData;
+
+      // simple search and replace of plain macros
+      if (MacroParam == 0) {
+        int LoopCounter = 0; // make sure not stuck in an endless loop
+
+        while (LoopCounter < 20 && Line.find(MacroID) != std::string::npos) {
+          Line.replace(Line.find(MacroID), MacroID.length(), MacroBody);
+          LoopCounter++;
+        }
+
+        assert((LoopCounter < 20) && "Was stuck in an endless loop");
       }
+      // otherwise it a function macro and have to substitute the right values
+      // into its parameters
+      else {
+        auto Pos = Line.find(MacroID); // macro start pos
 
-      assert((LoopCounter < 20) && "Was stuck in an endless loop");
+        // If it is the end of the line or the macro is a substring of an other
+        // identifier like example "MacroID == assert" and the line contain
+        // "__assert_fail", then do not need to do substitution, continue with
+        // next iteration. 
+        if (Pos == std::string::npos ||
+            std::isalnum(Line[Pos + MacroID.length()]) ||
+            Line[Pos + MacroID.length()] == '_' ||
+            (Pos > 0 && (std::isalnum(Line[Pos - 1]) || Line[Pos - 1] == '_')))
+          continue;
+
+        Pos += MacroID.length();
+        assert(Line[Pos] == '(');
+        Pos++;
+
+        auto RemainingLine = Line.substr(Pos);
+        size_t StartPos = 0;
+        std::vector<std::string> ActualParams(0);
+        for (size_t i = 0; i < MacroParam; i++) {
+          size_t EndPos = i != MacroParam - 1 ? RemainingLine.find(",")
+                                              : RemainingLine.find(")");
+          ActualParams.push_back(
+              RemainingLine.substr(StartPos, EndPos - StartPos));
+          StartPos = EndPos + 1;
+        }
+
+        auto ReplacedMacroBody = MacroBody;
+        for (size_t i = 0; i < ActualParams.size(); i++) {
+          auto Param = "$" + std::to_string(i);
+          while (ReplacedMacroBody.find(Param) != std::string::npos) {
+            // If a '#' character precede the parameter, then the content of
+            // the parameter needs to be stringified.
+            if (ReplacedMacroBody.find(Param) > 0 &&
+                ReplacedMacroBody[ReplacedMacroBody.find(Param) - 1] == '#')
+              ReplacedMacroBody.replace(ReplacedMacroBody.find(Param) - 1,
+                                        Param.length() + 1,
+                                        "\"" + ActualParams[i] + "\"");
+            else // Plain string replace
+              ReplacedMacroBody.replace(ReplacedMacroBody.find(Param),
+                                        Param.length(), ActualParams[i]);
+          }
+        }
+
+        if (Line.find(MacroID) != std::string::npos)
+          Line.replace(Line.find(MacroID), MacroID.length() + StartPos + 1,
+                       ReplacedMacroBody);
+      }
     }
-    // otherwise it a function macro and have to substitute the right values
-    // into its parameters
-    else {
-      auto Pos = Line.find(MacroID); // macro start pos
-      if (Pos == std::string::npos)
-        continue;
-      Pos += MacroID.length();
-      assert(Line[Pos] == '(');
-      Pos++;
 
-      auto RemainingLine = Line.substr(Pos);
-      size_t StartPos = 0;
-      std::vector<std::string> ActualParams(0);
-      for (size_t i = 0; i < MacroParam; i++) {
-        size_t EndPos = i != MacroParam - 1 ? RemainingLine.find(",")
-                                            : RemainingLine.find(")");
-        ActualParams.push_back(
-            RemainingLine.substr(StartPos, EndPos - StartPos));
-        StartPos = EndPos + 1;
-      }
-
-      auto ReplacedMacroBody = MacroBody;
-      for (size_t i = 0; i < ActualParams.size(); i++) {
-        auto Param = "$" + std::to_string(i);
-        while (ReplacedMacroBody.find(Param) != std::string::npos)
-          ReplacedMacroBody.replace(ReplacedMacroBody.find(Param),
-                                    Param.length(), ActualParams[i]);
-      }
-
-      if (Line.find(MacroID) != std::string::npos)
-        Line.replace(Line.find(MacroID), MacroID.length() + StartPos + 1,
-                     ReplacedMacroBody);
-    }
-  }
+  } while (LineCopy != Line);
 }
 
 void PreProcessor::Run() {
@@ -183,6 +217,9 @@ void PreProcessor::Run() {
       LineIdx--; // since the erase we have to check again the same LineIdx
     } else if (!DefinedMacros.empty()) {
       // Update __LINE__ here, so the correct line number can be substituted
+      // TODO: With the currect handling of the includes - which is basically
+      // insertion of its content - this macro will return false line numbers
+      // if any includes were used. Fix it.
       DefinedMacros["__LINE__"].first = std::to_string(LineIdx + 1);
       SubstituteMacros(Line);
     }
