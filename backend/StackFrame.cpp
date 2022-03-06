@@ -3,13 +3,13 @@
 #include <cassert>
 #include <iostream>
 
-void StackFrame::InsertStackSlot(unsigned ID, unsigned Size) {
+void StackFrame::InsertStackSlot(unsigned ID, unsigned Size, unsigned Align) {
   assert(StackSlots.count(ID) == 0 && "Already existing object on the stack");
 
-  ObjectsSize = GetNextAlignedValue(ObjectsSize, Size);
+  ObjectsSize = GetNextAlignedValue(ObjectsSize, Align);
   ObjectsSize += Size;
   
-  StackSlots.insert({ID, Size});
+  StackSlots.insert({ID, {Size, Align}});
 }
 
 unsigned StackFrame::GetPosition(unsigned ID) {
@@ -19,13 +19,15 @@ unsigned StackFrame::GetPosition(unsigned ID) {
 
   // For now the object size is its alignment as well
   // FIXME: add also alignment info
-  for (const auto &[ObjectID, ObjectSize] : StackSlots) {
+  for (const auto &[ObjectID, ObjectSizeAndAlign] : StackSlots) {
+    const auto [ObjectSize, ObjectAlign] = ObjectSizeAndAlign;
+
     // If the stack object is what we are looking for
     if (ObjectID == ID)
       // then return its aligned position
-      return GetNextAlignedValue(Position, ObjectSize);
+      return GetNextAlignedValue(Position, ObjectAlign);
 
-    Position = GetNextAlignedValue(Position, ObjectSize);
+    Position = GetNextAlignedValue(Position, ObjectAlign);
     Position += ObjectSize;
   }
 
@@ -35,7 +37,7 @@ unsigned StackFrame::GetPosition(unsigned ID) {
 unsigned StackFrame::GetSize(unsigned ID) {
   assert(IsStackSlot(ID) && "Must be a valid stack slot ID");
 
-  return StackSlots[ID];
+  return StackSlots[ID].first;
 }
 
 void StackFrame::Print() const {
@@ -44,7 +46,8 @@ void StackFrame::Print() const {
 
   for (const auto &FrameObj : StackSlots)
     std::cout << "\t\tPosition: " << Number++ << ", ID: " << FrameObj.first
-              << ", Size: " << FrameObj.second << std::endl;
+              << ", Size: " << FrameObj.second.first
+              << ", Align: " << FrameObj.second.second << std::endl;
 
   std::cout << std::endl;
 }

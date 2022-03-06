@@ -88,6 +88,7 @@ size_t IRType::GetByteSize(TargetMachine *TM) const {
 size_t IRType::GetBaseTypeByteSize(TargetMachine *TM) const {
   auto TypeCopy = *this;
   TypeCopy.SetPointerLevel(0);
+  TypeCopy.GetDimensions().clear();
   return TypeCopy.GetByteSize(TM);
 }
 

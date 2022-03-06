@@ -82,7 +82,8 @@ public:
 
   size_t GetByteSize(TargetMachine *TM = nullptr) const;
 
-  /// Get the size of the base type. Achieving this by ignoring the pointerness.
+  /// Get the size of the base type. Achieving this by ignoring the pointerness
+  /// and dimensionality.
   size_t GetBaseTypeByteSize(TargetMachine *TM = nullptr) const;
 
   IRType GetBaseType() const { return IRType(Kind, BitWidth); }
