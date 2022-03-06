@@ -4,7 +4,7 @@
 #include <map>
 
 class StackFrame {
-  using StackSlotMap = std::map<unsigned, unsigned>;
+  using StackSlotMap = std::map<unsigned, std::pair<unsigned, unsigned>>;
 
 public:
   StackFrame() {}
@@ -12,11 +12,7 @@ public:
   unsigned GetSize() const { return ObjectsSize; }
   unsigned GetEntriesCount() const { return StackSlots.size(); }
 
-  // FIXME: Size should be incremented way more sophistaced way. For
-  // example having four 1 byte size objects on the stack, but we
-  // cannot access the stack by 1 byte granuality. In a 32 bit machine
-  // Mostlikely each 1 byte object would take up a 4 byte slot.
-  void InsertStackSlot(unsigned ID, unsigned Size);
+  void InsertStackSlot(unsigned ID, unsigned Size, unsigned Align);
 
   bool IsStackSlot(unsigned ID) const { return 0 != StackSlots.count(ID); }
 
@@ -28,8 +24,8 @@ public:
 private:
   unsigned ObjectsSize = 0;
 
-  // Maps an object ID to Its size. The order of the entries represents
-  // the order of the objects pushed to the stack.
+  // Maps an object ID to Its size and alignment. The order of the entries
+  // represents the order of the objects pushed to the stack.
   StackSlotMap StackSlots;
 };
 

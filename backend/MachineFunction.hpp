@@ -30,10 +30,10 @@ public:
   unsigned GetNextVReg() const { return NextVReg; }
   void SetNextVReg(const unsigned r) { NextVReg = r; }
 
-  void InsertStackSlot(unsigned ID, unsigned Size) {
+  void InsertStackSlot(unsigned ID, unsigned Size, unsigned Align = 4) {
     if (NextVReg <= ID)
       NextVReg = ID + 1;
-    SF.InsertStackSlot(ID, Size);
+    SF.InsertStackSlot(ID, Size, Align);
   }
 
   void InsertParameter(unsigned ID, LowLevelType LLT,

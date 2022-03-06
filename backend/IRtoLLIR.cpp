@@ -600,6 +600,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       IRVregToLLIRVreg[I->GetID()] = StackSlot;
       SpilledReturnValuesStackIDs.insert(StackSlot);
       ParentFunction->InsertStackSlot(StackSlot,
+                                      std::min(RetBitSize, MaxRegSize) / 8,
                                       std::min(RetBitSize, MaxRegSize) / 8);
       auto Store = MachineInstruction(MachineInstruction::STORE, BB);
       Store.AddStackAccess(StackSlot);
@@ -723,7 +724,8 @@ void HandleStackAllocation(StackAllocationInstruction *Instr,
   ReferredType.DecrementPointerLevel();
   auto IsPTR = ReferredType.GetPointerLevel() > 0;
   Func->InsertStackSlot(Instr->GetID(), IsPTR ? TM->GetPointerSize() / 8 :
-                                              ReferredType.GetByteSize());
+                                              ReferredType.GetByteSize(),
+                        ReferredType.GetBaseTypeByteSize());
 }
 
 void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
