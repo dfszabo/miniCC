@@ -181,9 +181,11 @@ void PreProcessor::Run() {
       // delete current line, assuming the directive only used one line
       Source.erase(Source.begin() + LineIdx);
       LineIdx--; // since the erase we have to check again the same LineIdx
-    }
-    else if (!DefinedMacros.empty())
+    } else if (!DefinedMacros.empty()) {
+      // Update __LINE__ here, so the correct line number can be substituted
+      DefinedMacros["__LINE__"].first = std::to_string(LineIdx + 1);
       SubstituteMacros(Line);
+    }
   }
 }
 
