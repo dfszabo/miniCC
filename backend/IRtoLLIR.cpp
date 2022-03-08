@@ -65,8 +65,7 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
   } else if (Val->IsParameter()) {
     auto Result = MachineOperand::CreateParameter(Val->GetID());
     auto BitWidth = Val->GetBitWidth();
-    // FIXME: Only handling int params now, handle others too
-    // And add type to registers and others too
+
     if (Val->GetTypeRef().IsPTR())
       Result.SetType(LowLevelType::CreatePTR(TM->GetPointerSize()));
     else
@@ -387,9 +386,9 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         }
         // general case
         // MOV the multiplier into a register
-        // FIXME: this should not needed, only done because AArch64 does not
+        // TODO: this should not needed, only done because AArch64 does not
         // support immediate operands for MUL, this should be handled by the
-        // target legalizer
+        // target legalizer. NOTE: Or not? MOV is basically like a COPY.
         else {
           auto ImmediateVReg = ParentFunction->GetNextAvailableVReg();
           auto MOV = MachineInstruction(MachineInstruction::MOV, BB);
@@ -745,10 +744,7 @@ void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
       // max size that way, or the max possible size of parameter registers
       // but for AArch64 and RISC-V its sure the bit size of the architecture
 
-      // FIXME: The maximum allowed structure size which allowed to be passed
-      // by the target is target dependent. Remove the hardcoded value and
-      // ask the target for the right size.
-      unsigned MaxStructSize = 128; // bit size
+      unsigned MaxStructSize = TM->GetABI()->GetMaxStructSizePassedByValue();
       for (size_t i = 0; i < MaxStructSize / TM->GetPointerSize(); i++) {
         auto NextVReg = Func->GetNextAvailableVReg();
         StructToRegMap[StructName].push_back(NextVReg);
@@ -772,7 +768,7 @@ void IRtoLLIR::GenerateLLIRFromIR() {
   // reserving enough size for the functions otherwise the underlying vector
   // would reallocate it self and would made invalid the existing pointers
   // pointing to these functions
-  // FIXME: Would be nice to auto update the pointers somehow if necessary.
+  // TODO: Would be nice to auto update the pointers somehow if necessary.
   // Like LLVM does it, but that might be too complicated for the scope of this
   // project.
   TU->GetFunctions().reserve(IRM.GetFunctions().size());

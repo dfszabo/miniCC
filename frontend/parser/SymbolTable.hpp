@@ -8,7 +8,7 @@
 #include <vector>
 
 /// Holds a stack (vector) of SymbolTables (vector of tuples).
-/// FIXME: An unordered_map would be more appropriate, but
+/// TODO: An unordered_map would be more appropriate, but
 /// had trouble with it so rather than wasting too much time
 /// with it currently vectors used. Later improve this.
 class SymbolTableStack {

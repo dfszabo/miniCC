@@ -5,7 +5,7 @@
 using namespace AArch64;
 
 AArch64RegisterInfo::AArch64RegisterInfo() {
-  // FIXME: use the .def file somehow
+  // TODO: use the .def file somehow
   Registers[0] = TargetRegister::Create(W0, 32, "w0", "");
   Registers[1] = TargetRegister::Create(W1, 32, "w1", "");
   Registers[2] = TargetRegister::Create(W2, 32, "w2", "");

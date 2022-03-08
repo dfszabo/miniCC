@@ -445,7 +445,7 @@ private:
   /// To store already created floating point constants
   std::map<double, std::unique_ptr<Constant>> FPConstantPool;
 
-  // FIXME: Consider putting these to Function class
+  // TODO: Consider putting these to Function class
 
   /// Hold the local symbols for the current function.
   std::map<std::string, Value *> SymbolTable;
