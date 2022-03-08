@@ -17,8 +17,6 @@ unsigned StackFrame::GetPosition(unsigned ID) {
 
   unsigned Position = 0;
 
-  // For now the object size is its alignment as well
-  // FIXME: add also alignment info
   for (const auto &[ObjectID, ObjectSizeAndAlign] : StackSlots) {
     const auto [ObjectSize, ObjectAlign] = ObjectSizeAndAlign;
 
