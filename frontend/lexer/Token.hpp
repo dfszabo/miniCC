@@ -95,6 +95,7 @@ public:
     Short,
     Int,
     Long,
+    Float,
     Double,
     Unsigned,
     Void,
@@ -277,6 +278,8 @@ public:
       return "int";
     case Long:
       return "long";
+    case Float:
+      return "float";
     case Double:
       return "double";
     case Void:

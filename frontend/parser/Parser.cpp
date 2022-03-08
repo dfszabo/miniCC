@@ -101,6 +101,7 @@ bool Parser::IsTypeSpecifier(Token T) {
   case Token::Int:
   case Token::Long:
   case Token::Unsigned:
+  case Token::Float:
   case Token::Double:
   case Token::Struct:
   case Token::Void:
@@ -241,6 +242,9 @@ Type Parser::ParseType(Token::TokenKind tk) {
     }
     break;
   }
+  case Token::Float:
+    Result.SetTypeVariant(Type::Float);
+    break;
   case Token::Double:
     Result.SetTypeVariant(Type::Double);
     break;

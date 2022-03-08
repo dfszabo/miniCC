@@ -36,6 +36,8 @@ static IRType GetIRTypeFromVK(Type::VariantKind VK) {
     return IRType(IRType::SINT, 64);
   case Type::UnsignedLongLong:
     return IRType(IRType::UINT, 64);
+  case Type::Float:
+    return IRType(IRType::FP, 32);
   case Type::Double:
     return IRType(IRType::FP, 64);
   case Type::Composite:
@@ -1021,6 +1023,11 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
       return IRF->CreateTRUNC(Val, 8);
     if ((DestTypeVariant == Type::Int || DestTypeVariant == Type::UnsignedInt))
       return IRF->CreateTRUNC(Val, 32);
+    assert(!"Invalid conversion.");
+  }
+  case Type::Float: {
+    if (DestTypeVariant == Type::Int)
+      return IRF->CreateFTOI(Val, 32);
     assert(!"Invalid conversion.");
   }
   case Type::Double: {
