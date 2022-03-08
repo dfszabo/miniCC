@@ -409,11 +409,11 @@ public:
     return IntConstantPool[RequestedConst].get();
   }
 
-  Constant *GetConstant(double C) {
+  Constant *GetConstant(double C, unsigned BitWidth = 64) {
     if (auto ConstVal = FPConstantPool[C].get(); ConstVal != nullptr)
       return ConstVal;
 
-    FPConstantPool[C] = std::make_unique<Constant>(C);
+    FPConstantPool[C] = std::make_unique<Constant>(C, BitWidth);
     return FPConstantPool[C].get();
   }
 

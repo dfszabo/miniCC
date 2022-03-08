@@ -50,7 +50,8 @@ public:
   Constant() = delete;
   Constant(uint64_t V, uint8_t BW = 32)
       : Value(Value::CONST, IRType(IRType::UINT, BW)), Val(V) {}
-  Constant(double V) : Value(Value::CONST, IRType(IRType::FP, 64)), Val(V) {}
+  Constant(double V, uint8_t BW = 32)
+      : Value(Value::CONST, IRType(IRType::FP, BW)), Val(V) {}
 
   bool IsFPConst() const { return ValueType.IsFP(); }
 
