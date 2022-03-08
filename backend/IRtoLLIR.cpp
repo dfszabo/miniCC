@@ -633,6 +633,8 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     if (I->GetRetVal() == nullptr)
       return ResultMI;
 
+    const bool IsFP = I->GetRetVal()->GetTypeRef().IsFP();
+
     // insert load to load in the return val to the return registers
     auto &TargetRetRegs = TM->GetABI()->GetReturnRegisters();
     if (I->GetRetVal()->GetTypeRef().IsStruct()) {
@@ -645,8 +647,13 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
 
       for (size_t i = 0; i < RegsCount; i++) {
         auto Instr = MachineInstruction(MachineInstruction::LOAD, BB);
-        Instr.AddRegister(TargetRetRegs[i]->GetID(),
-                          TargetRetRegs[i]->GetBitWidth());
+        auto idx = i;
+
+        if (IsFP)
+          idx += TM->GetABI()->GetFirstFPRetRegIdx();
+
+        Instr.AddRegister(TargetRetRegs[idx]->GetID(),
+                          TargetRetRegs[idx]->GetBitWidth());
         auto RetId = GetIDFromValue(I->GetRetVal());
         Instr.AddStackAccess(RetId, i * (TM->GetPointerSize() / 8));
         BB->InsertInstr(Instr);
@@ -654,19 +661,27 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     }
     else if (I->GetRetVal()->IsConstant()) {
       auto &RetRegs = TM->GetABI()->GetReturnRegisters();
+      
+      MachineInstruction LoadImm;
 
-      auto LoadImm = MachineInstruction(MachineInstruction::LOAD_IMM, BB);
+      if (IsFP)
+        LoadImm = MachineInstruction(MachineInstruction::MOVF, BB);
+      else
+        LoadImm = MachineInstruction(MachineInstruction::LOAD_IMM, BB);
 
       // TODO: this assumes aarch64, make it target independent by searching
       // for the right sized register, like in the register allocator
+      unsigned RetRegIdx = IsFP ? TM->GetABI()->GetFirstFPRetRegIdx() : 0;
       if (RetRegs[0]->GetBitWidth() == I->GetBitWidth())
-        LoadImm.AddRegister(RetRegs[0]->GetID(), RetRegs[0]->GetBitWidth());
+        LoadImm.AddRegister(RetRegs[RetRegIdx]->GetID(),
+                            RetRegs[RetRegIdx]->GetBitWidth());
       else
-        LoadImm.AddRegister(RetRegs[0]->GetSubRegs()[0],
-                            TM->GetRegInfo()
-                                ->GetRegisterByID(RetRegs[0]->GetSubRegs()[0])
-                                ->GetBitWidth());
-                  
+        LoadImm.AddRegister(
+            RetRegs[RetRegIdx]->GetSubRegs()[0],
+            TM->GetRegInfo()
+                ->GetRegisterByID(RetRegs[RetRegIdx]->GetSubRegs()[0])
+                ->GetBitWidth());
+
       LoadImm.AddOperand(GetMachineOperandFromValue(I->GetRetVal(), BB));
       // change ret operand to the destination register of the LOAD_IMM
       ResultMI.AddOperand(*LoadImm.GetOperand(0));
@@ -677,7 +692,8 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     }
   }
   // Memcopy instruction: memcopy dest, source, bytes_number
-  else if (auto I = dynamic_cast<MemoryCopyInstruction *>(Instr); I != nullptr) {
+  else if (auto I = dynamic_cast<MemoryCopyInstruction *>(Instr);
+           I != nullptr) {
     // lower this into load and store pairs if used with structs lower then
     // a certain size (for now be it the size which can be passed by value)
     // otherwise create a call maybe to an intrinsic memcopy function

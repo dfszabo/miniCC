@@ -23,7 +23,7 @@ double Constant::GetFloatValue() const {
   assert(ValueType.IsFP());
   double result = std::get<double>(Val);
 
-  assert(GetBitWidth() == 64 && "Only doubles supported");
+  assert(GetBitWidth() == 64 || GetBitWidth() == 32);
 
   return result;
 }

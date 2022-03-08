@@ -439,6 +439,9 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   case Type::UnsignedLongLong:
     RetType = IRType(IRType::UINT, 64);
     break;
+  case Type::Float:
+    RetType = IRType(IRType::FP, 32);
+    break;
   case Type::Double:
     RetType = IRType(IRType::FP, 64);
     break;
@@ -721,6 +724,9 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
   case Type::UnsignedLongLong:
     IRRetType = IRType(IRType::UINT, 64);
     break;
+  case Type::Float:
+    IRRetType = IRType(IRType::FP, 32);
+    break;
   case Type::Double:
     IRRetType = IRType(IRType::FP, 64);
     break;
@@ -892,18 +898,27 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
   // truncation or sign extension, but just masking down the appropriate bits to
   // fit into the desired type
   if (Val->IsConstant()) {
-    uint64_t DestBitSize = DestIRType.GetBitSize();
-    uint64_t mask = ~0ull; // full 1s in binary
+    if (DestType.IsIntegerType() || DestType.IsPointerType()) {
+      uint64_t DestBitSize = DestType.IsPointerType() ? TM->GetPointerSize()
+                                                      : DestIRType.GetBitSize();
+      uint64_t mask = ~0ull; // full 1s in binary
 
-    // if the bit size is less than 64, then full 1s mask would be wrong,
-    // instead we need one which last @DestBitSize bit is 1 and others are 0
-    // example: DestBitSize = 16 -> mask = 0x000000000000ffff
-    if (DestBitSize < 64)
-      mask = (1ull << DestBitSize) - 1;
+      // if the bit size is less than 64, then full 1s mask would be wrong,
+      // instead we need one which last @DestBitSize bit is 1 and others are 0
+      // example: DestBitSize = 16 -> mask = 0x000000000000ffff
+      if (DestBitSize < 64)
+        mask = (1ull << DestBitSize) - 1;
 
-    auto val = ((Constant *)Val)->GetIntValue() & mask;
+      auto val = ((Constant *)Val)->GetIntValue() & mask;
 
-    return IRF->GetConstant(val, DestBitSize);
+      return IRF->GetConstant(val, DestBitSize);
+    }
+
+    assert(DestType.IsFloatingPoint());
+
+    double val = ((Constant *)Val)->GetIntValue();
+
+    return IRF->GetConstant(val, DestIRType.GetBitSize());
   }
 
   // cast one pointer type to another
