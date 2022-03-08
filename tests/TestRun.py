@@ -10,6 +10,7 @@ def check_file(file_name):
     arch = ""
     function_declarations = []
     test_cases = []
+
     with open(file_name) as file:
         for line in file:
             m = re.search(r'(?:/{2}|#) *RUN: (.*)', line)
@@ -32,14 +33,18 @@ def execute_tests(file_name, arch, function_declarations, test_cases):
     if arch == "":
         return False
 
-    test_main_c_template = "#include <stdio.h>\n"
+    test_main_c_template = "#include <stdio.h>\n\n"
     for func_decl in function_declarations:
-        test_main_c_template += func_decl + ";\n"
+        test_main_c_template += func_decl + ";\n\n"
 
     test_main_c_template += "int main() {"
     test_main_c_template += "  int res = $;"
-    test_main_c_template += r'  if (res != @) { printf("\nExpected: %d, Actual: %d\n", @, res); return 1;}'
-    test_main_c_template += "  return 0; }"
+    test_main_c_template += "  if (res != @) { "
+    test_main_c_template += r'   printf("\nExpected: %d, Actual: %d\n", @, res);'
+    test_main_c_template += "    return 1;"
+    test_main_c_template += "  }"
+    test_main_c_template += "  return 0;"
+    test_main_c_template += "}"
 
     ret_code = subprocess.run(["../build/miniCC", file_name], stdout=subprocess.DEVNULL, timeout=10).returncode
     if ret_code != 0:
