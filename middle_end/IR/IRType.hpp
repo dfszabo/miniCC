@@ -53,7 +53,9 @@ public:
 
   bool IsInvalid() const { return Kind == INVALID; }
   bool IsFP() const { return Kind == FP; }
-  bool IsINT() const { return Kind == SINT || Kind == UINT; }
+  bool IsSInt() const { return Kind == SINT; }
+  bool IsUInt() const { return Kind == UINT; }
+  bool IsINT() const { return IsSInt() || IsUInt(); }
   bool IsScalar() const { return IsFP() || IsINT(); }
   bool IsPTR() const { return PointerLevel > 0; }
   bool IsStruct() const { return Kind == STRUCT; }
