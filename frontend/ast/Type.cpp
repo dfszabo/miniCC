@@ -7,6 +7,9 @@ std::string Type::ToString(const Type *t) {
     Result += "const ";
 
   switch (t->GetTypeVariant()) {
+  case Float:
+    Result += "float";
+    break;
   case Double:
     Result += "double";
     break;

@@ -22,7 +22,8 @@ public:
     UnsignedLong,
     LongLong,
     UnsignedLongLong,
-    Double
+    Float,
+    Double,
   };
   // TODO: investigate if Simple effectively means scalar, if so rename it
   // to Scalar for clarity
@@ -229,9 +230,7 @@ public:
     }
   }
 
-  bool IsFloatingPoint() const {
-    return Ty == Double;
-  }
+  bool IsFloatingPoint() const { return Ty == Float || Ty == Double; }
 
   bool IsConst() const { return Qualifiers & Const; }
   bool IsTypedef() const { return Qualifiers & Typedef; }
