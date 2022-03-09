@@ -5,6 +5,7 @@
 #include "../ast/AST.hpp"
 #include "../lexer/Lexer.hpp"
 #include "../lexer/Token.hpp"
+#include "../ErrorLogger.hpp"
 #include "SymbolTable.hpp"
 #include <memory>
 #include <string>
@@ -16,7 +17,8 @@ public:
 
   Parser() = delete;
 
-  Parser(std::vector<std::string> &s, IRFactory *IRF) : lexer(s), IRF(IRF) {}
+  Parser(std::vector<std::string> &s, IRFactory *IRF, ErrorLogger &EL)
+      : lexer(s), IRF(IRF), ErrorLog(EL) {}
 
   Token Lex() { return lexer.Lex(); }
 
@@ -86,6 +88,8 @@ public:
   unsigned ParseIntegerConstant();
   double ParseRealConstant();
 
+  ErrorLogger &GetErrorLog() { return ErrorLog; }
+
 private:
   Lexer lexer;
   SymbolTableStack SymTabStack;
@@ -102,6 +106,8 @@ private:
 
   /// The amount of return seen in the current function being parsed
   unsigned ReturnsNumber = 0;
+
+  ErrorLogger &ErrorLog;
 };
 
 #endif

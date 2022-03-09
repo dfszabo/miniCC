@@ -10,6 +10,7 @@
 #include "../backend/TargetArchs/RISCV/RISCVTargetMachine.hpp"
 #include "../middle_end/IR/IRFactory.hpp"
 #include "../middle_end/Transforms/PassManager.hpp"
+#include "ErrorLogger.hpp"
 #include "ast/ASTPrint.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
@@ -115,8 +116,14 @@ int main(int argc, char *argv[]) {
 
   Module IRModule;
   IRFactory IRF(IRModule, TM.get());
-  Parser parser(src, &IRF);
+  ErrorLogger ErrorLog(FilePath);
+  Parser parser(src, &IRF, ErrorLog);
   auto AST = parser.Parse();
+
+  if (ErrorLog.HasErrors()) {
+    ErrorLog.ReportErrors();
+    exit(1);
+  }
 
   if (DumpAST) {
     auto AstPrinter = std::make_unique<ASTPrint>();

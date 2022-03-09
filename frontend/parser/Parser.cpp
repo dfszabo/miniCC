@@ -8,13 +8,15 @@ const unsigned EMPTY_DIMENSION = ~0;
 
 Token Parser::Expect(Token::TokenKind TKind) {
   auto t = Lex();
+
   if (t.GetKind() != TKind) {
-    std::cout << ":" << t.GetLineNum() + 1 << ":" << t.GetColNum() + 1
-              << ": error: Unexpected symbol `" << t.GetString()
-              << "`. Expected is `" << Token::ToString(TKind) << "`."
-              << std::endl
-              << "\t\t" << lexer.GetSource()[t.GetLineNum()] << std::endl
-              << std::endl;
+    std::string Error = ":" + std::to_string(t.GetLineNum() + 1) + ":" +
+                        std::to_string(t.GetColNum() + 1) +
+                        ": error: Unexpected symbol `" + t.GetString() +
+                        "`. Expected is `" + Token::ToString(TKind) + "`." +
+                        "\n" + +"\t\t" + lexer.GetSource()[t.GetLineNum()];
+
+    ErrorLog.AddError(Error);
   }
   return t; // consume Tokens
 }
@@ -30,27 +32,26 @@ void Parser::InsertToSymTable(const std::string &SymName, Type SymType,
                               const bool ToGlobal = false,
                               ValueType SymValue = ValueType()) {
 
-  std::tuple<std::string, Type, ValueType> SymEntry(SymName, SymType,
-                                                           SymValue);
+  std::tuple<std::string, Type, ValueType> SymEntry(SymName, SymType, SymValue);
+
   // Check if it is already defined in the current scope
-  if (SymTabStack.ContainsInCurrentScope(SymEntry))
-    std::cout << "error: Symbol '" + SymName + "' with type '" +
-                     SymType.ToString() + "' is already defined."
-              << std::endl
-              << std::endl;
-  else if (ToGlobal)
+  if (SymTabStack.ContainsInCurrentScope(SymEntry)) {
+    std::string Error = "error: Symbol '" + SymName + "' with type '" +
+                        SymType.ToString() + "' is already defined.\n";
+    ErrorLog.AddError(Error);
+  } else if (ToGlobal)
     SymTabStack.InsertGlobalEntry(SymEntry);
   else
     SymTabStack.InsertEntry(SymEntry);
 }
 
-void static UndefinedSymbolError(Token sym, Lexer &L) {
-  std::cout << ":" << sym.GetLineNum() + 1 << ":" << sym.GetColNum() + 1
-            << ": error: "
-            << "Undefined symbol '" << sym.GetString() << "'." << std::endl
-            << "\t\t" << L.GetSource()[sym.GetLineNum()].substr(sym.GetColNum())
-            << std::endl
-            << std::endl;
+void static UndefinedSymbolError(Token sym, Lexer &L, ErrorLogger &EL) {
+  std::string Error = ":" + std::to_string(sym.GetLineNum() + 1) + ":" +
+                      std::to_string(sym.GetColNum() + 1) +
+                      ": error: " + "Undefined symbol '" + sym.GetString() +
+                      "'." + "\n" + +"\t\t" +
+                      L.GetSource()[sym.GetLineNum()].substr(sym.GetColNum());
+  EL.AddError(Error);
 }
 
 [[maybe_unused]]
@@ -60,17 +61,18 @@ void static ArrayTypeMismatchError(Token sym, Type actual) {
             << actual.ToString() << "', it is not an array type.'" << std::endl;
 }
 
-void static EmitError(const std::string &msg, Lexer &L) {
-  std::cout << ":" << L.GetLineNum() << ": error: " << msg << std::endl
-            << "\t\t" << L.GetSource()[L.GetLineNum() - 1] << std::endl
-            << std::endl;
+void static EmitError(const std::string &msg, Lexer &L, ErrorLogger &EL) {
+  std::string Error = ":" + std::to_string(L.GetLineNum()) + ": error: " + msg +
+                      "\n" + "\t\t" + L.GetSource()[L.GetLineNum() - 1] + "\n";
+  EL.AddError(Error);
 }
 
-void static EmitError(const std::string &msg, Lexer &L, Token &T) {
-  std::cout << ":" << T.GetLineNum() + 1 << ":" << T.GetColNum() + 1
-            << ": error: " << msg << std::endl
-            << "\t\t" << L.GetSource()[T.GetLineNum()] << std::endl
-            << std::endl;
+void static EmitError(const std::string &msg, Lexer &L, Token &T,
+                      ErrorLogger &EL) {
+  std::string Error = ":" + std::to_string(T.GetLineNum() + 1) + ":" +
+                      std::to_string(T.GetColNum() + 1) + ": error: " + msg +
+                      "\n" + "\t\t" + L.GetSource()[T.GetLineNum()] + "\n";
+  EL.AddError(Error);
 }
 
 bool Parser::IsUserDefined(std::string Name) {
@@ -1367,7 +1369,7 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
       // TODO: Since now we have ImplicitCast nodes we have to either check if
       // the castable object is an lv....
       EmitError("lvalue required as left operand of assignment", lexer,
-                BinaryOperator);
+                BinaryOperator, ErrorLog);
 
     //  If it is an equal binop (assignment) and the left hand side is an array
     // expression or reference expression, then it is an LValue.
@@ -1427,7 +1429,7 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
       // left-hand side
       if (BinaryOperator.GetKind() == Token::Equal || IsCompositeAssignment) {
         if (!Type::IsImplicitlyCastable(RightType, LeftType))
-          EmitError("Type mismatch", lexer, BinaryOperator);
+          EmitError("Type mismatch", lexer, BinaryOperator, ErrorLog);
         else {
           RightExpression = std::make_unique<ImplicitCastExpression>(
               std::move(RightExpression), LeftType);
@@ -1583,7 +1585,7 @@ std::unique_ptr<Expression> Parser::ParseCallExpression(Token Id) {
   if (auto SymEntry = SymTabStack.Contains(Id.GetString()))
     FuncType = std::get<1>(SymEntry.value());
   else
-    UndefinedSymbolError(Id, lexer);
+    UndefinedSymbolError(Id, lexer, ErrorLog);
 
   std::vector<std::unique_ptr<Expression>> CallArgs;
 
@@ -1602,7 +1604,7 @@ std::unique_ptr<Expression> Parser::ParseCallExpression(Token Id) {
   if (!(CallArgs.size() == 0 && FuncArgNum == 1 &&
         FuncArgTypes[0] == Type::Void)) {
     if (!FuncType.HasVarArg() && FuncArgNum != CallArgs.size())
-      EmitError("arguments number mismatch", lexer);
+      EmitError("arguments number mismatch", lexer, ErrorLog);
 
     for (size_t i = 0; i < FuncArgNum; i++) {
       auto CallArgType = CallArgs[i]->GetResultType();
@@ -1673,7 +1675,7 @@ std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
     RE->SetType(std::move(Type));
   }
   else
-    UndefinedSymbolError(Id, lexer);
+    UndefinedSymbolError(Id, lexer, ErrorLog);
 
   return RE;
 }

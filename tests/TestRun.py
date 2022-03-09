@@ -10,6 +10,7 @@ def check_file(file_name):
     arch = ""
     function_declarations = []
     test_cases = []
+    negative_test = False
 
     with open(file_name) as file:
         for line in file:
@@ -25,7 +26,11 @@ def check_file(file_name):
             if m:
                 test_cases.append((m.group(1), m.group(2)))
 
-    return arch, function_declarations, test_cases
+            m = re.search(r'(?:/{2}|#) *COMPILE-FAIL', line)
+            if m:
+                negative_test = True
+
+    return arch, function_declarations, test_cases, negative_test
 
 
 def execute_tests(file_name, arch, function_declarations, test_cases):
@@ -130,11 +135,14 @@ test_set.sort() # sort them alphabetically
 
 # run the tests
 for filepath in test_set:
-  arch, function_declarations, test_cases = check_file(filepath)
+  arch, function_declarations, test_cases, negative_test = check_file(filepath)
   if arch == "":
       continue
 
   success = execute_tests(filepath, arch, function_declarations, test_cases)
+
+  if (negative_test and not success):
+    success = True
 
   tests_count += 1
   if success:
