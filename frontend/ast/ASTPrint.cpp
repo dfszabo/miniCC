@@ -97,10 +97,10 @@ void ASTPrint::VisitSwitchStatement(const SwitchStatement *node) {
   node->GetCondition()->Accept(this);
 
   for (auto &[CaseConst, CaseBody] : node->GetCaseBodies()) {
-    std::string Str = "Case '" + std::to_string(CaseConst) + "'";
-    PrintLn(Str.c_str(), tab);
-    Str.clear();
+    PrintLn("Case", tab);
+
     tab += 2;
+    CaseConst->Accept(this);
     for (auto &CaseStatement : CaseBody)
       CaseStatement->Accept(this);
     tab -= 2;

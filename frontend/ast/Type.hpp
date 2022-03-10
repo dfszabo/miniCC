@@ -93,6 +93,11 @@ public:
     const bool IsFromPtr = from.IsPointerType();
     const bool IsFromArray = from.IsArray();
 
+    // function assignment case
+    if ((from.IsFunction() && !to.IsPointerType()) ||
+        (to.IsFunction() && !from.IsPointerType()))
+      return false;
+
     // array to pointer decay case
     if (IsFromArray && !IsFromPtr && IsToPtr) {
       if (from.GetTypeVariant() == to.GetTypeVariant())
@@ -231,7 +236,7 @@ public:
   }
 
   bool IsFloatingPoint() const { return Ty == Float || Ty == Double; }
-
+  bool IsVoid() const { return Ty == Void && PointerLevel == 0; }
   bool IsConst() const { return Qualifiers & Const; }
   bool IsTypedef() const { return Qualifiers & Typedef; }
 
@@ -261,19 +266,34 @@ public:
 
   friend bool operator==(const Type &lhs, const Type &rhs) {
     bool result = lhs.Kind == rhs.Kind && lhs.Ty == rhs.Ty;
-    result = result && lhs.GetPointerLevel() == rhs.GetPointerLevel();
+    result &= lhs.GetPointerLevel() == rhs.GetPointerLevel();
 
     if (!result)
       return false;
 
+    if (lhs.ParameterList.size() != rhs.ParameterList.size())
+      return false;
+
+    // at this point both type's parameter list has the same size
+    if (lhs.ParameterList.size() > 0) {
+      for (size_t i = 0; i < lhs.ParameterList.size(); i++)
+        if (lhs.ParameterList[i] != rhs.ParameterList[i])
+          return false;
+    }
+
     switch (lhs.Kind) {
     case Array:
-      result = result && (lhs.Dimensions == rhs.Dimensions);
+      if (lhs.Dimensions.size() != rhs.Dimensions.size())
+        return false;
+      else
+        for (size_t i = 0; i < lhs.Dimensions.size(); i++)
+          if (lhs.Dimensions[i] != rhs.Dimensions[i])
+            return false;
       break;
     default:
       break;
     }
-    return result;
+    return true;
   }
 
   friend bool operator!=(const Type &lhs, const Type &rhs) {

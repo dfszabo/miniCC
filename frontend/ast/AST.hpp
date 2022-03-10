@@ -58,8 +58,9 @@ protected:
 
 class VariableDeclaration : public Statement {
 public:
-  std::string const &GetName() const { return Name; }
-  void SetName(std::string &s) { Name = s; }
+  std::string const GetName() const { return Name.GetString(); }
+  Token const &GetNameToken() const { return Name; }
+  void SetName(Token &t) { Name = t; }
 
   Type GetType() const { return AType; }
   void SetType(Type t) { AType = t; }
@@ -68,11 +69,11 @@ public:
   std::unique_ptr<Expression> const &GetInitExpr() const { return Init; }
   void SetInitExpr(std::unique_ptr<Expression> e) { Init = std::move(e); }
 
-  VariableDeclaration(std::string &Name, Type Ty, std::vector<unsigned> Dim)
+  VariableDeclaration(const Token &Name, Type Ty, std::vector<unsigned> Dim)
       : Name(Name), AType(Ty, std::move(Dim)) {}
 
-  VariableDeclaration(std::string &Name, Type Ty) : Name(Name), AType(Ty) {}
-  VariableDeclaration(std::string &Name, Type Ty, std::unique_ptr<Expression> E)
+  VariableDeclaration(const Token &Name, Type Ty) : Name(Name), AType(Ty) {}
+  VariableDeclaration(const Token &Name, Type Ty, std::unique_ptr<Expression> E)
       : Name(Name), AType(Ty), Init(std::move(E)) {}
 
   VariableDeclaration() = default;
@@ -84,23 +85,24 @@ public:
   Value *IRCodegen(IRFactory *IRF) override;
 
 private:
-  std::string Name;
+  Token Name;
   Type AType;
   std::unique_ptr<Expression> Init = nullptr;
 };
 
 class MemberDeclaration : public Statement {
 public:
-  std::string const &GetName() const { return Name; }
-  void SetName(std::string &s) { Name = s; }
+  std::string const GetName() const { return Name.GetString(); }
+  Token const GetNameToken() const { return Name; }
+  void SetName(const Token &s) { Name = s; }
 
   Type GetType() const { return AType; }
   void SetType(Type t) { AType = t; }
 
-  MemberDeclaration(std::string &Name, Type Ty, std::vector<unsigned> Dim)
+  MemberDeclaration(const Token &Name, Type Ty, std::vector<unsigned> Dim)
       : Name(Name), AType(Ty, std::move(Dim)) {}
 
-  MemberDeclaration(std::string &Name, Type Ty) : Name(Name), AType(Ty) {}
+  MemberDeclaration(const Token &Name, Type Ty) : Name(Name), AType(Ty) {}
 
   MemberDeclaration() = default;
 
@@ -111,24 +113,27 @@ public:
   Value *IRCodegen(IRFactory *IRF) override;
 
 private:
-  std::string Name;
+  Token Name;
   Type AType;
 };
 
 class StructDeclaration : public Statement {
 public:
-  std::string const &GetName() const { return Name; }
-  void SetName(std::string &s) { Name = s; }
+  std::string const GetName() const { return Name.GetString(); }
+  Token const &GetNameToken() const { return Name; }
+  void SetName(const Token &t) { Name = t; }
 
   std::vector<std::unique_ptr<MemberDeclaration>> const &GetMembers() const {
     return Members;
   }
 
-  void SetType(std::vector<std::unique_ptr<MemberDeclaration>> m) {
+  void SetMembers(std::vector<std::unique_ptr<MemberDeclaration>> m) {
     Members = std::move(m);
   }
 
-  StructDeclaration(std::string &Name,
+  const Type &GetType() const { return SType; }
+
+  StructDeclaration(const Token &Name,
                     std::vector<std::unique_ptr<MemberDeclaration>> &M,
                     Type &StructType)
       : Name(Name), Members(std::move(M)), SType(StructType) {}
@@ -143,7 +148,7 @@ public:
 
 private:
   Type SType;
-  std::string Name;
+  Token Name;
   std::vector<std::unique_ptr<MemberDeclaration>> Members;
 };
 
@@ -242,7 +247,7 @@ private:
 class SwitchStatement : public Statement {
 public:
   using VecOfStmts = std::vector<std::unique_ptr<Statement>>;
-  using VecOfCasesData = std::vector<std::pair<int, VecOfStmts>>;
+  using VecOfCasesData = std::vector<std::pair<std::unique_ptr<Expression>, VecOfStmts>>;
 
   std::unique_ptr<Expression> const &GetCondition() const { return Condition; }
   void SetCondition(std::unique_ptr<Expression> c) { Condition = std::move(c); }
@@ -305,7 +310,7 @@ private:
 
 class ForStatement : public Statement {
 public:
-  using StmtVec = std::vector<std::unique_ptr<Statement>>;
+  using StmtVec = std::vector<std::unique_ptr<VariableDeclaration>>;
 
   StmtVec const &GetVarDecls() const { return VarDecls; }
   void SetVarDecls(StmtVec v) { VarDecls = std::move(v); }
@@ -390,10 +395,12 @@ public:
 
 class FunctionParameterDeclaration : public Statement {
 public:
-  std::string const &GetName() const { return Name; }
-  void SetName(std::string &s) { Name = s; }
+  std::string const GetName() const { return Name.GetString(); }
+  Token const &GetNameToken() const { return Name; }
+  void SetName(const Token &t) { Name = t; }
 
   Type GetType() const { return Ty; }
+  const Type &GetTypeRef() const { return Ty; }
   void SetType(Type t) { Ty = t; }
 
   void Accept(ASTVisitor *visitor) const override {
@@ -403,7 +410,7 @@ public:
   Value *IRCodegen(IRFactory *IRF) override;
 
 private:
-  std::string Name;
+  Token Name;
   Type Ty;
 };
 
@@ -414,8 +421,8 @@ public:
   Type GetType() const { return T; }
   void SetType(Type ft) { T = ft; }
 
-  std::string const &GetName() const { return Name; }
-  void SetName(std::string &s) { Name = s; }
+  std::string GetName() const { return Name.GetString(); }
+  const Token &GetNameToken() const { return Name; }
 
   ParamVec const &GetArguments() const { return Arguments; }
   void SetArguments(ParamVec &a) { Arguments = std::move(a); }
@@ -440,7 +447,7 @@ public:
 
   FunctionDeclaration() = delete;
 
-  FunctionDeclaration(Type FT, std::string Name, ParamVec &Args,
+  FunctionDeclaration(Type FT, Token Name, ParamVec &Args,
                       std::unique_ptr<CompoundStatement> &Body, unsigned RetNum)
       : T(FT), Name(Name), Arguments(std::move(Args)), Body(std::move(Body)),
         ReturnsNumber(RetNum) {}
@@ -453,7 +460,7 @@ public:
 
 private:
   Type T;
-  std::string Name;
+  Token Name;
   ParamVec Arguments;
   std::unique_ptr<CompoundStatement> Body;
   unsigned ReturnsNumber;
@@ -492,7 +499,7 @@ public:
     AND,
     OR,
     XOR,
-    Not,
+    NOT,
     EQ,
     LT,
     GT,
@@ -503,7 +510,7 @@ public:
     ORL,
   };
 
-  BinaryOperation GetOperationKind() {
+  BinaryOperation GetOperationKind() const {
     switch (Operation.GetKind()) {
     case Token::Equal:
       return ASSIGN;
@@ -561,7 +568,7 @@ public:
     case Token::Caret:
       return XOR;
     case Token::Bang:
-      return Not;
+      return NOT;
     case Token::DoubleEqual:
       return EQ;
     case Token::LessThan:
@@ -593,7 +600,14 @@ public:
   ExprPtr const &GetRightExpr() const { return Right; }
   void SetRightExpr(ExprPtr &e) { Right = std::move(e); }
 
-  bool IsConditional() { return GetOperationKind() >= Not; }
+  bool IsConditional() const { return GetOperationKind() >= NOT; }
+  bool IsModulo() const {
+    return GetOperationKind() == MOD || GetOperationKind() == MODU;
+  }
+  bool IsShift() const {
+    return GetOperationKind() == LSL || GetOperationKind() == LSR;
+  }
+  bool IsAssignment() const { return GetOperationKind() <= LSR_ASSIGN; }
 
   BinaryExpression(ExprPtr L, Token Op, ExprPtr R) {
     Left = std::move(L);
@@ -657,18 +671,21 @@ class StructMemberReference : public Expression {
   using ExprPtr = std::unique_ptr<Expression>;
 
 public:
-  std::string GetMemberId() const { return MemberIdentifier; }
-  void SetMemberId(std::string id) { MemberIdentifier = id; }
+  std::string GetMemberId() const { return MemberIdentifier.GetString(); }
+  const Token &GetMemberIdToken() const { return MemberIdentifier; }
+  void SetMemberId(Token id) { MemberIdentifier = id; }
 
   ExprPtr const &GetExpr() const { return StructTypedExpression; }
   void SetExpr(ExprPtr &e) { StructTypedExpression = std::move(e); }
 
-  StructMemberReference(ExprPtr Expr, std::string Id, size_t Idx)
+  bool IsArrow() const { return Arrow; }
+
+  StructMemberReference(ExprPtr Expr, Token &Id, size_t Idx, bool Arrow)
       : StructTypedExpression(std::move(Expr)), MemberIdentifier(Id),
-        MemberIndex(Idx) {
+        MemberIndex(Idx), Arrow(Arrow) {
     auto STEType = StructTypedExpression->GetResultType();
-    assert(MemberIndex < STEType.GetTypeList().size());
-    this->ResultType = STEType.GetTypeList()[MemberIndex];
+    if (MemberIndex < STEType.GetTypeList().size())
+      this->ResultType = STEType.GetTypeList()[MemberIndex];
   }
 
   StructMemberReference() {}
@@ -680,8 +697,9 @@ public:
   Value *IRCodegen(IRFactory *IRF) override;
 
 private:
+  bool Arrow;
   ExprPtr StructTypedExpression;
-  std::string MemberIdentifier;
+  Token MemberIdentifier;
   size_t MemberIndex;
 };
 
@@ -824,14 +842,20 @@ class CallExpression : public Expression {
   using ExprVec = std::vector<std::unique_ptr<Expression>>;
 
 public:
-  std::string const &GetName() const { return Name; }
-  void SetName(std::string &n) { Name = n; }
+  std::string const GetName() const { return Name.GetString(); }
+  Token const &GetNameToken() const { return Name; }
+
+  const Type &GetFunctionType() const { return FuncType; }
 
   ExprVec const &GetArguments() const { return Arguments; }
   void SetArguments(ExprVec &a) { Arguments = std::move(a); }
 
-  CallExpression(const std::string &Name, ExprVec &Args, Type T)
-      : Name(Name), Arguments(std::move(Args)), Expression(std::move(T)) {}
+  CallExpression(const Token &Name, ExprVec &Args, Type T)
+      : Name(Name), Arguments(std::move(Args)), FuncType(T) {
+    Type ResultType = FuncType;
+    ResultType.GetParameterList().clear();
+    GetResultType() = ResultType;
+  }
 
   void Accept(ASTVisitor *visitor) const override {
     visitor->VisitCallExpression(this);
@@ -840,17 +864,19 @@ public:
   Value *IRCodegen(IRFactory *IRF) override;
 
 private:
-  std::string Name;
+  Token Name;
+  Type FuncType;
   ExprVec Arguments;
 };
 
 class ReferenceExpression : public Expression {
 public:
-  std::string &GetIdentifier() { return Identifier; }
-  std::string const &GetIdentifier() const { return Identifier; }
-  void SetIdentifier(std::string &id) { Identifier = id; }
+  std::string GetIdentifier() { return Identifier.GetString(); }
+  std::string const GetIdentifier() const { return Identifier.GetString(); }
+  const Token &GetIdentifierToken() const { return Identifier; }
+  void SetIdentifier(Token &id) { Identifier = id; }
 
-  ReferenceExpression(Token t) { Identifier = t.GetString(); }
+  ReferenceExpression(Token t) { Identifier = t; }
 
   void Accept(ASTVisitor *visitor) const override {
     visitor->VisitReferenceExpression(this);
@@ -859,7 +885,7 @@ public:
   Value *IRCodegen(IRFactory *IRF) override;
 
 private:
-  std::string Identifier;
+  Token Identifier;
 };
 
 class IntegerLiteralExpression : public Expression {

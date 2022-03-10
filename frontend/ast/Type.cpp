@@ -47,7 +47,7 @@ std::string Type::ToString(const Type *t) {
     Result += "void";
     break;
   case Composite:
-    Result += t->GetName();
+    Result += "struct " + t->GetName();
     break;
   case Invalid:
     return "invalid";
