@@ -32,12 +32,12 @@ public:
 
   /// Helper function to make insertion to the symbol table stack more compact
   /// and readable
-  void InsertToSymTable(const std::string &SymName, Type SymType,
-                        const bool ToGlobal, ValueType SymValue);
+  void InsertToSymTable(const Token &SymName, Type SymType, const bool ToGlobal,
+                        ValueType SymValue);
 
   bool IsUserDefined(std::string Name);
   Type GetUserDefinedType(std::string Name);
-  std::vector<std::string> GetUserDefinedTypeMembers(std::string Name);
+  std::vector<Token> GetUserDefinedTypeMembers(std::string Name);
 
   unsigned ParseQualifiers();
   Type ParseType(Token::TokenKind tk);
@@ -51,7 +51,8 @@ public:
   std::unique_ptr<FunctionDeclaration>
   ParseFunctionDeclaration(const Type &ReturnType, const Token &Name);
   std::unique_ptr<VariableDeclaration> ParseVariableDeclaration(Type type);
-  std::vector<std::unique_ptr<Statement>> ParseVariableDeclarationList();
+  std::vector<std::unique_ptr<VariableDeclaration>>
+  ParseVariableDeclarationList();
   std::unique_ptr<MemberDeclaration> ParseMemberDeclaration();
   std::unique_ptr<StructDeclaration> ParseStructDeclaration(unsigned Qualifiers);
   std::unique_ptr<EnumDeclaration> ParseEnumDeclaration(unsigned Qualifiers);
@@ -96,7 +97,7 @@ private:
   IRFactory *IRF;
 
   /// Type name to type, and the list of names for the struct field
-  std::map<std::string, std::tuple<Type, std::vector<std::string>>> UserDefinedTypes;
+  std::map<std::string, std::tuple<Type, std::vector<Token>>> UserDefinedTypes;
 
   /// Mapping identifiers to types. Eg: "typedef int i32" -> {"i32", Type::Int}
   std::map<std::string, Type> TypeDefinitions;

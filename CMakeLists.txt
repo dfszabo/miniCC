@@ -11,13 +11,16 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG")
 
 add_executable(miniCC
     frontend/driver.cpp
+    frontend/ErrorLogger.cpp
     frontend/preprocessor/PPLexer.cpp
     frontend/preprocessor/PreProcessor.cpp
     frontend/parser/Parser.cpp
     frontend/parser/SymbolTable.cpp
     frontend/lexer/Lexer.cpp
+    frontend/lexer/Token.cpp
     frontend/ast/AST.cpp
     frontend/ast/ASTPrint.cpp
+    frontend/ast/Semantics.cpp
     frontend/ast/Type.cpp
     middle_end/IR/BasicBlock.cpp
     middle_end/IR/Function.cpp

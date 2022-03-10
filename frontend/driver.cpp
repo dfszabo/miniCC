@@ -12,6 +12,7 @@
 #include "../middle_end/Transforms/PassManager.hpp"
 #include "ErrorLogger.hpp"
 #include "ast/ASTPrint.hpp"
+#include "ast/Semantics.hpp"
 #include "lexer/Lexer.hpp"
 #include "parser/Parser.hpp"
 #include "preprocessor/PreProcessor.hpp"
@@ -52,6 +53,7 @@ int main(int argc, char *argv[]) {
   bool DumpAST = false;
   bool DumpIR = false;
   bool PrintBeforePasses = false;
+  bool Wall = false;
   std::string TargetArch = "aarch64";
 
   for (int i = 0; i < argc; i++)
@@ -60,6 +62,9 @@ int main(int argc, char *argv[]) {
     else {
       if (!std::string(&argv[i][1]).compare("E")) {
         DumpPreProcessedFile = true;
+        continue;
+      } else if (!std::string(&argv[i][1]).compare("Wall")) {
+        Wall = true;
         continue;
       } else if (!std::string(&argv[i][1]).compare("dump-tokens")) {
         DumpTokens = true;
@@ -116,11 +121,11 @@ int main(int argc, char *argv[]) {
 
   Module IRModule;
   IRFactory IRF(IRModule, TM.get());
-  ErrorLogger ErrorLog(FilePath);
+  ErrorLogger ErrorLog(FilePath, src);
   Parser parser(src, &IRF, ErrorLog);
   auto AST = parser.Parse();
 
-  if (ErrorLog.HasErrors()) {
+  if (ErrorLog.HasErrors(Wall)) {
     ErrorLog.ReportErrors();
     exit(1);
   }
@@ -128,6 +133,15 @@ int main(int argc, char *argv[]) {
   if (DumpAST) {
     auto AstPrinter = std::make_unique<ASTPrint>();
     AST->Accept(AstPrinter.get());
+  }
+
+  // Do semantic analysis on the AST
+  auto Sema = std::make_unique<Semantics>(ErrorLog);
+  AST->Accept(Sema.get());
+
+  if (ErrorLog.HasErrors(Wall)) {
+    ErrorLog.ReportErrors();
+    exit(1);
   }
 
   AST->IRCodegen(&IRF);

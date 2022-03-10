@@ -11,6 +11,7 @@ def check_file(file_name):
     function_declarations = []
     test_cases = []
     negative_test = False
+    extra_compile_flags = ""
 
     with open(file_name) as file:
         for line in file:
@@ -30,10 +31,14 @@ def check_file(file_name):
             if m:
                 negative_test = True
 
-    return arch, function_declarations, test_cases, negative_test
+            m = re.search(r'(?:/{2}|#) *EXTRA-FLAGS: (.*)', line)
+            if m:
+                extra_compile_flags = m.group(1)
+
+    return arch, function_declarations, test_cases, negative_test, extra_compile_flags
 
 
-def execute_tests(file_name, arch, function_declarations, test_cases):
+def execute_tests(file_name, arch, function_declarations, test_cases, extra_compile_flags):
     run_command = "qemu-" + arch
     if arch == "":
         return False
@@ -51,12 +56,18 @@ def execute_tests(file_name, arch, function_declarations, test_cases):
     test_main_c_template += "  return 0;"
     test_main_c_template += "}"
 
-    ret_code = subprocess.run(["../build/miniCC", file_name], stdout=subprocess.DEVNULL, timeout=10).returncode
+    command = ["../build/miniCC", file_name]
+    if extra_compile_flags != "":
+      command.append(extra_compile_flags)
+
+    # TODO: if its an assertion then COMPILE-FAIL should fail since error is expected
+    # not an assertion
+    ret_code = subprocess.run(command,
+                              stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, timeout=10).returncode
     if ret_code != 0:
         return False
 
-    test_asm = subprocess.check_output(["../build/miniCC", file_name]).decode("utf-8")
-
+    test_asm = subprocess.check_output(command).decode("utf-8")
     text_file = open("test.s", "w")
     text_file.write(test_asm)
     text_file.close()
@@ -135,11 +146,11 @@ test_set.sort() # sort them alphabetically
 
 # run the tests
 for filepath in test_set:
-  arch, function_declarations, test_cases, negative_test = check_file(filepath)
+  arch, function_declarations, test_cases, negative_test, flags = check_file(filepath)
   if arch == "":
       continue
 
-  success = execute_tests(filepath, arch, function_declarations, test_cases)
+  success = execute_tests(filepath, arch, function_declarations, test_cases, flags)
 
   if (negative_test and not success):
     success = True

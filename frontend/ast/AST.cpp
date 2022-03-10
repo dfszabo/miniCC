@@ -172,9 +172,11 @@ Value *SwitchStatement::IRCodegen(IRFactory *IRF) {
   // code block, CaseIdx keep track the current target basic block so falling
   // through cases could refer to it
   size_t CaseIdx = 0;
-  for (auto &[Const, Statements] : Cases) {
+  for (auto &[CaseExpr, Statements] : Cases) {
+    auto CaseConst = dynamic_cast<IntegerLiteralExpression *>(CaseExpr.get())
+                         ->GetSIntValue();
     auto CMP_res = IRF->CreateCMP(CompareInstruction::EQ, Cond,
-                                  IRF->GetConstant((uint64_t)Const));
+                                  IRF->GetConstant((uint64_t)CaseConst));
     IRF->CreateBR(CMP_res, CaseBodies[CaseIdx].get());
 
     if (!Statements.empty())
@@ -453,7 +455,8 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
     break;
   }
 
-  IRF->CreateNewFunction(Name, RetType);
+  auto NameStr = Name.GetString();
+  IRF->CreateNewFunction(NameStr, RetType);
   IRF->GetCurrentFunction()->SetReturnsNumber(ReturnsNumber);
 
   if (Body == nullptr) {
@@ -462,8 +465,8 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   }
 
   if (ImplicitStructPtr) {
-    IRF->AddToSymbolTable(ImplicitStructPtr->GetName(),
-                          ImplicitStructPtr.get());
+    auto ParamName = ImplicitStructPtr->GetName();
+    IRF->AddToSymbolTable(ParamName, ImplicitStructPtr.get());
     IRF->Insert(std::move(ImplicitStructPtr));
   }
 
@@ -479,9 +482,10 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
         auto RetStmt = dynamic_cast<ReturnStatement *>(Stmt.get());
         auto RefExpr =
             dynamic_cast<ReferenceExpression *>(RetStmt->GetRetVal().get());
-        if (RefExpr)
-          IRF->GetCurrentFunction()->SetIgnorableStructVarName(
-              RefExpr->GetIdentifier());
+        if (RefExpr) {
+          auto ID = RefExpr->GetIdentifier();
+          IRF->GetCurrentFunction()->SetIgnorableStructVarName(ID);
+        }
       }
   }
 
@@ -490,13 +494,13 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   auto HasMultipleReturn = ReturnsNumber > 1 && !RetType.IsVoid();
   if (HasMultipleReturn)
     IRF->GetCurrentFunction()->SetReturnValue(
-        IRF->CreateSA(Name + ".return", RetType));
+        IRF->CreateSA(Name.GetString() + ".return", RetType));
 
   Body->IRCodegen(IRF);
 
   // patching JUMP -s with nullptr destination to make them point to the last BB
   if (HasMultipleReturn) {
-    auto BBName = Name + "_end";
+    auto BBName = Name.GetString() + "_end";
     auto RetBB =
         std::make_unique<BasicBlock>(BBName, IRF->GetCurrentFunction());
     auto RetBBPtr = RetBB.get();
@@ -530,6 +534,7 @@ Value *BreakStatement::IRCodegen(IRFactory *IRF) {
 
 Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {
   auto ParamType = GetIRTypeFromASTType(Ty);
+  auto ParamName = Name.GetString();
 
   // if the param is a struct and too big to passed by value then change it
   // to a struct pointer, because that is how it will be passed by callers
@@ -538,10 +543,10 @@ Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {
           IRF->GetTargetMachine()->GetABI()->GetMaxStructSizePassedByValue())
     ParamType.IncrementPointerLevel();
 
-  auto Param = std::make_unique<FunctionParameter>(Name, ParamType);
+  auto Param = std::make_unique<FunctionParameter>(ParamName, ParamType);
 
-  auto SA = IRF->CreateSA(Name, ParamType);
-  IRF->AddToSymbolTable(Name, SA);
+  auto SA = IRF->CreateSA(ParamName, ParamType);
+  IRF->AddToSymbolTable(ParamName, SA);
   IRF->CreateSTR(Param.get(), SA);
   IRF->Insert(std::move(Param));
 
@@ -550,6 +555,7 @@ Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {
 
 Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
   auto Type = GetIRTypeFromASTType(AType);
+  auto VarName = Name.GetString();
 
   // If an array type, then change Type to reflect this
   if (AType.IsArray())
@@ -599,25 +605,25 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
         // increase to pointer level since now the pointer to the data is stored
         // and not the data itself
         Type.IncrementPointerLevel();
-        return IRF->CreateGlobalVar(Name, Type, GVStr);
+        return IRF->CreateGlobalVar(VarName, Type, GVStr);
       }
     }
-    return IRF->CreateGlobalVar(Name, Type, std::move(InitList));
+    return IRF->CreateGlobalVar(VarName, Type, std::move(InitList));
   }
 
-  if (IRF->GetCurrentFunction()->GetIgnorableStructVarName() == Name) {
+  if (IRF->GetCurrentFunction()->GetIgnorableStructVarName() == VarName) {
     auto ParamValue =
         IRF->GetCurrentFunction()
             ->GetParameters()
                 [IRF->GetCurrentFunction()->GetParameters().size() - 1]
             .get();
-    IRF->AddToSymbolTable(Name, ParamValue);
+    IRF->AddToSymbolTable(VarName, ParamValue);
     return ParamValue;
   }
 
   // Otherwise we are in a local scope of a function. Allocate space on
   // stack and update the local symbol table.
-  auto SA = IRF->CreateSA(Name, Type);
+  auto SA = IRF->CreateSA(VarName, Type);
 
   // TODO: revisit this
   if (Init) {
@@ -660,7 +666,7 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
     }
   }
 
-  IRF->AddToSymbolTable(Name, SA);
+  IRF->AddToSymbolTable(VarName, SA);
   return SA;
 }
 
@@ -699,6 +705,7 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
   }
 
   auto RetType = GetResultType().GetReturnType();
+  auto FuncName = Name.GetString();
 
   IRType IRRetType;
   StackAllocationInstruction *StructTemp = nullptr;
@@ -742,7 +749,7 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
     // If the return type is a struct, then also make a stack allocation
     // to use that as a temporary, where the result would be copied to after
     // the call
-    StructTemp = IRF->CreateSA(Name + ".temp", IRRetType);
+    StructTemp = IRF->CreateSA(FuncName + ".temp", IRRetType);
 
     // check if the call expression is returning a non pointer struct which is
     // to big to be returned back. In this case the called function were already
@@ -780,7 +787,8 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
   // in case if the ret type was a struct, so StructTemp not nullptr
   if (StructTemp) {
     // make the call
-    auto CallRes = IRF->CreateCALL(Name, Args, IRRetType, ImplicitStructIndex);
+    auto CallRes =
+        IRF->CreateCALL(FuncName, Args, IRRetType, ImplicitStructIndex);
     // issue a store using the freshly allocated temporary StructTemp if
     // needed
     if (!IsRetChanged)
@@ -788,11 +796,11 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
     return StructTemp;
   }
 
-  return IRF->CreateCALL(Name, Args, IRRetType);
+  return IRF->CreateCALL(FuncName, Args, IRRetType);
 }
 
 Value *ReferenceExpression::IRCodegen(IRFactory *IRF) {
-  auto Local = IRF->GetSymbolValue(Identifier);
+  auto Local = IRF->GetSymbolValue(GetIdentifier());
 
   if (Local && this->GetResultType().IsStruct())
     return Local;
@@ -804,7 +812,7 @@ Value *ReferenceExpression::IRCodegen(IRFactory *IRF) {
       return IRF->CreateLD(Local->GetType(), Local);
   }
 
-  auto GV = IRF->GetGlobalVar(Identifier);
+  auto GV = IRF->GetGlobalVar(GetIdentifier());
   assert(GV && "Cannot be null");
 
   // If LValue, then return as a ptr to the global val
@@ -1306,6 +1314,11 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
       IRF->CreateMEMCOPY(L, R, R->GetTypeRef().GetByteSize());
     else {
       Instruction *OperationResult = nullptr;
+
+      // converting the LValue L to an RValue by loading it in
+      auto ResultIRType = L->GetType();
+      ResultIRType.DecrementPointerLevel();
+      L = IRF->CreateLD(ResultIRType, L);
 
       switch (GetOperationKind()) {
       case ADD_ASSIGN:
