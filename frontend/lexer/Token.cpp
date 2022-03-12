@@ -173,6 +173,26 @@ std::string Token::ToString(TokenKind tk) {
     return "typedef";
   case Sizeof:
     return "sizeof";
+  case Bool:
+    return "_Bool";
+  case Alignas:
+    return "_Alignas";
+  case Alignof:
+    return "_Alignof";
+  case Atomic:
+    return "_Atomic";
+  case Complex:
+    return "_Complex";
+  case Generic:
+    return "_Generic";
+  case Imaginary:
+    return "_Imaginary";
+  case Noreturn:
+    return "_Noreturn";
+  case StaticAssert:
+    return "_Static_assert";
+  case ThreadLocal:
+    return "_Thread_local";
   default:
     assert(!"Unhandled token type.");
     break;

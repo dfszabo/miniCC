@@ -3,9 +3,7 @@
 // FUNC-DECL: int test(int)
 // COMPILE-FAIL
 
-const int a;
 
-int test(int b) {
-  a = b;
+int test(signed int a) {
   return a;
 }

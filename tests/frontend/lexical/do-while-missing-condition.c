@@ -3,9 +3,9 @@
 // FUNC-DECL: int test(int)
 // COMPILE-FAIL
 
-const int a;
 
-int test(int b) {
-  a = b;
-  return a;
+int test(int a) {
+  do {
+    return a;
+  } while ();
 }

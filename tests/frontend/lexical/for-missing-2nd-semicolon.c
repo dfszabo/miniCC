@@ -3,9 +3,8 @@
 // FUNC-DECL: int test(int)
 // COMPILE-FAIL
 
-const int a;
 
-int test(int b) {
-  a = b;
-  return a;
+int test(int a) {
+  for (int i = 1;)
+    return 1;
 }

@@ -3,9 +3,9 @@
 // FUNC-DECL: int test(int)
 // COMPILE-FAIL
 
-const int a;
 
-int test(int b) {
-  a = b;
+int test(int a) {
+  if()
+    return 1;
   return a;
 }

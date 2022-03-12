@@ -3,9 +3,8 @@
 // FUNC-DECL: int test(int)
 // COMPILE-FAIL
 
-const int a;
 
-int test(int b) {
-  a = b;
+int test(int a) {
+  double _Imaginary b;
   return a;
 }

@@ -3,9 +3,9 @@
 // FUNC-DECL: int test(int)
 // COMPILE-FAIL
 
-const int a;
 
-int test(int b) {
-  a = b;
-  return a;
+enum { A = 2, B = 1};
+
+int test(int a) {
+  return a + A;
 }

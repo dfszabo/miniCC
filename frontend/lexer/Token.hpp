@@ -77,7 +77,7 @@ public:
     DoubleForwardSlash,
     ForwardSlashAstrix,
     AstrixForwardSlash,
-  
+
     // Keywords
     For,
     While,
@@ -102,6 +102,18 @@ public:
     Struct,
     Enum,
     Typedef,
+
+    // C11
+    Bool,
+    Alignas,
+    Alignof,
+    Atomic,
+    Complex,
+    Generic,
+    Imaginary,
+    Noreturn,
+    StaticAssert,
+    ThreadLocal,
   };
 
   Token() : Kind(Invalid) {}

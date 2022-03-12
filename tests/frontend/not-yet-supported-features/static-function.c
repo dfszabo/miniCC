@@ -3,9 +3,7 @@
 // FUNC-DECL: int test(int)
 // COMPILE-FAIL
 
-const int a;
 
-int test(int b) {
-  a = b;
+static int test(int a) {
   return a;
 }
