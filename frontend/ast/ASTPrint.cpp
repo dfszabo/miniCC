@@ -117,7 +117,8 @@ void ASTPrint::VisitSwitchStatement(const SwitchStatement *node) {
 void ASTPrint::VisitWhileStatement(const WhileStatement *node) {
   PrintLn("WhileStatement", tab);
   tab += 2;
-  node->GetCondition()->Accept(this);
+  if (node->GetCondition())
+    node->GetCondition()->Accept(this);
   node->GetBody()->Accept(this);
   tab -= 2;
 }
@@ -142,8 +143,10 @@ void ASTPrint::VisitForStatement(const ForStatement *node) {
       VarDecl->Accept(this);
   }
 
-  node->GetCondition()->Accept(this);
-  node->GetIncrement()->Accept(this);
+  if (node->GetCondition())
+    node->GetCondition()->Accept(this);
+  if (node->GetIncrement())
+    node->GetIncrement()->Accept(this);
   node->GetBody()->Accept(this);
 
   tab -= 2;

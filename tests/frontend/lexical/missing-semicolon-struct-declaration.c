@@ -3,9 +3,10 @@
 // FUNC-DECL: int test(int)
 // COMPILE-FAIL
 
-const int a;
+struct A {
+  int a;
+}
 
-int test(int b) {
-  a = b;
-  return a;
+int test(int a) {
+  return 1;
 }

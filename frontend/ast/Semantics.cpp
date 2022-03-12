@@ -152,8 +152,10 @@ void Semantics::VisitForStatement(const ForStatement *node) {
       VarDecl->Accept(this);
   }
 
-  node->GetCondition()->Accept(this);
-  node->GetIncrement()->Accept(this);
+  if (node->GetCondition())
+    node->GetCondition()->Accept(this);
+  if (node->GetIncrement())
+    node->GetIncrement()->Accept(this);
   node->GetBody()->Accept(this);
 
   // Closing the scope
@@ -185,6 +187,7 @@ void Semantics::VisitFunctionDeclaration(const FunctionDeclaration *node) {
   for (size_t i = 0; i < node->GetArguments().size(); i++)
     node->GetArguments()[i]->Accept(this);
 
+  // In case of a function definition
   if (node->GetBody()) {
     auto &ParamList = node->GetArguments();
 
@@ -193,6 +196,17 @@ void Semantics::VisitFunctionDeclaration(const FunctionDeclaration *node) {
         std::string Msg =
             "parameter ('" + Param->GetName() + "') has incomplete type";
         ErrorLog.AddError(Msg, Param->GetNameToken());
+      }
+      // Validate that a parameter has a name as well. Function prototypes are
+      // allowed to omit it, but since this function declaration has a body,
+      // therefore it is a function definition as well. Parameters have to be
+      // named in this case.
+      else if (Param->GetName().empty()) {
+        std::string Msg = "parameter name omitted";
+        // TODO: Using the function name token to report the error since
+        // type does not hold the token which defined it. Maybe add the
+        // defining token to the type.
+        ErrorLog.AddError(Msg, node->GetNameToken());
       }
 
     node->GetBody()->Accept(this);
@@ -293,6 +307,14 @@ void Semantics::VisitStructInitExpression(const StructInitExpression *node) {
 }
 
 void Semantics::VisitUnaryExpression(const UnaryExpression *node) {
+  // Validate that the dereferenced expression has pointer type
+  if (node->GetOperationKind() == UnaryExpression::DEREF &&
+      !node->GetExpr()->GetResultType().IsPointerType()) {
+    std::string Msg = "invalid type argument of unary '*' (have '" +
+                      node->GetExpr()->GetResultType().ToString() + "')";
+    ErrorLog.AddError(Msg, node->GetOperation());
+  }
+
   if (node->GetExpr())
     node->GetExpr()->Accept(this);
 }

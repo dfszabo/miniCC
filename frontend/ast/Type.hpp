@@ -47,8 +47,8 @@ public:
   void SetPointerLevel(uint8_t pl) { PointerLevel = pl; }
   void IncrementPointerLevel() { PointerLevel++; }
   void DecrementPointerLevel() {
-    assert(PointerLevel > 0 && "Cannot decrement below 0");
-    PointerLevel--;
+    if (PointerLevel > 0)
+      PointerLevel--;
   }
 
   bool IsPointerType() const { return PointerLevel != 0; }

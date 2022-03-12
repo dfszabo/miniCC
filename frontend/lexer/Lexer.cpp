@@ -28,6 +28,16 @@ std::unordered_map<std::string, Token::TokenKind> Lexer::Keywords =
         {"enum", Token::Enum},
         {"typedef", Token::Typedef},
         {"continue", Token::Continue},
+        {"_Bool", Token::Bool},
+        {"_Alignas", Token::Alignas},
+        {"_Alignof", Token::Alignof},
+        {"_Atomic", Token::Atomic},
+        {"_Complex", Token::Complex},
+        {"_Generic", Token::Generic},
+        {"_Imaginary", Token::Imaginary},
+        {"_Noreturn", Token::Noreturn},
+        {"_Static_assert", Token::StaticAssert},
+        {"_Thread_local", Token::ThreadLocal},
     };
 
 Lexer::Lexer(std::vector<std::string> &s) {

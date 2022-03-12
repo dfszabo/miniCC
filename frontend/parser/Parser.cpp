@@ -6,14 +6,48 @@
 
 const unsigned EMPTY_DIMENSION = ~0;
 
+static bool IsUnsupported(const Token &T) {
+  switch (T.GetKind()) {
+  case Token::Alignas:
+  case Token::Alignof:
+  case Token::Atomic:
+  case Token::Complex:
+  case Token::Generic:
+  case Token::Imaginary:
+  case Token::Noreturn:
+  case Token::StaticAssert:
+  case Token::ThreadLocal:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
 Token Parser::Expect(Token::TokenKind TKind) {
-  auto t = Lex();
+  auto t = GetCurrentToken();
 
   if (t.GetKind() != TKind) {
-    std::string Error = "Unexpected symbol `" + t.GetString() +
-                        "`, expected is `" + Token::ToString(TKind) + "`";
-    ErrorLog.AddError(Error, t);
-  }
+    if (t.GetKind() != Token::EndOfFile) {
+      std::string Msg = "Unexpected symbol `" + t.GetString() +
+                          "`, expected is `" + Token::ToString(TKind) + "`";
+      ErrorLog.AddError(Msg, t);
+
+      if (IsUnsupported(t)) {
+        Msg = "'" + t.GetString() + "' is unsupported";
+        ErrorLog.AddNote(Msg, t);
+      }
+    }
+    else {
+      std::string Error = "Reached the end of the file, but expected `" +
+                          Token::ToString(TKind) + "`";
+      ErrorLog.AddError(Error);
+    }
+    if (t.GetKind() == Token::Identifier)
+      Lex();
+  } else
+    Lex(); // consume Tokens
+
   return t; // consume Tokens
 }
 
@@ -32,30 +66,6 @@ void Parser::InsertToSymTable(const Token &SymName, Type SymType,
     SymTabStack.InsertGlobalEntry(SymEntry);
   else
     SymTabStack.InsertEntry(SymEntry);
-}
-
-[[maybe_unused]]
-void static UndefinedSymbolError(Token sym, Lexer &L, ErrorLogger &EL) {
-  std::string Error = "Undefined symbol '" + sym.GetString() + "'";
-  EL.AddError(Error, sym);
-}
-
-[[maybe_unused]]
-void static ArrayTypeMismatchError(Token sym, Type actual) {
-  std::cout << sym.GetLineNum() + 1 << ":" << sym.GetColNum() + 1 << " error:"
-            << ": Type mismatch'" << sym.GetString() << "' type is '"
-            << actual.ToString() << "', it is not an array type.'" << std::endl;
-}
-
-[[maybe_unused]]
-void static EmitError(const std::string &msg, Lexer &L, ErrorLogger &EL) {
-  EL.AddError(msg);
-}
-
-[[maybe_unused]]
-void static EmitError(const std::string &msg, Lexer &L, Token &T,
-                      ErrorLogger &EL) {
-  EL.AddError(msg, T);
 }
 
 bool Parser::IsUserDefined(std::string Name) {
@@ -314,14 +324,17 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
     Type BaseType;
 
     if (lexer.Is(Token::Struct) &&
-        lexer.LookAhead(3).GetKind() == Token::LeftCurly) {
+        (lexer.LookAhead(2).GetKind() == Token::LeftCurly ||
+         (lexer.LookAhead(2).GetKind() == Token::Identifier &&
+          lexer.LookAhead(3).GetKind() == Token::LeftCurly))) {
       auto SD = ParseStructDeclaration(Qualifiers);
       auto SDPtr = SD.get();
 
       TU->AddDeclaration(std::move(SD));
       Token = GetCurrentToken();
 
-      if (Token.GetKind() != Token::SemiColon) {
+      if (Token.GetKind() == Token::Identifier ||
+          Token.GetKind() == Token::Astrix) {
         IsAlsoStuctVariableDeclaration = true;
         BaseType = std::get<0>(UserDefinedTypes[SDPtr->GetName()]);
       } else {
@@ -351,6 +364,7 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
     }
 
     auto Name = Expect(Token::Identifier);
+    bool FailedToFindIdentifier = Name.GetKind() != Token::Identifier;
     auto NameStr = Name.GetString();
 
     if (Qualifiers & Type::Typedef) {
@@ -361,12 +375,12 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
     }
 
     // if a function declaration then a left parenthesis '(' expected
-    if (lexer.Is(Token::LeftParen)) {
+    if (lexer.Is(Token::LeftParen) && !FailedToFindIdentifier) {
       CurrentFuncRetType = CurrentType;
       TU->AddDeclaration(ParseFunctionDeclaration(CurrentType, Name));
     } 
     // Variable declaration
-    else { 
+    else if (!FailedToFindIdentifier) {
       bool IsFirstIteration = true;
 
       // since it is possible to have multiple declaration in the same line
@@ -418,9 +432,28 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
 
         CurrentType = BaseType;
       } while (lexer.Is(Token::Astrix) || lexer.Is(Token::Identifier));
+    } else if (Name.GetKind() == Token::LeftParen) {
+      std::string Msg = "Function pointers are not supported yet";
+      ErrorLog.AddNote(Msg, Name);
     }
 
     Token = GetCurrentToken();
+  }
+
+  if (lexer.IsNot(Token::EndOfFile)) {
+    std::string Msg;
+
+    if (lexer.Is(Token::Identifier) &&
+        (GetCurrentToken().GetString() == "union" ||
+         GetCurrentToken().GetString() == "extern" ||
+         GetCurrentToken().GetString() == "static" ||
+         GetCurrentToken().GetString() == "signed" ||
+         GetCurrentToken().GetString() == "_Bool"))
+      Msg = "'" + GetCurrentToken().GetString() + "' is not supported yet";
+    else
+      Msg = "Unexpected token";
+
+    ErrorLog.AddError(Msg, Token);
   }
 
   return TU;
@@ -468,7 +501,7 @@ std::vector<std::unique_ptr<FunctionParameterDeclaration>>
 Parser::ParseParameterList(bool &HasVarArg) {
   std::vector<std::unique_ptr<FunctionParameterDeclaration>> Params;
 
-  if (!IsQualifiedType(GetCurrentToken()))
+  if (!IsQualifiedType(GetCurrentToken()) && lexer.Is(Token::RightParen))
     return Params;
 
   Params.push_back(ParseParameterDeclaration());
@@ -491,33 +524,29 @@ Parser::ParseParameterDeclaration() {
   std::unique_ptr<FunctionParameterDeclaration> FPD =
       std::make_unique<FunctionParameterDeclaration>();
 
-  if (IsQualifiedType(GetCurrentToken())) {
-    unsigned Qualifiers = ParseQualifiers();
-    Type type = ParseTypeSpecifier();
-    type.SetQualifiers(Qualifiers);
-    Lex();
+  Type type = ParseTypeSpecifier();
+  Lex();
 
-    while (lexer.Is(Token::Astrix)) {
-      type.IncrementPointerLevel();
-      Lex(); // Eat the * character
-    }
-
-    if (lexer.Is(Token::Identifier)) {
-      auto Name = Expect(Token::Identifier);
-      FPD->SetName(Name);
-
-      // support only empty dimensions for now like "int foo(int a[])"
-      if (lexer.Is(Token::LeftBracet)) {
-        Lex();
-        type.IncrementPointerLevel();
-        Expect(Token::RightBracet);
-      }
-
-      InsertToSymTable(Name, type);
-    }
-
-    FPD->SetType(type);
+  while (lexer.Is(Token::Astrix)) {
+    type.IncrementPointerLevel();
+    Lex(); // Eat the * character
   }
+
+  if (lexer.Is(Token::Identifier)) {
+    auto Name = Expect(Token::Identifier);
+    FPD->SetName(Name);
+
+    // support only empty dimensions for now like "int foo(int a[])"
+    if (lexer.Is(Token::LeftBracet)) {
+      Lex();
+      type.IncrementPointerLevel();
+      Expect(Token::RightBracet);
+    }
+
+    InsertToSymTable(Name, type);
+  }
+
+  FPD->SetType(type);
 
   return FPD;
 }
@@ -534,9 +563,12 @@ Type Parser::ParseTypeSpecifier() {
     Token = GetCurrentToken();
   }
 
-  if (!IsTypeSpecifier(Token) || (Qualifiers & Type::Typedef))
-    EmitError("Unexpected token '" + Token.GetString() + "'", lexer, Token,
-              ErrorLog);
+  if (!IsTypeSpecifier(Token) || (Qualifiers & Type::Typedef)) {
+    std::string Msg = "Unexpected token '" + Token.GetString() + "'";
+    ErrorLog.AddError(Msg, Token);
+    Lex();
+    Token = GetCurrentToken();
+  }
 
   auto ParsedType = ParseType(Token.GetKind());
   ParsedType.SetQualifiers(Qualifiers);
@@ -549,7 +581,9 @@ std::unique_ptr<CompoundStatement> Parser::ParseCompoundStatement() {
 
   std::vector<std::unique_ptr<Statement>> Statements;
 
-  while (IsQualifiedType(GetCurrentToken()) || lexer.IsNot(Token::RightCurly)) {
+  while (
+      (IsQualifiedType(GetCurrentToken()) || lexer.IsNot(Token::RightCurly)) &&
+      lexer.IsNot(Token::EndOfFile)) {
     if (IsQualifiedType(GetCurrentToken())) {
       auto Declarations = ParseVariableDeclarationList();
       for (auto &Declaration : Declarations)
@@ -602,11 +636,18 @@ std::unique_ptr<VariableDeclaration> Parser::ParseVariableDeclaration(Type type)
   // If the variable initialized
   std::unique_ptr<Expression> InitExpr = nullptr;
   if (lexer.Is(Token::Equal)) {
-    Lex(); // eat '='
+    Token T = Lex(); // eat '='
     if (lexer.Is(Token::LeftCurly))
       InitExpr = ParseInitializerListExpression();
     else {
       InitExpr = ParseExpression();
+
+      if (InitExpr == nullptr) {
+        std::string Msg = "expected expression here";
+        ErrorLog.AddError(Msg, T);
+        return nullptr;
+      }
+
       // if the variable type not match the size of the initializer expression
       // then also do an implicit cast
       if ((type != InitExpr->GetResultType()) &&
@@ -672,7 +713,12 @@ std::unique_ptr<MemberDeclaration> Parser::ParseMemberDeclaration() {
 //                                  '{' <StructDeclarationList>+ '}'
 std::unique_ptr<StructDeclaration>
 Parser::ParseStructDeclaration(unsigned Qualifiers = 0) {
-  Expect(Token::Struct);
+  Token T = Expect(Token::Struct);
+
+  if (lexer.IsNot(Token::Identifier)) {
+    std::string Msg = "unnamed structures are not supported yet";
+    ErrorLog.AddNote(Msg, T);
+  }
 
   Token Name = Expect(Token::Identifier);
   auto NameStr = Name.GetString();
@@ -731,6 +777,12 @@ Parser::ParseEnumDeclaration(unsigned Qualifiers) {
                      ValueType((unsigned)EnumCounter));
     EnumCounter++;
   } while (lexer.Is(Token::Comma));
+
+  if (lexer.Is(Token::Equal)) {
+    Token T = GetCurrentToken();
+    std::string Msg = "assigning values to enumerations are not supported yet";
+    ErrorLog.AddNote(Msg, T);
+  }
 
   Expect(Token::RightCurly);
 
@@ -821,8 +873,13 @@ std::unique_ptr<IfStatement> Parser::ParseIfStatement() {
   std::unique_ptr<IfStatement> IS = std::make_unique<IfStatement>();
 
   Expect(Token::If);
-  Expect(Token::LeftParen);
-  IS->SetCondition(std::move(ParseExpression()));
+  Token T = Expect(Token::LeftParen);
+  auto Condition = ParseExpression();
+  if (Condition == nullptr) {
+    std::string Msg = "expected expression here";
+    ErrorLog.AddError(Msg, T);
+  }
+  IS->SetCondition(std::move(Condition));
   Expect(Token::RightParen);
   IS->SetIfBody(std::move(ParseStatement()));
 
@@ -841,8 +898,13 @@ std::unique_ptr<SwitchStatement> Parser::ParseSwitchStatement() {
   std::unique_ptr<SwitchStatement> SS = std::make_unique<SwitchStatement>();
 
   Expect(Token::Switch);
-  Expect(Token::LeftParen);
-  SS->SetCondition(std::move(ParseExpression()));
+  Token T = Expect(Token::LeftParen);
+  auto Condition = ParseExpression();
+  if (Condition == nullptr) {
+    std::string Msg = "expected expression here";
+    ErrorLog.AddError(Msg, T);
+  }
+  SS->SetCondition(std::move(Condition));
   Expect(Token::RightParen);
   Expect(Token::LeftCurly);
 
@@ -859,6 +921,11 @@ std::unique_ptr<SwitchStatement> Parser::ParseSwitchStatement() {
     if (IsCase)
       CaseExpr = ParseExpression();
 
+    if (CaseExpr == nullptr && IsCase) {
+      std::string Msg = "expected expression here";
+      ErrorLog.AddError(Msg, T);
+    }
+
     Expect(Token::Colon);
 
     SwitchStatement::VecOfStmts Statements;
@@ -872,8 +939,8 @@ std::unique_ptr<SwitchStatement> Parser::ParseSwitchStatement() {
       FoundDefaults++;
       // TODO: move to semantic check
       if (FoundDefaults > 1) {
-        std::string ErrMsg = "multiple default labels in one switch";
-        EmitError(ErrMsg, lexer, T, ErrorLog);
+        std::string Msg = "multiple default labels in one switch";
+        ErrorLog.AddError(Msg, T);
       } else
         SS->SetDefaultBody(std::move(Statements));
     }
@@ -891,8 +958,13 @@ std::unique_ptr<WhileStatement> Parser::ParseWhileStatement() {
   std::unique_ptr<WhileStatement> WS = std::make_unique<WhileStatement>();
 
   Expect(Token::While);
-  Expect(Token::LeftParen);
-  WS->SetCondition(std::move(ParseExpression()));
+  Token T = Expect(Token::LeftParen);
+  auto Condition = ParseExpression();
+  if (Condition == nullptr) {
+    std::string Msg = "expected expression here";
+    ErrorLog.AddError(Msg, T);
+  }
+  WS->SetCondition(std::move(Condition));
   Expect(Token::RightParen);
   WS->SetBody(std::move(ParseStatement()));
 
@@ -906,8 +978,13 @@ std::unique_ptr<DoWhileStatement> Parser::ParseDoWhileStatement() {
   Expect(Token::Do);
   DWS->SetBody(std::move(ParseStatement()));
   Expect(Token::While);
-  Expect(Token::LeftParen);
-  DWS->SetCondition(std::move(ParseExpression()));
+  Token T = Expect(Token::LeftParen);
+  auto Condition = ParseExpression();
+  if (Condition == nullptr) {
+    std::string Msg = "expected expression here";
+    ErrorLog.AddError(Msg, T);
+  }
+  DWS->SetCondition(std::move(Condition));
   Expect(Token::RightParen);
   Expect(Token::SemiColon);
 
@@ -953,7 +1030,14 @@ std::unique_ptr<ExpressionStatement> Parser::ParseExpressionStatement() {
 
   if (lexer.IsNot(Token::SemiColon))
     ES->SetExpression(std::move(ParseExpression()));
-  Expect(Token::SemiColon);
+  auto T = Expect(Token::SemiColon);
+
+  if (T.GetKind() != Token::SemiColon && ES->GetExpression() == nullptr) {
+    std::string Msg =
+        "Unexpected token '" + GetCurrentToken().GetString() + "'";
+    ErrorLog.AddError(Msg, T);
+    Lex();
+  }
 
   return ES;
 }
@@ -973,12 +1057,17 @@ std::unique_ptr<ContinueStatement> Parser::ParseContinueStatement() {
 }
 
 // <ReturnStatement> ::= return <Expression>? ';'
-// TODO: we need explicit type conversions here as well
 std::unique_ptr<ReturnStatement> Parser::ParseReturnStatement() {
   ReturnsNumber++;
 
   Expect(Token::Return);
   auto Expr = ParseExpression();
+
+  if (Expr == nullptr) {
+    Expect(Token::SemiColon);
+    return std::make_unique<ReturnStatement>(nullptr);
+  }
+
   auto LeftType = CurrentFuncRetType.GetTypeVariant();
   auto RightType = Expr->GetResultType().GetTypeVariant();
   std::unique_ptr<ReturnStatement> RS;
@@ -1087,10 +1176,9 @@ std::unique_ptr<Expression> Parser::ParsePostFixExpression() {
       // TODO: move this to semantics
       if (!Found) {
         auto StructType = GetUserDefinedType(TypeName);
-        std::string ErrMsg = "'" + StructType.ToString() +
-                             "' has no member named '" + Member.GetString() +
-                             "'";
-        EmitError(ErrMsg, lexer, Member, ErrorLog);
+        std::string Msg = "'" + StructType.ToString() +
+                          "' has no member named '" + Member.GetString() + "'";
+        ErrorLog.AddError(Msg, Member);
       }
     }
 
@@ -1101,7 +1189,8 @@ std::unique_ptr<Expression> Parser::ParsePostFixExpression() {
   }
 
   auto Expr = ParsePrimaryExpression();
-  assert(Expr && "Cannot be NULL");
+  if (!Expr)
+    return nullptr;
 
   while (IsPostfixOperator(lexer.GetCurrentToken())) {
     if (lexer.Is(Token::PlusPlus) || lexer.Is(Token::MinusMinus)) {
@@ -1208,7 +1297,7 @@ std::unique_ptr<Expression> Parser::ParseUnaryExpression() {
     }
   }
 
-  if (IsUnaryOperator((GetCurrentTokenKind()))) {
+  if (IsUnaryOperator((UnaryOperation.GetKind()))) {
     auto Expr = ParseUnaryExpression();
 
     if (hasSizeofParenthesis)
@@ -1281,7 +1370,8 @@ static int GetBinOpPrecedence(Token::TokenKind TK) {
 
 std::unique_ptr<Expression> Parser::ParseBinaryExpression() {
   auto LeftExpression = ParseUnaryExpression();
-  assert(LeftExpression && "Cannot be NULL");
+  if(!LeftExpression)
+    return nullptr;
 
   // TODO: see other call sites...
   if (lexer.Is(Token::QuestionMark))
