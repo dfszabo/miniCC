@@ -441,19 +441,12 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
   }
 
   if (lexer.IsNot(Token::EndOfFile)) {
-    std::string Msg;
-
-    if (lexer.Is(Token::Identifier) &&
-        (GetCurrentToken().GetString() == "union" ||
-         GetCurrentToken().GetString() == "extern" ||
-         GetCurrentToken().GetString() == "static" ||
-         GetCurrentToken().GetString() == "signed" ||
-         GetCurrentToken().GetString() == "_Bool"))
-      Msg = "'" + GetCurrentToken().GetString() + "' is not supported yet";
-    else
-      Msg = "Unexpected token";
-
+    std::string Msg = "Unexpected token '" + Token.GetString() + "'";
     ErrorLog.AddError(Msg, Token);
+    if (IsUnsupported(Token)) {
+      Msg = "'" + Token.GetString() + "' is unsupported";
+      ErrorLog.AddNote(Msg, Token);
+    }
   }
 
   return TU;
