@@ -1,6 +1,3 @@
-// RUN: AArch64
-
-// FUNC-DECL: int test(int)
 // COMPILE-FAIL
 
 int func(int a) { return a * 2; }

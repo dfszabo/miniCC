@@ -1,8 +1,6 @@
-// RUN: AArch64
-
-// EXTRA-FLAGS: -Wall
-// FUNC-DECL: int test()
 // COMPILE-FAIL
+// EXTRA-FLAGS: -Wall
+
 
 int test() {
   return func();

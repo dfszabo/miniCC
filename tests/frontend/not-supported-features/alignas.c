@@ -1,8 +1,4 @@
-// RUN: AArch64
-
-// FUNC-DECL: int test(int)
 // COMPILE-FAIL
-
 
 struct S {
   float a;

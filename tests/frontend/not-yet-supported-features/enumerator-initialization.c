@@ -1,8 +1,4 @@
-// RUN: AArch64
-
-// FUNC-DECL: int test(int)
 // COMPILE-FAIL
-
 
 enum { A = 2, B = 1};
 

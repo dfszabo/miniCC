@@ -1,6 +1,3 @@
-// RUN: AArch64
-
-// FUNC-DECL: int test()
 // COMPILE-FAIL
 
 struct Point {
