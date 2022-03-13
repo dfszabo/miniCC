@@ -1,4 +1,5 @@
 #include "Parser.hpp"
+#include "../Support.hpp"
 #include <cassert>
 #include <iostream>
 #include <memory>
@@ -1429,17 +1430,20 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
           std::move(RightExpression), Type(Type::Int));
     }
 
-    //  If it is an assignment and the left hand side is an LValue.
+    // If it is an assignment and the left hand side is an LValue.
     // TODO: Should be solved in a better way. Seems like LLVM using
     // ImplicitCast for this purpose as well. Should investigate that solution.
-    if (IsAssignment)
-      if (dynamic_cast<ArrayExpression *>(LeftExpression.get()) ||
-          dynamic_cast<ReferenceExpression *>(LeftExpression.get()) ||
-          dynamic_cast<StructMemberReference *>(LeftExpression.get()) ||
-          (dynamic_cast<UnaryExpression *>(LeftExpression.get()) &&
-           dynamic_cast<UnaryExpression *>(LeftExpression.get())
-                   ->GetOperationKind() == UnaryExpression::DEREF))
+    if (IsAssignment) {
+      const auto LHS = LeftExpression.get();
+
+      if (instanceof<ArrayExpression>(LHS) ||
+          instanceof<ReferenceExpression>(LHS) || 
+          instanceof<StructMemberReference>(LHS) ||
+          (instanceof<UnaryExpression>(LHS) &&
+           dynamic_cast<UnaryExpression *>(LHS)->GetOperationKind() ==
+                       UnaryExpression::DEREF))
         LeftExpression->SetLValueness(true);
+    }
 
     // convert left expression to RValue if the operation is not assignment
     if (!IsAssignment)
