@@ -1,8 +1,6 @@
-// RUN: AArch64
-
-// EXTRA-FLAGS: -Wall
-// FUNC-DECL: int test(int)
 // COMPILE-FAIL
+// EXTRA-FLAGS: -Wall
+
 
 int test(int a) {
   switch (a) {
