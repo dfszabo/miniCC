@@ -14,7 +14,7 @@ public:
   int GetNextChar();
   int GetNextNthCharOnSameLine(unsigned n);
 
-  // Update LineIndex and ColumnIndex to make them pointing to the next
+  // Update LineIndex and ColumnIndex to make them point to the next
   // input character
   void EatNextChar();
 
@@ -30,13 +30,9 @@ public:
   bool Is(Token::TokenKind tk);
   bool IsNot(Token::TokenKind tk);
 
-  std::vector<std::string> &GetSource() { return Source; }
-
-  unsigned GetLineNum() { return LineIndex + 1; }
-
   Token Lex(bool LookAhead = false);
 
-  Lexer(std::vector<std::string> &s);
+  explicit Lexer(std::vector<std::string> &s);
 
 private:
   static std::unordered_map<std::string, Token::TokenKind> Keywords;

@@ -66,8 +66,8 @@ public:
     SemiColon,
     LeftParen,
     RightParen,
-    LeftBracet,
-    RightBracet,
+    LeftBracket,
+    RightBracket,
     LeftCurly,
     RightCurly,
     BackSlash,
@@ -118,7 +118,7 @@ public:
 
   Token() : Kind(Invalid) {}
 
-  Token(TokenKind tk) : Kind(tk) {}
+  explicit Token(TokenKind tk) : Kind(tk) {}
 
   Token(TokenKind tk, std::string_view sv, unsigned l, unsigned c)
       : Kind(tk), StringValue(sv), LineNumber(l), ColumnNumber(c) {}
@@ -126,14 +126,16 @@ public:
   Token(TokenKind tk, std::string_view sv, unsigned l, unsigned c, unsigned v)
       : Kind(tk), StringValue(sv), LineNumber(l), ColumnNumber(c), Value(v) {}
 
-  std::string GetString() const { return std::string(StringValue); }
-  TokenKind GetKind() const { return Kind; }
+  [[nodiscard]] std::string GetString() const {
+    return std::string(StringValue);
+  }
+  [[nodiscard]] TokenKind GetKind() const { return Kind; }
 
-  unsigned GetLineNum() const { return LineNumber; }
-  unsigned GetColNum() const { return ColumnNumber; }
-  unsigned GetValue() const { return Value; }
+  [[nodiscard]] unsigned GetLineNum() const { return LineNumber; }
+  [[nodiscard]] unsigned GetColNum() const { return ColumnNumber; }
+  [[nodiscard]] unsigned GetValue() const { return Value; }
 
-  std::string ToString() const;
+  [[nodiscard]] std::string ToString() const;
 
   static std::string ToString(TokenKind tk);
 
@@ -144,8 +146,8 @@ public:
 private:
   TokenKind Kind;
   std::string_view StringValue;
-  unsigned LineNumber;
-  unsigned ColumnNumber;
+  unsigned LineNumber{};
+  unsigned ColumnNumber{};
   unsigned Value = 0;
 };
 

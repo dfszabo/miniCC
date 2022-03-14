@@ -4,13 +4,13 @@
 #include "lexer/Token.hpp"
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 class ErrorLogger {
 public:
-  ErrorLogger(const std::string &FileName,
-              const std::vector<std::string> &Source)
-      : FileName(FileName), Source(Source) {}
+  ErrorLogger(std::string FileName, std::vector<std::string> Source)
+      : FileName(std::move(FileName)), Source(std::move(Source)) {}
 
   void AddMessage(const std::string &Msg);
   void AddMessage(const std::string &Msg, const char *Type);
@@ -25,9 +25,10 @@ public:
   void AddNote(const std::string &Msg);
   void AddNote(const std::string &Msg, const Token &T);
 
-  bool HasErrors(const bool Wall = false) const;
+  bool HasErrors(bool Wall = false) const;
 
   void ReportErrors() const;
+
 private:
   std::string FileName;
   const std::vector<std::string> Source;

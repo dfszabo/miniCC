@@ -107,9 +107,9 @@ std::string Token::ToString(TokenKind tk) {
     return "(";
   case RightParen:
     return ")";
-  case LeftBracet:
+  case LeftBracket:
     return "[";
-  case RightBracet:
+  case RightBracket:
     return "]";
   case LeftCurly:
     return "{";

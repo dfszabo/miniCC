@@ -33,18 +33,14 @@ public:
   std::string GetName() const { return Name; }
   void SetName(std::string &n) { Name = n; }
 
-  TypeKind GetTypeKind() const { return Kind; }
   void SetTypeKind(TypeKind t) { Kind = t; }
 
   VariantKind GetTypeVariant() const { return Ty; }
   void SetTypeVariant(VariantKind t) { Ty = t; }
 
-  unsigned GetQualifiers() const { return Qualifiers; }
   void SetQualifiers(unsigned q) { Qualifiers = q; }
-  void AddQualifier(unsigned q) { Qualifiers |= q; }
 
   uint8_t GetPointerLevel() const { return PointerLevel; }
-  void SetPointerLevel(uint8_t pl) { PointerLevel = pl; }
   void IncrementPointerLevel() { PointerLevel++; }
   void DecrementPointerLevel() {
     if (PointerLevel > 0)
@@ -61,9 +57,8 @@ public:
   /// Given two type variants it return the stronger one.
   /// Type variants must be numerical ones.
   /// Example Int and Double -> result Double.
-  static Type GetStrongestType(const Type::VariantKind type1,
-                               const Type::VariantKind type2) {
-    if (type1 > type2)
+  static Type GetStrongestType(const Type &type1, const Type &type2) {
+    if (type1.GetTypeVariant() > type2.GetTypeVariant())
       return type1;
     else
       return type2;
@@ -88,7 +83,7 @@ public:
     }
   }
 
-  static bool IsImplicitlyCastable(const Type from, const Type to) {
+  static bool IsImplicitlyCastable(const Type &from, const Type &to) {
     const bool IsToPtr = to.IsPointerType();
     const bool IsFromPtr = from.IsPointerType();
     const bool IsFromArray = from.IsArray();
@@ -164,7 +159,7 @@ public:
   }
 
   Type() : Kind(Simple), Ty(Invalid) {}
-  Type(TypeKind tk) {
+  explicit Type(TypeKind tk) {
     Kind = tk;
     switch (tk) {
     case Array:
@@ -177,12 +172,12 @@ public:
       break;
     }
   }
-  Type(VariantKind vk) {
+  explicit Type(VariantKind vk) {
     Kind = Simple;
     Ty = vk;
   }
 
-  Type(Type t, std::vector<unsigned> d) : Type(t) {
+  Type(const Type &t, std::vector<unsigned> d) : Type(t) {
     if (d.empty()) {
       Kind = t.Kind;
     } else {
@@ -191,18 +186,18 @@ public:
     }
   }
 
-  Type(Type t, std::vector<Type> a) {
+  Type(const Type &t, std::vector<Type> a) {
     ParameterList = std::move(a);
     Ty = t.GetTypeVariant();
+    Kind = Simple;
   }
 
   Type(Type &&ct) = default;
   Type(const Type &ct) = default;
   Type &operator=(const Type &ct) = default;
 
-  bool IsSimpleType() const { return Kind == Simple; }
   bool IsArray() const { return Kind == Array; }
-  bool IsFunction() const { return ParameterList.size() > 0; }
+  bool IsFunction() const { return !ParameterList.empty(); }
   bool IsStruct() const { return Kind == Struct; }
   bool IsIntegerType() const {
     switch (Ty) {
@@ -256,14 +251,6 @@ public:
 
   std::vector<Type> &GetArgTypes() { return ParameterList; }
 
-  Type GetStructMemberType(const std::string &Member) {
-    for (auto &T : TypeList)
-      if (T.GetName() == Member)
-        return T;
-
-    return Type(VariantKind::Invalid);
-  }
-
   friend bool operator==(const Type &lhs, const Type &rhs) {
     bool result = lhs.Kind == rhs.Kind && lhs.Ty == rhs.Ty;
     result &= lhs.GetPointerLevel() == rhs.GetPointerLevel();
@@ -275,7 +262,7 @@ public:
       return false;
 
     // at this point both type's parameter list has the same size
-    if (lhs.ParameterList.size() > 0) {
+    if (!lhs.ParameterList.empty()) {
       for (size_t i = 0; i < lhs.ParameterList.size(); i++)
         if (lhs.ParameterList[i] != rhs.ParameterList[i])
           return false;
@@ -323,8 +310,8 @@ private:
 class ValueType {
 public:
   ValueType() : Kind(Empty) {}
-  ValueType(unsigned v) : Kind(Integer), IntVal(v) {}
-  ValueType(double v) : Kind(Float), FloatVal(v) {}
+  explicit ValueType(unsigned v) : Kind(Integer), IntVal(v) {}
+  explicit ValueType(double v) : Kind(Float), FloatVal(v) {}
 
   ValueType(ValueType &&) = default;
   ValueType &operator=(ValueType &&) = delete;
@@ -353,10 +340,10 @@ public:
 
     switch (lhs.Kind) {
     case Integer:
-      result = result && (lhs.IntVal == rhs.IntVal);
+      result = lhs.IntVal == rhs.IntVal;
       break;
     case Float:
-      result = result && (lhs.FloatVal == rhs.FloatVal);
+      result = lhs.FloatVal == rhs.FloatVal;
       break;
     default:
       break;
@@ -368,7 +355,7 @@ private:
   enum ValueKind { Empty, Integer, Float };
   ValueKind Kind;
   union {
-    unsigned IntVal;
+    unsigned IntVal{};
     double FloatVal;
   };
 };

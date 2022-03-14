@@ -26,7 +26,8 @@
  * It will iterate through all the lines in file and
  * put them in given vector
  */
-bool getFileContent(std::string fileName, std::vector<std::string> &vecOfStrs) {
+bool getFileContent(const std::string &fileName,
+                    std::vector<std::string> &vecOfStrs) {
   // Open the File
   std::ifstream in(fileName.c_str());
   // Check if object is valid

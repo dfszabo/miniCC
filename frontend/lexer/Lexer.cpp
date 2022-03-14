@@ -50,13 +50,13 @@ Lexer::Lexer(std::vector<std::string> &s) {
 }
 
 void Lexer::ConsumeCurrentToken() {
-  assert(TokenBuffer.size() > 0 && "TokenBuffer is empty.");
+  assert(!TokenBuffer.empty() && "TokenBuffer is empty.");
   TokenBuffer.erase(TokenBuffer.begin());
 }
 
 int Lexer::GetNextChar() {
-  // If its an empty line then move forward by calling EatNextChar() which will
-  // advance to the next line's first character.
+  // If it is an empty line then move forward by calling EatNextChar() which
+  // will advance to the next line's first character.
   if (LineIndex < Source.size() && Source[LineIndex].length() == 0)
     EatNextChar();
   if (LineIndex >= Source.size() || (LineIndex == Source.size() - 1 &&
@@ -74,7 +74,7 @@ int Lexer::GetNextNthCharOnSameLine(unsigned n) {
 
 void Lexer::EatNextChar() {
   if (LineIndex < Source.size()) {
-    if (Source[LineIndex].size() == 0 ||
+    if (Source[LineIndex].empty() ||
         ColumnIndex >= Source[LineIndex].size() - 1) {
       ColumnIndex = 0;
       LineIndex++;
@@ -106,7 +106,7 @@ std::optional<Token> Lexer::LexNumber() {
     while (isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
       Length++;
       EatNextChar();
-      unsigned currDigit = 0;
+      unsigned currDigit;
 
       if (isdigit(c))
         currDigit = c - '0';
@@ -122,7 +122,7 @@ std::optional<Token> Lexer::LexNumber() {
 
     TokenValue = value;
   }
-  // if its a real value like 3.14
+  // if it is a real value like 3.14
   else if (GetNextChar() == '.') {
     Length++;
     EatNextChar();
@@ -282,7 +282,7 @@ std::optional<Token> Lexer::LexStringLiteral() {
 }
 
 std::optional<Token> Lexer::LexSymbol() {
-  auto TokenKind = Token::Invalid;
+  Token::TokenKind TokenKind;
   unsigned Size = 1;
 
   switch (GetNextChar()) {
@@ -441,10 +441,10 @@ std::optional<Token> Lexer::LexSymbol() {
     TokenKind = Token::RightParen;
     break;
   case '[':
-    TokenKind = Token::LeftBracet;
+    TokenKind = Token::LeftBracket;
     break;
   case ']':
-    TokenKind = Token::RightBracet;
+    TokenKind = Token::RightBracket;
     break;
   case '{':
     TokenKind = Token::LeftCurly;

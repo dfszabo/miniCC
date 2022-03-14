@@ -14,7 +14,7 @@ public:
   int GetNextChar();
   int GetNextNthCharOnSameLine(unsigned n);
 
-  // Update LineIndex to make them pointing to the next input character
+  // Update LineIndex to make them point to the next input character
   void EatNextChar();
 
   std::optional<PPToken> LexIdentifier();
@@ -36,7 +36,7 @@ public:
 
   PPToken Lex(bool LookAhead = false);
 
-  PPLexer(std::string &s);
+  explicit PPLexer(std::string &s);
 
 private:
   static std::unordered_map<std::string, PPToken::PPTokenKind> Keywords;
