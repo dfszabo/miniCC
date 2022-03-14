@@ -5,7 +5,7 @@
 
 class CSEPass : public FunctionPass {
 public:
-  virtual bool RunOnFunction(Function &F) override;
+  bool RunOnFunction(Function &F) override;
 };
 
 #endif // CSE_PASS_HPP

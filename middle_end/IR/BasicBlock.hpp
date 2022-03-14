@@ -1,11 +1,12 @@
-#ifndef BASICBLOCK_HPP
-#define BASICBLOCK_HPP
+#ifndef BASIC_BLOCK_HPP
+#define BASIC_BLOCK_HPP
 
 #include "Instructions.hpp"
 #include "Value.hpp"
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 class Function;
@@ -16,8 +17,8 @@ class BasicBlock : public Value {
 
 public:
   BasicBlock(std::string Name, Function *Parent)
-      : Name(Name), Parent(Parent), Value(Value::LABEL) {}
-  BasicBlock(Function *Parent) : Parent(Parent), Value(Value::LABEL) {}
+      : Name(std::move(Name)), Parent(Parent), Value(Value::LABEL) {}
+  explicit BasicBlock(Function *Parent) : Parent(Parent), Value(Value::LABEL) {}
 
   /// Since unique_ptr is not copyable, therefore this class should not as well
   BasicBlock(const BasicBlock &) = delete;

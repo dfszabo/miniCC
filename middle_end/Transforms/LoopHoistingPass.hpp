@@ -5,7 +5,7 @@
 
 class LoopHoistingPass : public FunctionPass {
 public:
-  virtual bool RunOnFunction(Function &F) override;
+  bool RunOnFunction(Function &F) override;
 };
 
 #endif // LOOP_HOISTING_PASS_HPP

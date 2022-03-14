@@ -5,6 +5,7 @@
 #include <cassert>
 #include <iostream>
 #include <sstream>
+#include <utility>
 #include <vector>
 
 class BasicBlock;
@@ -61,11 +62,11 @@ public:
   static std::string AsString(IKind IK);
 
   Instruction(IKind K, BasicBlock *P, IRType V)
-      : InstKind(K), Parent(P), Value(V) {}
+      : InstKind(K), Parent(P), Value(std::move(V)) {}
 
   bool IsStackAllocation() const { return InstKind == STACK_ALLOC; }
 
-  bool IsTerminator() { return BasicBlockTerminator; }
+  bool IsTerminator() const { return BasicBlockTerminator; }
 
   virtual void Print() const { assert(!"Cannot print base class"); }
 
@@ -96,7 +97,7 @@ public:
       : Instruction(UO, P, Operand->GetType()), Op(Operand) {}
 
   UnaryInstruction(IKind UO, IRType ResultType, Value *Operand, BasicBlock *P)
-      : Instruction(UO, P, ResultType), Op(Operand) {}
+      : Instruction(UO, P, std::move(ResultType)), Op(Operand) {}
 
   Value *GetOperand() { return Op; }
 
@@ -134,13 +135,13 @@ private:
 
 class CallInstruction : public Instruction {
 public:
-  CallInstruction(const std::string &N, std::vector<Value *> &A, IRType T,
+  CallInstruction(std::string N, std::vector<Value *> &A, IRType T,
                   BasicBlock *P, int StructIdx)
-      : Instruction(Instruction::CALL, P, T), Name(N), Arguments(A),
-        ImplicitStructArgIndex(StructIdx) {}
+      : Instruction(Instruction::CALL, P, std::move(T)), Name(std::move(N)),
+        Arguments(A), ImplicitStructArgIndex(StructIdx) {}
 
-  CallInstruction(const std::string N, IRType T, BasicBlock *P)
-      : Instruction(Instruction::CALL, P, T), Name(N) {}
+  CallInstruction(std::string N, IRType T, BasicBlock *P)
+      : Instruction(Instruction::CALL, P, std::move(T)), Name(std::move(N)) {}
 
   std::string &GetName() { return Name; }
   std::vector<Value *> &GetArgs() { return Arguments; }
@@ -194,7 +195,8 @@ private:
 class ReturnInstruction : public Instruction {
 public:
   ReturnInstruction(Value *RV, BasicBlock *P)
-      : Instruction(Instruction::RET, P, RV ? RV->GetType() : IRType::NONE),
+      : Instruction(Instruction::RET, P,
+                    RV ? RV->GetType() : IRType(IRType::NONE)),
         RetVal(RV) {
     BasicBlockTerminator = true;
   }
@@ -210,7 +212,8 @@ private:
 class StackAllocationInstruction : public Instruction {
 public:
   StackAllocationInstruction(std::string &S, IRType T, BasicBlock *P)
-      : Instruction(Instruction::STACK_ALLOC, P, T), VariableName(S) {
+      : Instruction(Instruction::STACK_ALLOC, P, std::move(T)),
+        VariableName(S) {
     this->GetTypeRef().SetPointerLevel(this->GetTypeRef().GetPointerLevel() +
                                        1);
   }
@@ -225,8 +228,8 @@ class GetElementPointerInstruction : public Instruction {
 public:
   GetElementPointerInstruction(IRType T, Value *CompositeObject,
                                Value *AccessIndex, BasicBlock *P)
-      : Instruction(Instruction::GET_ELEM_PTR, P, T), Source(CompositeObject),
-        Index(AccessIndex) {}
+      : Instruction(Instruction::GET_ELEM_PTR, P, std::move(T)),
+        Source(CompositeObject), Index(AccessIndex) {}
 
   Value *GetSource() const { return Source; }
   Value *GetIndex() { return Index; }
@@ -241,7 +244,7 @@ private:
 class StoreInstruction : public Instruction {
 public:
   StoreInstruction(Value *S, Value *D, BasicBlock *P)
-      : Instruction(Instruction::STORE, P, IRType::NONE), Source(S),
+      : Instruction(Instruction::STORE, P, IRType(IRType::NONE)), Source(S),
         Destination(D) {
     assert(Source && Destination);
   }
@@ -259,7 +262,7 @@ private:
 class LoadInstruction : public Instruction {
 public:
   LoadInstruction(IRType T, Value *S, Value *O, BasicBlock *P)
-      : Instruction(Instruction::LOAD, P, T), Source(S), Offset(O) {
+      : Instruction(Instruction::LOAD, P, std::move(T)), Source(S), Offset(O) {
     auto PtrLVL = this->GetTypeRef().GetPointerLevel();
     // Globals are handled differently, it is implicitly assumed that they
     // have 1 pointer level more, even though their IRType does not reflect this
@@ -269,7 +272,8 @@ public:
   }
 
   LoadInstruction(IRType T, Value *S, BasicBlock *P)
-      : Instruction(Instruction::LOAD, P, T), Source(S), Offset(nullptr) {
+      : Instruction(Instruction::LOAD, P, std::move(T)), Source(S),
+        Offset(nullptr) {
     auto PtrLVL = this->GetTypeRef().GetPointerLevel();
     if (PtrLVL != 0 && !S->IsGlobalVar())
       PtrLVL--;

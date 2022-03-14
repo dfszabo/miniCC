@@ -8,7 +8,7 @@ Instruction *BasicBlock::Insert(std::unique_ptr<Instruction> Instruction) {
 
 Instruction *BasicBlock::InsertSA(std::unique_ptr<Instruction> Instruction) {
   // Edge case: The BB is empty -> Just use Insert
-  if (Instructions.size() == 0)
+  if (Instructions.empty())
     return Insert(std::move(Instruction));
 
   size_t i;
