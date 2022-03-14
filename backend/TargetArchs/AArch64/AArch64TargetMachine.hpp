@@ -58,7 +58,8 @@ public:
 
   MachineInstruction *MaterializeConstant(MachineInstruction *MI,
                                           const uint64_t Constant,
-                                          MachineOperand &Reg);
+                                          MachineOperand &Reg,
+                                          const bool UseVRegAndMI = false);
   bool SelectThreeAddressInstruction(MachineInstruction *MI, const Opcodes rrr,
                                      const Opcodes rri, unsigned ImmSize = 12);
 };
