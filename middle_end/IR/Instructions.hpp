@@ -48,11 +48,8 @@ public:
     BRANCH,
     RET,
 
-    MOV = RET + 2,
-    MOVF,
-
     // Memory operations
-    LOAD,
+    LOAD = RET + 4,
     STORE,
     MEM_COPY,
     STACK_ALLOC,

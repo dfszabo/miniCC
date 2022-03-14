@@ -868,11 +868,17 @@ std::unique_ptr<IfStatement> Parser::ParseIfStatement() {
 
   Expect(Token::If);
   Token T = Expect(Token::LeftParen);
+
   auto Condition = ParseExpression();
   if (Condition == nullptr) {
     std::string Msg = "expected expression here";
     ErrorLog.AddError(Msg, T);
   }
+
+  if (Condition && !Condition->GetResultType().IsIntegerType())
+    Condition = std::make_unique<ImplicitCastExpression>(std::move(Condition),
+                                                         Type(Type::Int));
+
   IS->SetCondition(std::move(Condition));
   Expect(Token::RightParen);
   IS->SetIfBody(std::move(ParseStatement()));
@@ -953,11 +959,17 @@ std::unique_ptr<WhileStatement> Parser::ParseWhileStatement() {
 
   Expect(Token::While);
   Token T = Expect(Token::LeftParen);
+
   auto Condition = ParseExpression();
   if (Condition == nullptr) {
     std::string Msg = "expected expression here";
     ErrorLog.AddError(Msg, T);
   }
+
+  if (Condition && !Condition->GetResultType().IsIntegerType())
+    Condition = std::make_unique<ImplicitCastExpression>(std::move(Condition),
+                                                         Type(Type::Int));
+
   WS->SetCondition(std::move(Condition));
   Expect(Token::RightParen);
   WS->SetBody(std::move(ParseStatement()));
@@ -973,11 +985,17 @@ std::unique_ptr<DoWhileStatement> Parser::ParseDoWhileStatement() {
   DWS->SetBody(std::move(ParseStatement()));
   Expect(Token::While);
   Token T = Expect(Token::LeftParen);
+
   auto Condition = ParseExpression();
   if (Condition == nullptr) {
     std::string Msg = "expected expression here";
     ErrorLog.AddError(Msg, T);
   }
+
+  if (Condition && !Condition->GetResultType().IsIntegerType())
+    Condition = std::make_unique<ImplicitCastExpression>(std::move(Condition),
+                                                         Type(Type::Int));
+
   DWS->SetCondition(std::move(Condition));
   Expect(Token::RightParen);
   Expect(Token::SemiColon);
@@ -1005,7 +1023,13 @@ std::unique_ptr<ForStatement> Parser::ParseForStatement() {
     FS->SetInit(std::move(ParseExpression()));
     Expect(Token::SemiColon);
   }
-  FS->SetCondition(std::move(ParseExpression()));
+
+  auto Condition = ParseExpression();
+  if (Condition && !Condition->GetResultType().IsIntegerType())
+    Condition = std::make_unique<ImplicitCastExpression>(std::move(Condition),
+                                                         Type(Type::Int));
+
+  FS->SetCondition(std::move(Condition));
   Expect(Token::SemiColon);
 
   FS->SetIncrement(std::move(ParseExpression()));
@@ -1510,6 +1534,9 @@ Parser::ParseBinaryExpressionRHS(int Precedence,
 // <TernaryExpression> ::= <Expression> '?' <Expression> ':' <Expression>
 std::unique_ptr<Expression>
 Parser::ParseTernaryExpression(std::unique_ptr<Expression> Condition) {
+  if (Condition && !Condition->GetResultType().IsIntegerType())
+    Condition = std::make_unique<ImplicitCastExpression>(std::move(Condition),
+                                                         Type(Type::Int));
   Expect(Token::QuestionMark);
   auto TrueExpr = ParseExpression();
   Expect(Token::Colon);
