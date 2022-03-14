@@ -2,10 +2,10 @@
 #define PARSER_H
 
 #include "../../middle_end/IR/IRFactory.hpp"
+#include "../ErrorLogger.hpp"
 #include "../ast/AST.hpp"
 #include "../lexer/Lexer.hpp"
 #include "../lexer/Token.hpp"
-#include "../ErrorLogger.hpp"
 #include "SymbolTable.hpp"
 #include <memory>
 #include <string>
@@ -32,11 +32,11 @@ public:
 
   /// Helper function to make insertion to the symbol table stack more compact
   /// and readable
-  void InsertToSymTable(const Token &SymName, Type SymType, const bool ToGlobal,
-                        ValueType SymValue);
+  void InsertToSymTable(const Token &SymName, const Type &SymType,
+                        bool ToGlobal, ValueType SymValue);
 
-  bool IsUserDefined(std::string Name);
-  Type GetUserDefinedType(std::string Name);
+  bool IsUserDefined(const std::string &Name);
+  Type GetUserDefinedType(const std::string &Name);
   std::vector<Token> GetUserDefinedTypeMembers(std::string Name);
 
   unsigned ParseQualifiers();
@@ -54,7 +54,8 @@ public:
   std::vector<std::unique_ptr<VariableDeclaration>>
   ParseVariableDeclarationList();
   std::unique_ptr<MemberDeclaration> ParseMemberDeclaration();
-  std::unique_ptr<StructDeclaration> ParseStructDeclaration(unsigned Qualifiers);
+  std::unique_ptr<StructDeclaration>
+  ParseStructDeclaration(unsigned Qualifiers);
   std::unique_ptr<EnumDeclaration> ParseEnumDeclaration(unsigned Qualifiers);
   Node ParseReturnTypeSpecifier();
   std::vector<std::unique_ptr<FunctionParameterDeclaration>>
@@ -76,7 +77,8 @@ public:
   std::unique_ptr<Expression>
   ParseBinaryExpressionRHS(int Precedence, std::unique_ptr<Expression> LHS);
   std::unique_ptr<Expression> ParseCallExpression(Token ID);
-  std::unique_ptr<Expression> ParseArrayExpression(std::unique_ptr<Expression> Base);
+  std::unique_ptr<Expression>
+  ParseArrayExpression(std::unique_ptr<Expression> Base);
   std::unique_ptr<Expression> ParseIdentifierExpression();
   std::unique_ptr<Expression> ParsePrimaryExpression();
   std::unique_ptr<Expression> ParseInitializerListExpression();
@@ -103,7 +105,7 @@ private:
   std::map<std::string, Type> TypeDefinitions;
 
   /// Used for determining if implicit cast need or not in return statements
-  Type CurrentFuncRetType = Type::Invalid;
+  Type CurrentFuncRetType = Type(Type::Invalid);
 
   /// The amount of return seen in the current function being parsed
   unsigned ReturnsNumber = 0;

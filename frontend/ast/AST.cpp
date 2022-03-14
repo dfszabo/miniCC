@@ -17,34 +17,34 @@ static IRType GetIRTypeFromVK(Type::VariantKind VK) {
   // okay, since non pointer void types should have been already sorted out as
   // an error by the parser.
   case Type::Void:
-    return IRType(IRType::SINT, 8);
+    return {IRType::SINT, 8};
   case Type::UnsignedChar:
-    return IRType(IRType::UINT, 8);
+    return {IRType::UINT, 8};
   case Type::Short:
-    return IRType(IRType::SINT, 16);
+    return {IRType::SINT, 16};
   case Type::UnsignedShort:
-    return IRType(IRType::UINT, 16);
+    return {IRType::UINT, 16};
   case Type::Int:
-    return IRType(IRType::SINT);
+    return {IRType::SINT};
   case Type::UnsignedInt:
-    return IRType(IRType::UINT);
+    return {IRType::UINT};
   case Type::Long:
-    return IRType(IRType::SINT, 64);
+    return {IRType::SINT, 64};
   case Type::UnsignedLong:
-    return IRType(IRType::UINT, 64);
+    return {IRType::UINT, 64};
   case Type::LongLong:
-    return IRType(IRType::SINT, 64);
+    return {IRType::SINT, 64};
   case Type::UnsignedLongLong:
-    return IRType(IRType::UINT, 64);
+    return {IRType::UINT, 64};
   case Type::Float:
-    return IRType(IRType::FP, 32);
+    return {IRType::FP, 32};
   case Type::Double:
-    return IRType(IRType::FP, 64);
+    return {IRType::FP, 64};
   case Type::Composite:
-    return IRType(IRType::STRUCT);
+    return {IRType::STRUCT};
   default:
     assert(!"Invalid type");
-    return IRType();
+    return {};
   }
 }
 
@@ -57,7 +57,7 @@ static IRType GetIRTypeFromASTType(Type &CT) {
     auto StructName = CT.GetName();
     Result.SetStructName(StructName);
 
-    // convert each members AST type to IRType (recursive)
+    // convert each member's AST type to IRType (recursive)
     for (auto &MemberASTType : CT.GetTypeList())
       Result.GetMemberTypes().push_back(GetIRTypeFromASTType(MemberASTType));
   }
@@ -111,15 +111,15 @@ Value *IfStatement::IRCodegen(IRFactory *IRF) {
     assert(!Cond->IsFPType() && "Boolean value supposed to be integer");
 
     // If the condition is a constant true value, then
-    if (((Constant*)Cond)->GetIntValue() != 0)
+    if (((Constant *)Cond)->GetIntValue() != 0)
       // generate the if true case body
       IfBody->IRCodegen(IRF);
-    else if (HaveElse) 
+    else if (HaveElse)
       ElseBody->IRCodegen(IRF);
     else
       ; // if no else clause then do nothing
 
-    return nullptr; 
+    return nullptr;
   }
 
   // if Condition was a compare instruction then just revert its relation
@@ -218,7 +218,7 @@ Value *SwitchStatement::IRCodegen(IRFactory *IRF) {
   for (auto &Statement : DefaultBody)
     Statement->IRCodegen(IRF);
 
-  IRF->GetBreaksEndBBsTable().erase(IRF->GetBreaksEndBBsTable().end() - 1);
+  IRF->GetBreaksEndBBsTable().pop_back();
   IRF->InsertBB(std::move(SwitchEnd));
 
   return nullptr;
@@ -278,7 +278,7 @@ Value *WhileStatement::IRCodegen(IRFactory *IRF) {
   if (!IsEndlessLoop) // loop_header is empty, so pointless to insert a new BB
     IRF->InsertBB(std::move(LoopBody));
   Body->IRCodegen(IRF);
-  IRF->GetBreaksEndBBsTable().erase(IRF->GetBreaksEndBBsTable().end() - 1);
+  IRF->GetBreaksEndBBsTable().pop_back();
   IRF->CreateJUMP(HeaderPtr);
 
   IRF->InsertBB(std::move(LoopEnd));
@@ -309,7 +309,7 @@ Value *DoWhileStatement::IRCodegen(IRFactory *IRF) {
   IRF->GetBreaksEndBBsTable().push_back(LoopEnd.get());
   IRF->InsertBB(std::move(LoopBody));
   Body->IRCodegen(IRF);
-  IRF->GetBreaksEndBBsTable().erase(IRF->GetBreaksEndBBsTable().end() - 1);
+  IRF->GetBreaksEndBBsTable().pop_back();
   IRF->CreateJUMP(LoopHeaderPtr);
 
   // generate the loop header
@@ -349,7 +349,7 @@ Value *DoWhileStatement::IRCodegen(IRFactory *IRF) {
 
 Value *ForStatement::IRCodegen(IRFactory *IRF) {
   // Similar solution to WhileStatement. The difference is that here the
-  // initialization part has to be generated before the loop_header basicblock
+  // initialization part has to be generated before the loop_header basic block
   // and also inserting the increment expression before the backward jump to the
   // loop_header
   // TODO: Add support for break statement
@@ -369,9 +369,9 @@ Value *ForStatement::IRCodegen(IRFactory *IRF) {
     IRF->GetBreaksEndBBsTable().push_back(LoopEnd.get());
     Body->IRCodegen(IRF);
     // Pop entry
-    IRF->GetBreaksEndBBsTable().erase(IRF->GetBreaksEndBBsTable().end() - 1);
-    IRF->GetLoopIncrementBBsTable().erase(IRF->GetLoopIncrementBBsTable().end() -
-                                          1);
+    IRF->GetBreaksEndBBsTable().pop_back();
+    IRF->GetLoopIncrementBBsTable().erase(
+        IRF->GetLoopIncrementBBsTable().end() - 1);
     IRF->CreateJUMP(LoopBodyPtr);
 
     IRF->InsertBB(std::move(LoopEnd));
@@ -390,7 +390,7 @@ Value *ForStatement::IRCodegen(IRFactory *IRF) {
 
   IRF->CreateJUMP(Header.get());
 
-  // Inserting the loop header basicblock and generating the code for the
+  // Inserting the loop header basic block and generating the code for the
   // loop condition
   IRF->InsertBB(std::move(Header));
   auto Cond = Condition->IRCodegen(IRF);
@@ -411,7 +411,7 @@ Value *ForStatement::IRCodegen(IRFactory *IRF) {
   IRF->GetBreaksEndBBsTable().push_back(LoopEnd.get());
   Body->IRCodegen(IRF);
   // Pop entry
-  IRF->GetBreaksEndBBsTable().erase(IRF->GetBreaksEndBBsTable().end() - 1);
+  IRF->GetBreaksEndBBsTable().pop_back();
   IRF->GetLoopIncrementBBsTable().erase(IRF->GetLoopIncrementBBsTable().end() -
                                         1);
   IRF->CreateJUMP(LoopIncrement.get());
@@ -464,7 +464,7 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
     if (T.IsStruct()) {
       RetType = GetIRTypeFromASTType(T);
 
-      // in case the struct is to big to pass by value
+      // in case the struct is too big to pass by value
       if (!RetType.IsPTR() &&
           (RetType.GetByteSize() * 8) > IRF->GetTargetMachine()
                                             ->GetABI()
@@ -590,7 +590,7 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
           Jump->SetTargetBB(RetBBPtr);
   }
 
-  // if its a void function without return statement, then add one
+  // if it is a void function without return statement, then add one
   if (ReturnsNumber == 0 && RetType.IsVoid())
     IRF->CreateRET(nullptr);
 
@@ -602,7 +602,7 @@ Value *ContinueStatement::IRCodegen(IRFactory *IRF) {
 }
 
 Value *BreakStatement::IRCodegen(IRFactory *IRF) {
-  assert(IRF->GetBreaksEndBBsTable().size() > 0);
+  assert(!IRF->GetBreaksEndBBsTable().empty());
   return IRF->CreateJUMP(IRF->GetBreaksEndBBsTable().back());
 }
 
@@ -635,7 +635,7 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
   if (AType.IsArray())
     Type.SetDimensions(AType.GetDimensions());
 
-  // If we are in global scope, then its a global variable declaration
+  // If we are in global scope, then it is a global variable declaration
   std::vector<uint64_t> InitList;
   if (IRF->IsGlobalScope()) {
     // if the initialization is done by an initializer
@@ -649,14 +649,14 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
                 dynamic_cast<IntegerLiteralExpression *>(Expr.get());
             ConstExpr != nullptr) {
           InitList.push_back(ConstExpr->GetUIntValue());
-        } else if (auto InitListExpr =
+        } else if (auto InitListExpr2nd =
                        dynamic_cast<InitializerListExpression *>(Expr.get());
                    InitListExpr != nullptr) {
-          for (auto &Expr : InitListExpr->GetExprList())
-            if (auto ConstExpr =
-                    dynamic_cast<IntegerLiteralExpression *>(Expr.get());
-                ConstExpr != nullptr)
-              InitList.push_back(ConstExpr->GetUIntValue());
+          for (auto &Expr2nd : InitListExpr2nd->GetExprList())
+            if (auto ConstExpr2nd =
+                    dynamic_cast<IntegerLiteralExpression *>(Expr2nd.get());
+                ConstExpr2nd != nullptr)
+              InitList.push_back(ConstExpr2nd->GetUIntValue());
             else
               assert(!"Other types unhandled yet");
         }
@@ -760,10 +760,10 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
     if (ArgIR->GetTypeRef().IsStruct() && ArgIR->GetTypeRef().IsPTR() &&
         Arg->GetResultType().IsStruct() &&
         !Arg->GetResultType().IsPointerType()) {
-      // if it possible to pass it by value then issue a load first otherwise
+      // if it is possible to pass it by value then issue a load first otherwise
       // it passed by pointer which already is
-      if (!((ArgIR->GetTypeRef().GetBaseTypeByteSize() * 8) >
-            IRF->GetTargetMachine()->GetABI()->GetMaxStructSizePassedByValue()))
+      if ((ArgIR->GetTypeRef().GetBaseTypeByteSize() * 8) <=
+          IRF->GetTargetMachine()->GetABI()->GetMaxStructSizePassedByValue())
         ArgIR = IRF->CreateLD(ArgIR->GetType(), ArgIR);
     }
 
@@ -843,7 +843,7 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
                                     IRF->GetTargetMachine()
                                         ->GetABI()
                                         ->GetMaxStructSizePassedByValue()))
-      break; // actually checking the opposite and break if its true
+      break; // actually checking the opposite and break if it is true
 
     IsRetChanged = true;
     ImplicitStructIndex = Args.size();
@@ -858,7 +858,7 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
 
   assert(!IRRetType.IsInvalid() && "Must be a valid type");
 
-  // in case if the ret type was a struct, so StructTemp not nullptr
+  // in case if the return type was a struct, so StructTemp not nullptr
   if (StructTemp) {
     // make the call
     auto CallRes =
@@ -926,7 +926,7 @@ Value *ArrayExpression::IRCodegen(IRFactory *IRF) {
 
   auto GEP = IRF->CreateGEP(ResultType, BaseValue, IndexValue);
 
-  if (!GetLValueness() && ResultType.GetDimensions().size() == 0)
+  if (!GetLValueness() && ResultType.GetDimensions().empty())
     return IRF->CreateLD(ResultType, GEP);
 
   return GEP;
@@ -1010,7 +1010,7 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
 
       double val = ((Constant *)Val)->GetFloatValue();
       if (DestIRType.GetBitSize() == 32)
-        val = (float)val; 
+        val = (float)val;
       return IRF->GetConstant((double)val, DestBitSize);
     }
   }
@@ -1169,7 +1169,7 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
 
     auto ResultType = E->GetType();
     // global vars technically pointer like, which means an "int a;"
-    // should be treated as a i32* and not i32 for loads an stores
+    // should be treated as an i32* and not i32 for loads and stores
     if (E->IsGlobalVar())
       ResultType.IncrementPointerLevel();
     return IRF->CreateLD(ResultType, E);
@@ -1211,7 +1211,7 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
 
     IRF->InsertBB(std::move(FinalBB));
 
-    // the result seems to be always an rvalue so loading it also
+    // the result seems to be always a rvalue so loading it also
     return IRF->CreateLD(IRType::CreateBool(), Result);
   }
   case BITWISE_NOT: {
@@ -1229,8 +1229,8 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
   }
   case POST_DECREMENT:
   case POST_INCREMENT: {
-    // make the assumption that the expression E is an LValue which means
-    // its basically a pointer, so it requires a load first for addition to work
+    // make the assumption that the expression E is an LValue which means it is
+    // basically a pointer, so it requires a load first for addition to work
     auto LoadedValType = E->GetTypeRef();
     LoadedValType.DecrementPointerLevel();
     auto LoadedExpr = IRF->CreateLD(LoadedValType, E);
@@ -1246,8 +1246,8 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
   }
   case PRE_DECREMENT:
   case PRE_INCREMENT: {
-    // make the assumption that the expression E is an LValue which means
-    // its basically a pointer, so it requires a load first for addition to work
+    // make the assumption that the expression E is an LValue which means it is
+    // basically a pointer, so it requires a load first for addition to work
     auto LoadedValType = E->GetTypeRef();
     if (!E->IsGlobalVar())
       LoadedValType.DecrementPointerLevel();
@@ -1266,7 +1266,7 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
     uint64_t size = 0;
     Type TypeToBeExamined;
 
-    // if there was an expression used with sizeof, use thats result type
+    // if there was an expression used with sizeof, use that's result type
     // instead
     if (Expr)
       TypeToBeExamined = Expr->GetResultType();
@@ -1323,7 +1323,7 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
     // LHS Test
     auto L = Left->IRCodegen(IRF);
 
-    // If the left hand side is a constant
+    // If the left-hand side is a constant
     if (L->IsConstant()) {
       assert(!L->IsFPType() && "Boolean value supposed to be integer");
 
@@ -1385,7 +1385,7 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
 
     IRF->InsertBB(std::move(FinalBB));
 
-    // the result seems to be always an rvalue so loading it also
+    // the result seems to be always a rvalue so loading it also
     return IRF->CreateLD(IRType::CreateBool(), Result);
   }
 
@@ -1481,7 +1481,7 @@ Value *BinaryExpression::IRCodegen(IRFactory *IRF) {
 
   // if the left operand is a constant
   if (L->IsConstant() && !R->IsConstant()) {
-    // and if its a commutative operation
+    // and if it is a commutative operation
     switch (GetOperationKind()) {
     case ADD:
     case MUL:
@@ -1579,7 +1579,7 @@ Value *TernaryExpression::IRCodegen(IRFactory *IRF) {
     assert(!C->IsFPType() && "Boolean value supposed to be integer");
 
     // If the condition is a constant true value, then
-    if (((Constant*)C)->GetIntValue() != 0)
+    if (((Constant *)C)->GetIntValue() != 0)
       // generate the true expr
       return ExprIfTrue->IRCodegen(IRF);
     else // generate the false expr
@@ -1646,7 +1646,7 @@ Value *TranslationUnit::IRCodegen(IRFactory *IRF) {
   for (auto &Declaration : Declarations) {
     IRF->SetGlobalScope();
     if (auto Decl = Declaration->IRCodegen(IRF); Decl != nullptr) {
-      assert(dynamic_cast<GlobalVariable*>(Decl));
+      assert(dynamic_cast<GlobalVariable *>(Decl));
       IRF->AddGlobalVariable(Decl);
     }
   }

@@ -1,5 +1,5 @@
-#ifndef SYMBOLTABLE_H
-#define SYMBOLTABLE_H
+#ifndef SYMBOL_TABLE_H
+#define SYMBOL_TABLE_H
 
 #include "../ast/Type.hpp"
 #include "../lexer/Token.hpp"
@@ -18,20 +18,18 @@ public:
   using Table = std::vector<Entry>;
 
   /// Adding the first empty table when constructed
-  SymbolTableStack() { SymTabStack.push_back(Table()); }
+  SymbolTableStack() { SymTabStack.emplace_back(); }
 
   void PushSymTable(Table t = Table()) { SymTabStack.push_back(std::move(t)); }
 
   Table PopSymTable() {
-    assert(SymTabStack.size() > 0 && "Popping item from empty stack.");
+    assert(!SymTabStack.empty() && "Popping item from empty stack.");
     Table t = SymTabStack[SymTabStack.size() - 1];
     SymTabStack.pop_back();
     return t;
   }
 
   size_t Size() { return SymTabStack.size(); }
-
-  Table &GetTopTable() { return SymTabStack.back(); }
 
   void InsertEntry(const Entry &e) {
     auto idx = Size() > 0 ? Size() - 1 : 0;

@@ -1,7 +1,7 @@
 #include "Type.hpp"
 
 std::string Type::ToString(const Type *t) {
-  std::string Result = "";
+  std::string Result;
 
   if (t->IsConst())
     Result += "const ";
@@ -82,8 +82,8 @@ std::string Type::ToString() const {
   } else if (Kind == Array) {
     auto TyStr = Type::ToString(this);
 
-    for (size_t i = 0; i < Dimensions.size(); i++)
-      TyStr += "[" + std::to_string(Dimensions[i]) + "]";
+    for (unsigned int Dimension : Dimensions)
+      TyStr += "[" + std::to_string(Dimension) + "]";
     return TyStr;
   } else {
     return Type::ToString(this);

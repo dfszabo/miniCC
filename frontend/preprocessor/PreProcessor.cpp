@@ -1,12 +1,10 @@
 #include "PreProcessor.hpp"
 #include "PPLexer.hpp"
 #include <cassert>
-#include <fstream>
 #include <filesystem>
+#include <fstream>
 
-std::string WhiteSpaceChars("\t ");
-
-static bool getFileContent(std::string fileName,
+static bool getFileContent(const std::string &fileName,
                            std::vector<std::string> &vecOfStrs) {
   // Open the File
   std::ifstream in(fileName.c_str());
@@ -70,7 +68,7 @@ void PreProcessor::ParseDirective(std::string &Line, size_t LineIdx) {
 
       auto Body = lexer.GetRemainingText();
       for (size_t i = 0; i < Params.size(); i++) {
-        // replacing the parameters with their index eg.: with the below macro
+        // replacing the parameters with their index e.g.: with the below macro
         //    #define MAX(A,B) (((A) > (B)) ? (A) : (B))
         // the Body is "(((A) > (B)) ? (A) : (B))"
         // and it became "((($0) > ($1)) ? ($0) : ($1))"
@@ -91,7 +89,7 @@ void PreProcessor::ParseDirective(std::string &Line, size_t LineIdx) {
     bool IsSystem = lexer.Is(PPToken::LessThan);
     lexer.Lex(); // eat the token
 
-    std::string FileName = "";
+    std::string FileName;
 
     auto NextToken = lexer.Lex();
     while (NextToken.GetKind() == PPToken::Identifier ||
@@ -104,7 +102,7 @@ void PreProcessor::ParseDirective(std::string &Line, size_t LineIdx) {
     assert((NextToken.GetKind() == PPToken::DoubleQuote && !IsSystem) ||
            (NextToken.GetKind() == PPToken::GreaterThan && IsSystem));
 
-    // in case if system headers were used use source_code/include/ as include
+    // in case if system headers were used, use source_code/include/ as include
     // path
     if (IsSystem) {
       auto Path = std::filesystem::current_path();
@@ -148,15 +146,15 @@ void PreProcessor::SubstituteMacros(std::string &Line) {
 
         assert((LoopCounter < 20) && "Was stuck in an endless loop");
       }
-      // otherwise it a function macro and have to substitute the right values
-      // into its parameters
+      // otherwise, it is a function macro and have to substitute the right
+      // values into its parameters
       else {
         auto Pos = Line.find(MacroID); // macro start pos
 
-        // If it is the end of the line or the macro is a substring of an other
+        // If it is the end of the line or the macro is a substring of another
         // identifier like example "MacroID == assert" and the line contain
         // "__assert_fail", then do not need to do substitution, continue with
-        // next iteration. 
+        // next iteration.
         if (Pos == std::string::npos ||
             std::isalnum(Line[Pos + MacroID.length()]) ||
             Line[Pos + MacroID.length()] == '_' ||
@@ -171,8 +169,8 @@ void PreProcessor::SubstituteMacros(std::string &Line) {
         size_t StartPos = 0;
         std::vector<std::string> ActualParams(0);
         for (size_t i = 0; i < MacroParam; i++) {
-          size_t EndPos = i != MacroParam - 1 ? RemainingLine.find(",")
-                                              : RemainingLine.find(")");
+          size_t EndPos = i != MacroParam - 1 ? RemainingLine.find(',')
+                                              : RemainingLine.find(')');
           ActualParams.push_back(
               RemainingLine.substr(StartPos, EndPos - StartPos));
           StartPos = EndPos + 1;
@@ -217,7 +215,7 @@ void PreProcessor::Run() {
       LineIdx--; // since the erase we have to check again the same LineIdx
     } else if (!DefinedMacros.empty()) {
       // Update __LINE__ here, so the correct line number can be substituted
-      // TODO: With the currect handling of the includes - which is basically
+      // TODO: With the current handling of the includes - which is basically
       // insertion of its content - this macro will return false line numbers
       // if any includes were used. Fix it.
       DefinedMacros["__LINE__"].first = std::to_string(LineIdx + 1);
@@ -225,4 +223,3 @@ void PreProcessor::Run() {
     }
   }
 }
-

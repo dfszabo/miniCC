@@ -12,7 +12,7 @@ public:
     Invalid,
 
     Identifier,
-    
+
     // Symbols
     Dot,
     Colon,
@@ -23,7 +23,7 @@ public:
     ForwardSlash,
     LessThan,
     GreaterThan,
-    
+
     // Keywords
     Define,
     Include,
@@ -33,15 +33,17 @@ public:
 
   PPToken() : Kind(Invalid) {}
 
-  PPToken(PPTokenKind tk) : Kind(tk) {}
+  explicit PPToken(PPTokenKind tk) : Kind(tk) {}
 
   PPToken(PPTokenKind tk, std::string_view sv) : Kind(tk), StringValue(sv) {}
 
-  std::string GetString() const { return std::string(StringValue); }
-  PPTokenKind GetKind() const { return Kind; }
+  [[nodiscard]] std::string GetString() const {
+    return std::string(StringValue);
+  }
+  [[nodiscard]] PPTokenKind GetKind() const { return Kind; }
 
-  std::string ToString() const {
-    std::string Result("");
+  [[nodiscard]] std::string ToString() const {
+    std::string Result;
     Result += "\"" + std::string(StringValue) + "\", ";
     return Result;
   }
@@ -87,7 +89,7 @@ public:
     }
   }
 
-  bool IsKeyword() const { return Kind >= Define; }
+  [[nodiscard]] bool IsKeyword() const { return Kind >= Define; }
 
 private:
   PPTokenKind Kind;

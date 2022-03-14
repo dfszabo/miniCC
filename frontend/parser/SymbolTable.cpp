@@ -1,7 +1,6 @@
 #include "SymbolTable.hpp"
 #include <tuple>
 
-
 std::optional<SymbolTableStack::Entry>
 SymbolTableStack::Contains(const std::string &sym) {
   for (int i = Size() - 1; i >= 0; i--) {

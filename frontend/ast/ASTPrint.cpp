@@ -1,7 +1,6 @@
 #include "ASTPrint.hpp"
 #include "AST.hpp"
 
-
 static void PrintImpl(const char *str, unsigned tab = 0, bool newline = false) {
   for (size_t i = 0; i < tab; i++)
     std::cout << " ";
@@ -16,7 +15,7 @@ static void PrintLn(const char *str, unsigned tab = 0) {
   PrintImpl(str, tab, true);
 }
 
-ASTPrint::ASTPrint() {}
+ASTPrint::ASTPrint() = default;
 
 void ASTPrint::VisitVariableDeclaration(const VariableDeclaration *node) {
   Print("VariableDeclaration ", tab);
@@ -68,8 +67,8 @@ void ASTPrint::VisitEnumDeclaration(const EnumDeclaration *node) {
 void ASTPrint::VisitCompoundStatement(const CompoundStatement *node) {
   PrintLn("CompoundStatement", tab);
   tab += 2;
-  for (size_t i = 0; i < node->GetStatements().size(); i++)
-    node->GetStatements()[i]->Accept(this);
+  for (const auto &Statement : node->GetStatements())
+    Statement->Accept(this);
   tab -= 2;
 }
 
@@ -106,7 +105,7 @@ void ASTPrint::VisitSwitchStatement(const SwitchStatement *node) {
     tab -= 2;
   }
 
-  if (node->GetDefaultBody().size() > 0)
+  if (!node->GetDefaultBody().empty())
     PrintLn("DefaultCase", tab);
   tab += 2;
   for (auto &DefaultStatement : node->GetDefaultBody())
@@ -186,8 +185,8 @@ void ASTPrint::VisitFunctionDeclaration(const FunctionDeclaration *node) {
 
   tab += 2;
 
-  for (size_t i = 0; i < node->GetArguments().size(); i++)
-    node->GetArguments()[i]->Accept(this);
+  for (const auto &Arg : node->GetArguments())
+    Arg->Accept(this);
   if (node->GetBody())
     node->GetBody()->Accept(this);
 
@@ -265,8 +264,8 @@ void ASTPrint::VisitCallExpression(const CallExpression *node) {
   PrintLn(Str.c_str());
 
   tab += 2;
-  for (size_t i = 0; i < node->GetArguments().size(); i++)
-    node->GetArguments()[i]->Accept(this);
+  for (const auto &Arg : node->GetArguments())
+    Arg->Accept(this);
   tab -= 2;
 }
 
@@ -294,7 +293,8 @@ void ASTPrint::VisitFloatLiteralExpression(const FloatLiteralExpression *node) {
   PrintLn(ValStr.c_str());
 }
 
-void ASTPrint::VisitStringLiteralExpression(const StringLiteralExpression *node) {
+void ASTPrint::VisitStringLiteralExpression(
+    const StringLiteralExpression *node) {
   Print("StringLiteralExpression ", tab);
   auto TyStr = "'" + node->GetResultType().ToString() + "' ";
   Print(TyStr.c_str());
@@ -337,8 +337,8 @@ void ASTPrint::VisitTranslationUnit(const TranslationUnit *node) {
   PrintLn("TranslationUnit", tab);
 
   tab += 2;
-  for (size_t i = 0; i < node->GetDeclarations().size(); i++)
-    node->GetDeclarations()[i]->Accept(this);
+  for (const auto &Decl : node->GetDeclarations())
+    Decl->Accept(this);
   tab -= 2;
 
   PrintLn("");

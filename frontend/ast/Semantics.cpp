@@ -6,7 +6,7 @@
 //=--------------------------- Helper functions -----------------------------=//
 //=--------------------------------------------------------------------------=//
 
-void Semantics::InsertToSymTable(const Token &SymName, Type SymType,
+void Semantics::InsertToSymTable(const Token &SymName, const Type &SymType,
                                  const bool ToGlobal, ValueType SymValue) {
 
   SymbolTableStack::Entry SymEntry(SymName, SymType, SymValue);
@@ -90,8 +90,8 @@ void Semantics::VisitCompoundStatement(const CompoundStatement *node) {
   // Open new scope
   SymbolTables.PushSymTable();
 
-  for (size_t i = 0; i < node->GetStatements().size(); i++) {
-    node->GetStatements()[i]->Accept(this);
+  for (const auto &Stmt : node->GetStatements()) {
+    Stmt->Accept(this);
   }
 
   // Closing the scope
@@ -125,7 +125,7 @@ void Semantics::VisitSwitchStatement(const SwitchStatement *node) {
       CaseStatement->Accept(this);
   }
 
-  if (node->GetDefaultBody().size() > 0)
+  if (!node->GetDefaultBody().empty())
     for (auto &DefaultStatement : node->GetDefaultBody())
       DefaultStatement->Accept(this);
 }
@@ -184,8 +184,8 @@ void Semantics::VisitFunctionDeclaration(const FunctionDeclaration *node) {
   // Opening a new scope for the function
   SymbolTables.PushSymTable();
 
-  for (size_t i = 0; i < node->GetArguments().size(); i++)
-    node->GetArguments()[i]->Accept(this);
+  for (const auto &Arg : node->GetArguments())
+    Arg->Accept(this);
 
   // In case of a function definition
   if (node->GetBody()) {
@@ -220,7 +220,7 @@ void Semantics::VisitFunctionDeclaration(const FunctionDeclaration *node) {
 }
 
 void Semantics::VisitBinaryExpression(const BinaryExpression *node) {
-  // Check if the left hand side of the assignment is an LValue
+  // Check if the left-hand side of the assignment is an LValue
   if (node->IsAssignment() && !node->GetLeftExpr()->GetLValueness()) {
     std::string Msg = "lvalue required as left operand of assignment";
     ErrorLog.AddError(Msg, node->GetOperation());
@@ -229,7 +229,7 @@ void Semantics::VisitBinaryExpression(const BinaryExpression *node) {
   const auto &LeftType = node->GetLeftExpr()->GetResultType();
   const auto &RightType = node->GetRightExpr()->GetResultType();
 
-  // Ensure that the left hand side of the assignment is not a const
+  // Ensure that the left-hand side of the assignment is not a const
   if (node->IsAssignment() && LeftType.IsConst()) {
     std::string Msg = "cannot assign to variable with const-qualified type '" +
                       LeftType.ToString() + "'";
@@ -335,7 +335,7 @@ void Semantics::VisitCallExpression(const CallExpression *node) {
         // Exception case if the function has only one void argument, in which
         // calling it without a parameter is permitted.
         !(FuncArgNum == 1 && CallArgNum == 0 &&
-          CalledFuncType.GetArgTypes()[0] == Type::Void)) {
+          CalledFuncType.GetArgTypes()[0] == Type(Type::Void))) {
       std::string Num = FuncArgNum > CallArgNum ? "few" : "many";
       std::string Msg =
           "too " + Num + " arguments to function '" + node->GetName() + "'";
@@ -343,8 +343,8 @@ void Semantics::VisitCallExpression(const CallExpression *node) {
     }
   }
 
-  for (size_t i = 0; i < node->GetArguments().size(); i++)
-    node->GetArguments()[i]->Accept(this);
+  for (const auto &Arg : node->GetArguments())
+    Arg->Accept(this);
 }
 
 void Semantics::VisitReferenceExpression(const ReferenceExpression *node) {
@@ -388,6 +388,6 @@ void Semantics::VisitInitializerListExpression(
 }
 
 void Semantics::VisitTranslationUnit(const TranslationUnit *node) {
-  for (size_t i = 0; i < node->GetDeclarations().size(); i++)
-    node->GetDeclarations()[i]->Accept(this);
+  for (const auto &Decl : node->GetDeclarations())
+    Decl->Accept(this);
 }

@@ -28,22 +28,18 @@ public:
   void VisitFunctionDeclaration(const FunctionDeclaration *node) override;
   void VisitBinaryExpression(const BinaryExpression *node) override;
   void VisitTernaryExpression(const TernaryExpression *node) override;
-  void
-  VisitStructMemberReference(const StructMemberReference *node) override;
-  void
-  VisitStructInitExpression(const StructInitExpression *node) override;
+  void VisitStructMemberReference(const StructMemberReference *node) override;
+  void VisitStructInitExpression(const StructInitExpression *node) override;
   void VisitUnaryExpression(const UnaryExpression *node) override;
   void VisitCallExpression(const CallExpression *node) override;
   void VisitReferenceExpression(const ReferenceExpression *node) override;
-  void VisitIntegerLiteralExpression(
-      const IntegerLiteralExpression *node) override;
-  void VisitFloatLiteralExpression(
-      const FloatLiteralExpression *node) override;
-  void VisitStringLiteralExpression(
-      const StringLiteralExpression *node) override;
+  void
+  VisitIntegerLiteralExpression(const IntegerLiteralExpression *node) override;
+  void VisitFloatLiteralExpression(const FloatLiteralExpression *node) override;
+  void
+  VisitStringLiteralExpression(const StringLiteralExpression *node) override;
   void VisitArrayExpression(const ArrayExpression *node) override;
-  void VisitImplicitCastExpression(
-      const ImplicitCastExpression *node) override;
+  void VisitImplicitCastExpression(const ImplicitCastExpression *node) override;
   void VisitInitializerListExpression(
       const InitializerListExpression *node) override;
   void VisitTranslationUnit(const TranslationUnit *node) override;

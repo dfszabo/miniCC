@@ -8,12 +8,12 @@
 
 class Semantics : public ASTVisitor {
 public:
-  Semantics(ErrorLogger &EL) : ErrorLog(EL) {}
+  explicit Semantics(ErrorLogger &EL) : ErrorLog(EL) {}
 
   // Insert into the symbol table. At the same time checking for redefinitions
-  // and if it happen, then it register the error.
-  void InsertToSymTable(const Token &SymName, Type SymType,
-                        const bool ToGlobal = false,
+  // and if it happens, then register the error.
+  void InsertToSymTable(const Token &SymName, const Type &SymType,
+                        bool ToGlobal = false,
                         ValueType SymValue = ValueType());
 
   const FunctionDeclaration *GetFuncDecl(const std::string &FuncName);
@@ -57,8 +57,7 @@ private:
   SymbolTableStack SymbolTables;
   ErrorLogger &ErrorLog;
   std::vector<const FunctionDeclaration *> FuncDeclList;
-  std::map<std::string, std::tuple<Type, std::vector<Token>>>
-      UserDefinedTypes;
+  std::map<std::string, std::tuple<Type, std::vector<Token>>> UserDefinedTypes;
 };
 
 #endif
