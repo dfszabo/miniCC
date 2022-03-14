@@ -2,7 +2,7 @@
 
 uint64_t Constant::GetIntValue() const {
   assert(ValueType.IsINT());
-  int64_t result = 0;
+  int64_t result;
   uint64_t val = std::get<uint64_t>(Val);
 
   // sign extend it
@@ -48,7 +48,7 @@ void GlobalVariable::Print() const {
     std::cout << " = {";
     for (size_t i = 0; i < InitList.size(); i++) {
       std::cout << " " << std::to_string(InitList[i]);
-      if (i  + 1 < InitList.size())
+      if (i + 1 < InitList.size())
         std::cout << ",";
     }
     std::cout << " }";

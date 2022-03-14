@@ -11,7 +11,7 @@ class Module;
 
 class PassManager {
 public:
-  PassManager(Module *m) : IRModule(m) {}
+  explicit PassManager(Module *m) : IRModule(m) {}
 
   bool RunAll();
 

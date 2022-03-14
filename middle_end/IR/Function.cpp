@@ -3,9 +3,10 @@
 #include "IRType.hpp"
 #include <cassert>
 #include <iostream>
+#include <utility>
 
 Function::Function(const std::string &Name, IRType RT)
-    : Name(Name), ReturnType(RT) {
+    : Name(Name), ReturnType(std::move(RT)) {
   auto FinalName = std::string("entry_") + Name;
   auto Ptr = new BasicBlock(FinalName, this);
   std::unique_ptr<BasicBlock> BB(Ptr);
@@ -13,12 +14,12 @@ Function::Function(const std::string &Name, IRType RT)
 }
 
 BasicBlock *Function::GetCurrentBB() {
-  assert(BasicBlocks.size() > 0 && "Function must have basic blocks.");
+  assert(!BasicBlocks.empty() && "Function must have basic blocks.");
   return BasicBlocks.back().get();
 }
 
 BasicBlock *Function::GetBB(const size_t Index) {
-  assert(BasicBlocks.size() > 0 && "Function must have basic blocks.");
+  assert(!BasicBlocks.empty() && "Function must have basic blocks.");
   assert(BasicBlocks.size() > Index && "Invalid index.");
   return BasicBlocks[Index].get();
 }

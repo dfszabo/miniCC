@@ -6,17 +6,17 @@
 #include <cassert>
 
 BasicBlock *Module::CurrentBB() {
-  assert(Functions.size() > 0 && "Module must have functions.");
+  assert(!Functions.empty() && "Module must have functions.");
   return Functions.back().GetCurrentBB();
 }
 
 BasicBlock *Module::GetBB(const size_t Index) {
-  assert(Functions.size() > 0 && "Module must have functions.");
+  assert(!Functions.empty() && "Module must have functions.");
   return Functions.back().GetBB(Index);
 }
 
 Function *Module::CurrentFunction() {
-  assert(Functions.size() > 0 && "Module must have functions.");
+  assert(!Functions.empty() && "Module must have functions.");
   return &Functions.back();
 }
 
@@ -37,14 +37,14 @@ bool Module::IsGlobalValue(Value *V) const {
 
 Value *Module::GetGlobalVar(const std::string &Name) const {
   for (auto &GV : GlobalVars)
-    if (((GlobalVariable*)GV.get())->GetName() == Name)
+    if (((GlobalVariable *)GV.get())->GetName() == Name)
       return GV.get();
 
   return nullptr;
 }
 
 BasicBlock *Module::CreateBasicBlock() {
-  assert(Functions.size() > 0 && "Module must have functions.");
+  assert(!Functions.empty() && "Module must have functions.");
   Functions.back().CreateBasicBlock();
   return CurrentBB();
 }

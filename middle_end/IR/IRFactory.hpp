@@ -1,14 +1,15 @@
 #ifndef IRFACTORY_HPP
 #define IRFACTORY_HPP
 
+#include "../../backend/TargetMachine.hpp"
 #include "BasicBlock.hpp"
 #include "Function.hpp"
 #include "Instructions.hpp"
 #include "Module.hpp"
 #include "Value.hpp"
-#include "../../backend/TargetMachine.hpp"
 #include <map>
 #include <memory>
+#include <utility>
 
 template <typename T>
 static Value *EvaluateComparison(const T L, const T R,
@@ -124,8 +125,7 @@ private:
     }
   }
 
-  Value *CreateBinaryInstruction(Instruction::IKind K, Value *L,
-                                       Value *R) {
+  Value *CreateBinaryInstruction(Instruction::IKind K, Value *L, Value *R) {
     // If both operand is constant, then evaluate them
     if (L->IsConstant() && R->IsConstant()) {
       auto ConstLHS = dynamic_cast<Constant *>(L);
@@ -151,7 +151,6 @@ private:
 
 public:
   IRFactory() = delete;
-  IRFactory(Module &M) : CurrentModule(M), ID(0) {}
   IRFactory(Module &M, TargetMachine *T) : TM(T), CurrentModule(M), ID(0) {}
 
   Value *CreateAND(Value *LHS, Value *RHS) {
@@ -219,9 +218,9 @@ public:
   }
 
   UnaryInstruction *CreateSEXT(Value *Operand, uint8_t BitWidth = 32) {
-    auto Inst = std::make_unique<UnaryInstruction>(
-        Instruction::SEXT, IRType::CreateInt(BitWidth), Operand,
-        GetCurrentBB());
+    auto Inst = std::make_unique<UnaryInstruction>(Instruction::SEXT,
+                                                   IRType::CreateInt(BitWidth),
+                                                   Operand, GetCurrentBB());
     Inst->SetID(ID++);
     auto InstPtr = Inst.get();
     Insert(std::move(Inst));
@@ -230,9 +229,9 @@ public:
   }
 
   UnaryInstruction *CreateZEXT(Value *Operand, uint8_t BitWidth = 32) {
-    auto Inst = std::make_unique<UnaryInstruction>(
-        Instruction::ZEXT, IRType::CreateInt(BitWidth), Operand,
-        GetCurrentBB());
+    auto Inst = std::make_unique<UnaryInstruction>(Instruction::ZEXT,
+                                                   IRType::CreateInt(BitWidth),
+                                                   Operand, GetCurrentBB());
     Inst->SetID(ID++);
     auto InstPtr = Inst.get();
     Insert(std::move(Inst));
@@ -241,9 +240,9 @@ public:
   }
 
   UnaryInstruction *CreateTRUNC(Value *Operand, uint8_t BitWidth = 32) {
-    auto Inst = std::make_unique<UnaryInstruction>(
-        Instruction::TRUNC, IRType::CreateInt(BitWidth), Operand,
-        GetCurrentBB());
+    auto Inst = std::make_unique<UnaryInstruction>(Instruction::TRUNC,
+                                                   IRType::CreateInt(BitWidth),
+                                                   Operand, GetCurrentBB());
     Inst->SetID(ID++);
     auto InstPtr = Inst.get();
     Insert(std::move(Inst));
@@ -252,9 +251,9 @@ public:
   }
 
   UnaryInstruction *CreateFTOI(Value *Operand, uint8_t BitWidth = 32) {
-    auto Inst = std::make_unique<UnaryInstruction>(
-        Instruction::FTOI, IRType::CreateInt(BitWidth), Operand,
-        GetCurrentBB());
+    auto Inst = std::make_unique<UnaryInstruction>(Instruction::FTOI,
+                                                   IRType::CreateInt(BitWidth),
+                                                   Operand, GetCurrentBB());
     Inst->SetID(ID++);
     auto InstPtr = Inst.get();
     Insert(std::move(Inst));
@@ -284,7 +283,7 @@ public:
   }
 
   CallInstruction *CreateCALL(std::string &Name, std::vector<Value *> Args,
-                              IRType Type, int StructIdx = -1) {
+                              const IRType &Type, int StructIdx = -1) {
     auto Inst = std::make_unique<CallInstruction>(Name, Args, Type,
                                                   GetCurrentBB(), StructIdx);
     auto InstPtr = Inst.get();
@@ -306,7 +305,8 @@ public:
     return InstPtr;
   }
 
-  StackAllocationInstruction *CreateSA(std::string Identifier, IRType Type) {
+  StackAllocationInstruction *CreateSA(std::string Identifier,
+                                       const IRType &Type) {
     auto Inst = std::make_unique<StackAllocationInstruction>(
         Identifier, Type, CurrentModule.GetBB(0));
     auto InstPtr = Inst.get();
@@ -316,10 +316,10 @@ public:
     return InstPtr;
   }
 
-  GetElementPointerInstruction *CreateGEP(IRType ResultType, Value *Source,
-                            Value* Index) {
-    auto Inst = std::make_unique<GetElementPointerInstruction>(ResultType, Source, Index,
-                                                  GetCurrentBB());
+  GetElementPointerInstruction *CreateGEP(const IRType &ResultType,
+                                          Value *Source, Value *Index) {
+    auto Inst = std::make_unique<GetElementPointerInstruction>(
+        ResultType, Source, Index, GetCurrentBB());
     auto InstPtr = Inst.get();
     Inst->SetID(ID++);
     Insert(std::move(Inst));
@@ -336,7 +336,7 @@ public:
     return InstPtr;
   }
 
-  LoadInstruction *CreateLD(IRType ResultType, Value *Source,
+  LoadInstruction *CreateLD(const IRType &ResultType, Value *Source,
                             Value *Offset = nullptr) {
     auto Inst = std::make_unique<LoadInstruction>(ResultType, Source, Offset,
                                                   GetCurrentBB());
@@ -347,9 +347,10 @@ public:
     return InstPtr;
   }
 
-  MemoryCopyInstruction *CreateMEMCOPY(Value *Destination, Value *Source, size_t Bytes) {
-    auto Inst = std::make_unique<MemoryCopyInstruction>(Destination, Source, Bytes,
-                                                  GetCurrentBB());
+  MemoryCopyInstruction *CreateMEMCOPY(Value *Destination, Value *Source,
+                                       size_t Bytes) {
+    auto Inst = std::make_unique<MemoryCopyInstruction>(Destination, Source,
+                                                        Bytes, GetCurrentBB());
     auto InstPtr = Inst.get();
     Inst->SetID(ID++);
     Insert(std::move(Inst));
@@ -410,22 +411,22 @@ public:
     return InstPtr;
   }
 
-  GlobalVariable *CreateGlobalVar(std::string &Identifier, const IRType Type) {
+  GlobalVariable *CreateGlobalVar(std::string &Identifier, const IRType &Type) {
     auto GlobalVar = new GlobalVariable(Identifier, Type);
     GlobalVar->SetID(ID++);
 
     return GlobalVar;
   }
 
-  GlobalVariable *CreateGlobalVar(std::string &Identifier, const IRType Type,
+  GlobalVariable *CreateGlobalVar(std::string &Identifier, const IRType &Type,
                                   std::string Value) {
-    auto GlobalVar = new GlobalVariable(Identifier, Type, Value);
+    auto GlobalVar = new GlobalVariable(Identifier, Type, std::move(Value));
     GlobalVar->SetID(ID++);
 
     return GlobalVar;
   }
 
-  GlobalVariable *CreateGlobalVar(std::string &Identifier, const IRType Type,
+  GlobalVariable *CreateGlobalVar(std::string &Identifier, const IRType &Type,
                                   Value *Val) {
     auto GlobalVar = new GlobalVariable(Identifier, Type, Val);
     GlobalVar->SetID(ID++);
@@ -433,7 +434,7 @@ public:
     return GlobalVar;
   }
 
-  GlobalVariable *CreateGlobalVar(std::string &Identifier, const IRType Type,
+  GlobalVariable *CreateGlobalVar(std::string &Identifier, const IRType &Type,
                                   std::vector<uint64_t> InitList) {
     auto GlobalVar = new GlobalVariable(Identifier, Type, std::move(InitList));
     GlobalVar->SetID(ID++);
@@ -442,7 +443,7 @@ public:
   }
 
   void CreateNewFunction(std::string &Name, IRType ReturnType) {
-    CurrentModule.AddFunction(std::move(Function(Name, ReturnType)));
+    CurrentModule.AddFunction(Function(Name, std::move(ReturnType)));
     SymbolTable.clear();
     LabelTable.clear();
     ID = 0;
@@ -483,9 +484,7 @@ public:
     GetCurrentFunction()->Insert(std::move(FP));
   }
 
-  void EraseLastBB() {
-    GetCurrentFunction()->GetBasicBlocks().pop_back();
-  }
+  void EraseLastBB() { GetCurrentFunction()->GetBasicBlocks().pop_back(); }
 
   void EraseInst(Instruction *I) {
     for (auto &BB : GetCurrentFunction()->GetBasicBlocks())
@@ -528,22 +527,22 @@ public:
     return FPConstantPool[C].get();
   }
 
-  std::vector<BasicBlock*> &GetLoopIncrementBBsTable() {
+  std::vector<BasicBlock *> &GetLoopIncrementBBsTable() {
     return LoopIncrementBBsTable;
   }
 
-  std::vector<BasicBlock*> &GetBreaksEndBBsTable() {
+  std::vector<BasicBlock *> &GetBreaksEndBBsTable() {
     return BreaksTargetBBsTable;
   }
 
   TargetMachine *GetTargetMachine() { return TM; }
 
 private:
-  TargetMachine *TM;
+  TargetMachine *TM{};
 
   Module &CurrentModule;
 
-  /// A counter essentially, which used to give Values a uniq ID.
+  /// A counter essentially, which used to give Values a unique ID.
   unsigned ID;
 
   /// Shows whether we are in the global scope or not.
@@ -567,11 +566,11 @@ private:
 
   /// For context information for "continue" statements. Containing the pointer
   /// to the basic block which will be the target of the generated jump.
-  std::vector<BasicBlock*> LoopIncrementBBsTable;
+  std::vector<BasicBlock *> LoopIncrementBBsTable;
 
   /// For context information for "break" statements. Containing the pointer
   /// to the basic block which will be the target of the generated jump.
-  std::vector<BasicBlock*> BreaksTargetBBsTable;
+  std::vector<BasicBlock *> BreaksTargetBBsTable;
 };
 
 #endif

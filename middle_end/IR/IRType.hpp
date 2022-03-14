@@ -14,13 +14,9 @@ public:
 
   IRType() : Kind(INVALID), BitWidth(0) {}
 
-  IRType(IRType::TKind kind) : Kind(kind), BitWidth(32) {}
+  explicit IRType(IRType::TKind kind) : Kind(kind), BitWidth(32) {}
 
   IRType(IRType::TKind kind, uint8_t BW) : Kind(kind), BitWidth(BW) {}
-
-  void SetKind(IRType::TKind K) { Kind = K; }
-
-  void SetToPointerKind() { Kind = PTR; }
 
   uint8_t GetPointerLevel() const { return PointerLevel; }
   void SetPointerLevel(uint8_t pl) {
@@ -38,14 +34,10 @@ public:
   /// Get the maximum alignment based on the struct members
   unsigned GetStructMaxAlignment(TargetMachine *TM) const;
 
-  static IRType CreateBool() { return IRType(SINT, 1); }
-  static IRType CreateFloat(uint8_t BitWidht = 32) {
-    return IRType(FP, BitWidht);
-  }
+  static IRType CreateBool() { return {SINT, 1}; }
+  static IRType CreateFloat(uint8_t BitWidth = 32) { return {FP, BitWidth}; }
 
-  static IRType CreateInt(uint8_t BitWidht = 32) {
-    return IRType(SINT, BitWidht);
-  }
+  static IRType CreateInt(uint8_t BitWidth = 32) { return {SINT, BitWidth}; }
 
   bool operator==(const IRType &RHS) {
     return BitWidth == RHS.BitWidth && Kind == RHS.Kind;
@@ -62,8 +54,8 @@ public:
   bool IsArray() const { return !Dimensions.empty(); }
   bool IsVoid() const { return Kind == NONE && PointerLevel == 0; }
 
-  void SetDimensions(const std::vector<unsigned>& N) { Dimensions = N; }
-  std::vector<unsigned>& GetDimensions() { return Dimensions; }
+  void SetDimensions(const std::vector<unsigned> &N) { Dimensions = N; }
+  std::vector<unsigned> &GetDimensions() { return Dimensions; }
   unsigned CalcElemSize(unsigned dim) {
     unsigned result = 1;
     assert((dim == 0 || dim < Dimensions.size()) && "Out of bound");
@@ -74,13 +66,10 @@ public:
     return result * (BitWidth / 8);
   }
 
-  unsigned GetElemByteOffset(const unsigned StructElemIndex,
+  unsigned GetElemByteOffset(unsigned StructElemIndex,
                              TargetMachine *TM = nullptr) const;
 
-  size_t GetBitSize() const {
-
-    return BitWidth;
-  }
+  size_t GetBitSize() const { return BitWidth; }
 
   size_t GetByteSize(TargetMachine *TM = nullptr) const;
 
@@ -88,12 +77,12 @@ public:
   /// and dimensionality.
   size_t GetBaseTypeByteSize(TargetMachine *TM = nullptr) const;
 
-  IRType GetBaseType() const { return IRType(Kind, BitWidth); }
+  IRType GetBaseType() const { return {Kind, BitWidth}; }
 
-  void SetStructName(std::string &str) {StructName = str;}
+  void SetStructName(std::string &str) { StructName = str; }
   const std::string &GetStructName() const { return StructName; }
 
-  std::vector<IRType> &GetMemberTypes() {return MembersTypeList;}
+  std::vector<IRType> &GetMemberTypes() { return MembersTypeList; }
 
   std::string AsString() const;
 

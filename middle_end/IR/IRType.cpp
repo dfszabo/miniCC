@@ -3,7 +3,7 @@
 #include "../../backend/TargetMachine.hpp"
 
 void IRType::ReduceDimension() {
-  if (Dimensions.size() > 0)
+  if (!Dimensions.empty())
     Dimensions.erase(Dimensions.begin());
 }
 
@@ -55,9 +55,9 @@ unsigned IRType::GetElemByteOffset(const unsigned StructElemIndex,
 size_t IRType::GetByteSize(TargetMachine *TM) const {
   unsigned NumberOfElements = 1;
 
-  if (Dimensions.size() > 0)
-    for (size_t i = 0; i < Dimensions.size(); i++)
-      NumberOfElements *= Dimensions[i];
+  if (!Dimensions.empty())
+    for (unsigned int Dimension : Dimensions)
+      NumberOfElements *= Dimension;
 
   if (IsStruct() && !IsPTR()) {
     unsigned Result = 0;
@@ -118,9 +118,9 @@ std::string IRType::AsString() const {
   if (Kind != STRUCT)
     Str += std::to_string(BitWidth);
 
-  if (Dimensions.size() > 0) {
+  if (!Dimensions.empty()) {
     for (int i = Dimensions.size() - 1; i >= 0; i--)
-      Str = "[" + std::to_string(Dimensions[i])  + " x " + Str + "]";
+      Str = "[" + std::to_string(Dimensions[i]) + " x " + Str + "]";
   }
 
   std::string PtrStr;

@@ -17,31 +17,31 @@ static IRType GetIRTypeFromVK(Type::VariantKind VK) {
   // okay, since non pointer void types should have been already sorted out as
   // an error by the parser.
   case Type::Void:
-    return {IRType::SINT, 8};
+    return IRType{IRType::SINT, 8};
   case Type::UnsignedChar:
-    return {IRType::UINT, 8};
+    return IRType{IRType::UINT, 8};
   case Type::Short:
-    return {IRType::SINT, 16};
+    return IRType{IRType::SINT, 16};
   case Type::UnsignedShort:
-    return {IRType::UINT, 16};
+    return IRType{IRType::UINT, 16};
   case Type::Int:
-    return {IRType::SINT};
+    return IRType{IRType::SINT};
   case Type::UnsignedInt:
-    return {IRType::UINT};
+    return IRType{IRType::UINT};
   case Type::Long:
-    return {IRType::SINT, 64};
+    return IRType{IRType::SINT, 64};
   case Type::UnsignedLong:
-    return {IRType::UINT, 64};
+    return IRType{IRType::UINT, 64};
   case Type::LongLong:
-    return {IRType::SINT, 64};
+    return IRType{IRType::SINT, 64};
   case Type::UnsignedLongLong:
-    return {IRType::UINT, 64};
+    return IRType{IRType::UINT, 64};
   case Type::Float:
-    return {IRType::FP, 32};
+    return IRType{IRType::FP, 32};
   case Type::Double:
-    return {IRType::FP, 64};
+    return IRType{IRType::FP, 64};
   case Type::Composite:
-    return {IRType::STRUCT};
+    return IRType{IRType::STRUCT};
   default:
     assert(!"Invalid type");
     return {};
@@ -848,7 +848,7 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
     IsRetChanged = true;
     ImplicitStructIndex = Args.size();
     Args.push_back(StructTemp);
-    IRRetType = IRType::NONE;
+    IRRetType = IRType(IRType::NONE);
     break;
   }
   default:

@@ -4,6 +4,7 @@
 #include "IRType.hpp"
 #include <iostream>
 #include <string>
+#include <utility>
 #include <variant>
 
 class Value {
@@ -11,19 +12,17 @@ public:
   enum VKind { INVALID = 1, NONE, REGISTER, LABEL, CONST, PARAM, GLOBALVAR };
 
   Value() : Kind(INVALID) {}
-  Value(VKind VK) : Kind(VK) {}
-  Value(IRType T) : ValueType(T), Kind(REGISTER) {}
-  Value(VKind VK, IRType T) : Kind(VK), ValueType(T) {}
+  explicit Value(VKind VK) : Kind(VK) {}
+  explicit Value(IRType T) : ValueType(std::move(T)), Kind(REGISTER) {}
+  Value(VKind VK, IRType T) : Kind(VK), ValueType(std::move(T)) {}
 
-  virtual ~Value(){};
+  virtual ~Value() = default;
 
   IRType &GetTypeRef() { return ValueType; }
   IRType GetType() const { return ValueType; }
 
-  void SetType(IRType t) { ValueType = t; }
-
-  unsigned GetID() const { return UniqeID; }
-  void SetID(const unsigned i) { UniqeID = i; }
+  unsigned GetID() const { return UniqueID; }
+  void SetID(const unsigned i) { UniqueID = i; }
 
   unsigned GetBitWidth() const { return ValueType.GetBitSize(); }
 
@@ -36,11 +35,11 @@ public:
   bool IsFPType() const { return ValueType.IsFP(); }
 
   virtual std::string ValueString() const {
-    return "$" + std::to_string(UniqeID) + "<" + ValueType.AsString() + ">";
+    return "$" + std::to_string(UniqueID) + "<" + ValueType.AsString() + ">";
   }
 
 protected:
-  unsigned UniqeID;
+  unsigned UniqueID = ~0;
   VKind Kind = REGISTER;
   IRType ValueType;
 };
@@ -48,9 +47,9 @@ protected:
 class Constant : public Value {
 public:
   Constant() = delete;
-  Constant(uint64_t V, uint8_t BW = 32)
+  explicit Constant(uint64_t V, uint8_t BW = 32)
       : Value(Value::CONST, IRType(IRType::UINT, BW)), Val(V) {}
-  Constant(double V, uint8_t BW = 32)
+  explicit Constant(double V, uint8_t BW = 32)
       : Value(Value::CONST, IRType(IRType::FP, BW)), Val(V) {}
 
   bool IsFPConst() const { return ValueType.IsFP(); }
@@ -68,7 +67,7 @@ class FunctionParameter : public Value {
 public:
   FunctionParameter() = delete;
   FunctionParameter(std::string &Name, IRType Type, bool Struct = false)
-      : Value(PARAM, Type), Name(Name), ImplicitStructPtr(Struct) {}
+      : Value(PARAM, std::move(Type)), Name(Name), ImplicitStructPtr(Struct) {}
 
   std::string &GetName() { return Name; }
   bool IsImplicitStructPtr() const { return ImplicitStructPtr; }
@@ -83,16 +82,17 @@ class GlobalVariable : public Value {
 public:
   GlobalVariable() = delete;
   GlobalVariable(std::string &Name, IRType Type)
-      : Value(GLOBALVAR, Type), Name(Name) {}
+      : Value(GLOBALVAR, std::move(Type)), Name(Name) {}
 
   GlobalVariable(std::string &Name, IRType Type, std::string InitStr)
-      : Value(GLOBALVAR, Type), Name(Name), InitString(InitStr) {}
+      : Value(GLOBALVAR, std::move(Type)), Name(Name),
+        InitString(std::move(InitStr)) {}
 
   GlobalVariable(std::string &Name, IRType Type, Value *InitValue)
-      : Value(GLOBALVAR, Type), Name(Name), InitValue(InitValue) {}
+      : Value(GLOBALVAR, std::move(Type)), Name(Name), InitValue(InitValue) {}
 
   GlobalVariable(std::string &Name, IRType Type, std::vector<uint64_t> InitList)
-      : Value(GLOBALVAR, Type), Name(Name),
+      : Value(GLOBALVAR, std::move(Type)), Name(Name),
         InitList(std::move(InitList)) {}
 
   std::string &GetName() { return Name; }

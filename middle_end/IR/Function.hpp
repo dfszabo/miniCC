@@ -22,7 +22,7 @@ public:
   Function(Function &&) = default;
 
   BasicBlock *GetCurrentBB();
-  BasicBlock *GetBB(const size_t Index);
+  BasicBlock *GetBB(size_t Index);
 
   std::string &GetName() { return Name; }
 
@@ -31,9 +31,7 @@ public:
   ParameterList &GetParameters() { return Parameters; }
 
   std::string &GetIgnorableStructVarName() { return IgnorableStructVarName; }
-  void SetIgnorableStructVarName(std::string &Name) {
-    IgnorableStructVarName = Name;
-  }
+  void SetIgnorableStructVarName(std::string &N) { IgnorableStructVarName = N; }
 
   void SetToDeclarationOnly() { DeclarationOnly = true; }
   bool IsDeclarationOnly() const { return DeclarationOnly; }
@@ -63,7 +61,7 @@ private:
   ParameterList Parameters;
   BasicBlockList BasicBlocks;
 
-  std::string IgnorableStructVarName = "";
+  std::string IgnorableStructVarName;
   bool DeclarationOnly = false;
   unsigned ReturnsNumber = ~0;
   Value *ReturnValue = nullptr;
