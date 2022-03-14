@@ -69,10 +69,6 @@ std::string Instruction::AsString(IKind IK) {
     return "cmp";
   case CMPF:
     return "cmpf";
-  case MOV:
-    return "mov";
-  case MOVF:
-    return "movf";
   default:
     assert(!"Unknown instruction kind.");
     break;
