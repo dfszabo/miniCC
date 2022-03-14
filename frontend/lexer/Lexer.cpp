@@ -11,6 +11,7 @@ std::unordered_map<std::string, Token::TokenKind> Lexer::Keywords =
         {"float", Token::Float},
         {"double", Token::Double},
         {"unsigned", Token::Unsigned},
+        {"signed", Token::Signed},
         {"void", Token::Void},
         {"char", Token::Char},
         {"if", Token::If},

@@ -98,6 +98,7 @@ public:
     Float,
     Double,
     Unsigned,
+    Signed,
     Void,
     Struct,
     Enum,
