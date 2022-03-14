@@ -41,6 +41,10 @@ public:
   InstructionList::iterator InsertAfter(MachineInstruction MI,
                                         MachineInstruction *AfterMI);
 
+  /// Find where AfterMI is in the InstructionList and insert MIs after it
+  InstructionList::iterator InsertAfter(std::vector<MachineInstruction> MIs,
+                                        MachineInstruction *AfterMI);
+
   /// Find where Replacable is in the InstructionList and replace it with MI
   InstructionList::iterator ReplaceInstr(MachineInstruction MI,
                                          MachineInstruction *Replacable);

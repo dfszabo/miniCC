@@ -14,33 +14,78 @@ void ExtendRegSize(MachineOperand *MO, uint8_t BitWidth = 32) {
 }
 
 /// Materialize the given constant before the MI instruction
+/// TODO: AArch64 have strange operands, MOV_rc can encode a 16 bit immediate,
+/// but actually it can do more, with added shifts etc. For example it can
+/// actually encode 1ull << 50, but not sure yet how this work exactly.
+/// Figure it out and implement these exceptional cases.
+/// NOTE: It seems like mov is an alias for movz as well! Seems far from being
+/// trivial.
 MachineInstruction *AArch64TargetMachine::MaterializeConstant(
-    MachineInstruction *MI, const uint64_t Constant, MachineOperand &VReg) {
+    MachineInstruction *MI, const uint64_t Constant, MachineOperand &VReg,
+    const bool UseVRegAndMI) {
   auto MBB = MI->GetParent();
-  auto Reg = MBB->GetParent()->GetNextAvailableVReg();
-  VReg = MachineOperand::CreateVirtualRegister(Reg);
-  // define its size by the size of the destination register of the MI for now
-  // and assume an integer constant
-  VReg.SetRegClass(
-      RegInfo->GetRegisterClass(MI->GetOperand(0)->GetSize(), false));
+
+  // If UseVRegAndMI is false, then a VReg is an out operand, so it must be
+  // allocated and set. If it is true, then VReg is already set, so use it
+  // without any change of it.
+  if (!UseVRegAndMI) {
+    auto Reg = MBB->GetParent()->GetNextAvailableVReg();
+    VReg = MachineOperand::CreateVirtualRegister(Reg);
+    // define its size by the size of the destination register of the MI for now
+    // and assume an integer constant
+    VReg.SetRegClass(
+        RegInfo->GetRegisterClass(MI->GetOperand(0)->GetSize(), false));
+  }
 
   std::vector<MachineInstruction> MIs;
 
-  MachineInstruction MOV;
-  MOV.SetOpcode(MOV_rc);
-  MOV.AddOperand(VReg);
-  MOV.AddImmediate(Constant & 0xffffu); // keep lower 16 bit
-  MIs.push_back(MOV);
+  // If UseVRegAndMI is false, then MI will not be changed. If true then it
+  // must be selected to the first instruction in the materialization sequence.
+  if (!UseVRegAndMI) {
+    MachineInstruction MOV;
+    MOV.SetOpcode(MOV_rc);
+    MOV.AddOperand(VReg);
+    if (!IsInt<16>(Constant))
+      MOV.AddImmediate(Constant & 0xffffu); // keep lower 16 bit
+    else
+      MOV.AddImmediate(Constant);
+    MIs.push_back(MOV);
+  } else {
+    MI->SetOpcode(MOV_rc);
+    MI->RemoveOperand(1);
+    if (!IsInt<16>(Constant))
+      MI->AddImmediate(Constant & 0xffffu); // keep lower 16 bit
+    else
+      MI->AddImmediate(Constant);
+  }
 
-  if (!IsInt<16>(Constant) && IsInt<32>(Constant)) {
+  if (!IsInt<16>(Constant)) {
     MachineInstruction MOVK;
     MOVK.SetOpcode(MOVK_ri);
     MOVK.AddOperand(VReg);
     MOVK.AddImmediate((uint32_t)Constant >> 16u); // upper 16 bit
-    MOVK.AddImmediate(16);              // left shift amount
+    MOVK.AddImmediate(16);                        // left shift amount
     MIs.push_back(MOVK);
+
+    if (!IsInt<32>(Constant)) {
+      MachineInstruction MOVK;
+      MOVK.SetOpcode(MOVK_ri);
+      MOVK.AddOperand(VReg);
+      MOVK.AddImmediate((Constant >> 32u) & 0xffffu);
+      MOVK.AddImmediate(32);
+      MIs.push_back(MOVK);
+
+      MachineInstruction MOVK2;
+      MOVK2.SetOpcode(MOVK_ri);
+      MOVK2.AddOperand(VReg);
+      MOVK2.AddImmediate(Constant >> 48u);
+      MOVK2.AddImmediate(48);
+      MIs.push_back(MOVK2);
+    }
   }
 
+  if (UseVRegAndMI)
+    return &*MBB->InsertAfter(std::move(MIs), MI);
   return &*MBB->InsertBefore(std::move(MIs), MI);
 }
 
@@ -528,23 +573,7 @@ bool AArch64TargetMachine::SelectLOAD_IMM(MachineInstruction *MI) {
 
   ExtendRegSize(MI->GetOperand(0));
 
-  if (IsInt<16>(imm))
-    MI->SetOpcode(MOV_rc);
-  else if (IsInt<32>(imm)) {
-    auto MBB = MI->GetParent();
-
-    MI->SetOpcode(MOV_rc);
-    MI->GetOperand(1)->SetValue(imm & 0xffffu); // keep lower 16 bit
-
-    MachineInstruction MOVK;
-    MOVK.SetOpcode(MOVK_ri);
-    MOVK.AddOperand(*MI->GetOperand(0));
-    MOVK.AddImmediate(((uint64_t)imm) >> 16u); // upper 16 bit
-    MOVK.AddImmediate(16);                     // left shift amount
-
-    MBB->InsertAfter(MOVK, MI);
-  } else
-    assert(!"Ivalid immediate value");
+  MaterializeConstant(MI, imm, *MI->GetOperand(0), true);
 
   return true;
 }
