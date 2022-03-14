@@ -101,6 +101,10 @@ def execute_tests(file_name, context):
         return True
       return False
 
+    # if it was a negative test and did not failed then the test failed
+    if context.negative_test:
+        return False
+
     # if its a compile test then check the output
     if context.compile_test:
       had_checks = len(context.check_list) > 0
