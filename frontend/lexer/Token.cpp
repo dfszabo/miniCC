@@ -165,6 +165,8 @@ std::string Token::ToString(TokenKind tk) {
     return "void";
   case Unsigned:
     return "unsigned";
+  case Signed:
+    return "signed";
   case Struct:
     return "struct";
   case Enum:

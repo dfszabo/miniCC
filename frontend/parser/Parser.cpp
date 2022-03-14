@@ -93,6 +93,7 @@ bool Parser::IsTypeSpecifier(Token T) {
   case Token::Int:
   case Token::Long:
   case Token::Unsigned:
+  case Token::Signed:
   case Token::Float:
   case Token::Double:
   case Token::Struct:
@@ -231,6 +232,19 @@ Type Parser::ParseType(Token::TokenKind tk) {
     }
     default:
       assert(!"Unreachable");
+    }
+    break;
+  }
+  case Token::Signed: {
+    Lex();
+    auto CurrToken = lexer.GetCurrentToken();
+    Result = ParseType(CurrToken.GetKind());
+    // TODO: Move this into semantics. For now here is the most appropriate
+    // to handle it.
+    if (Result.IsUnsigned()) {
+      std::string Msg =
+          "both 'signed' and 'unsigned' in declaration specifiers";
+      ErrorLog.AddError(Msg, CurrToken);
     }
     break;
   }

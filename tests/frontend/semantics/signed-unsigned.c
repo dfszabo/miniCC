@@ -1,5 +1,5 @@
 // COMPILE-FAIL
 
-signed int test(int a) {
+signed unsigned test(int a) {
   return a;
 }
