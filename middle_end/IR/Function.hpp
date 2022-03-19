@@ -48,6 +48,8 @@ public:
 
   bool IsRetTypeVoid() { return ReturnType.IsVoid(); }
 
+  size_t GetNumberOfInstructions() const;
+
   void CreateBasicBlock();
 
   void Insert(std::unique_ptr<BasicBlock> BB);

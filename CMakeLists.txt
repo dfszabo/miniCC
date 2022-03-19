@@ -34,6 +34,7 @@ add_executable(miniCC
     middle_end/Transforms/LoopHoistingPass.cpp
     middle_end/Transforms/PassManager.cpp
     middle_end/Transforms/ValueNumberingPass.cpp
+    middle_end/Transforms/Util.cpp
     backend/AssemblyEmitter.cpp
     backend/IRtoLLIR.cpp
     backend/InstructionSelection.cpp

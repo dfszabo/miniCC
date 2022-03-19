@@ -24,6 +24,15 @@ BasicBlock *Function::GetBB(const size_t Index) {
   return BasicBlocks[Index].get();
 }
 
+size_t Function::GetNumberOfInstructions() const {
+  size_t Num = 0;
+
+  for (auto &BB : BasicBlocks)
+    Num += BB->GetInstructions().size();
+
+  return Num;
+}
+
 void Function::CreateBasicBlock() {
   auto BB = std::make_unique<BasicBlock>(BasicBlock(this));
   BasicBlocks.push_back(std::move(BB));

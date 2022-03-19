@@ -78,8 +78,14 @@ std::string Instruction::AsString(IKind IK) {
 void BinaryInstruction::Print() const {
   std::cout << "\t" << AsString(InstKind) << "\t";
   std::cout << ValueString() << ", ";
-  std::cout << LHS->ValueString() << ", ";
-  std::cout << RHS->ValueString() << std::endl;
+  if (LHS)
+    std::cout << LHS->ValueString() << ", ";
+  else
+    std::cout << "NULL, ";
+  if (RHS)
+    std::cout << RHS->ValueString() << std::endl;
+  else
+    std::cout << "NULL" << std::endl;
 }
 
 void UnaryInstruction::Print() const {
@@ -171,7 +177,10 @@ std::string &BranchInstruction::GetFalseLabelName() {
 
 void BranchInstruction::Print() const {
   std::cout << "\t" << AsString(InstKind) << "\t";
-  std::cout << Condition->ValueString() << ", ";
+  if (Condition)
+    std::cout << Condition->ValueString() << ", ";
+  else
+    std::cout << "NULL, ";
   std::cout << "<" << TrueTarget->GetName() << ">";
   if (FalseTarget)
     std::cout << ", <" << FalseTarget->GetName() << ">";
@@ -201,7 +210,10 @@ void GetElementPointerInstruction::Print() const {
 
 void StoreInstruction::Print() const {
   std::cout << "\t" << AsString(InstKind) << "\t";
-  std::cout << "[" << Destination->ValueString() << "], ";
+  if (Destination)
+    std::cout << "[" << Destination->ValueString() << "], ";
+  else
+    std::cout << "[NULL], ";
   std::cout << Source->ValueString() << std::endl;
 }
 

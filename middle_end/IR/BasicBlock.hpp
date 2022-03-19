@@ -13,9 +13,9 @@ class Function;
 // class Instruction;
 
 class BasicBlock : public Value {
+public:
   using InstructionList = std::vector<std::unique_ptr<Instruction>>;
 
-public:
   BasicBlock(std::string Name, Function *Parent)
       : Name(std::move(Name)), Parent(Parent), Value(Value::LABEL) {}
   explicit BasicBlock(Function *Parent) : Parent(Parent), Value(Value::LABEL) {}

@@ -62,11 +62,28 @@ public:
   static std::string AsString(IKind IK);
 
   Instruction(IKind K, BasicBlock *P, IRType V)
-      : InstKind(K), Parent(P), Value(std::move(V)) {}
+      : InstKind(K), Parent(P), Value(std::move(V)) {
+    BasicBlockTerminator = (InstKind == RET || InstKind == JUMP);
+  }
 
   bool IsStackAllocation() const { return InstKind == STACK_ALLOC; }
 
   bool IsTerminator() const { return BasicBlockTerminator; }
+  bool IsReturn() const { return InstKind == RET; }
+  bool IsStore() const { return InstKind == STORE; }
+  bool IsLoad() const { return InstKind == LOAD; }
+  bool IsCall() const { return InstKind == CALL; }
+  bool IsJump() const { return InstKind == JUMP; }
+  bool IsGEP() const { return InstKind == GET_ELEM_PTR; }
+
+  /// Is this instruction define a value? For example JUMP is not.
+  virtual bool IsDef() const { return true; }
+
+  virtual Value *Get1stUse() { return nullptr; }
+  virtual Value *Get2ndUse() { return nullptr; }
+
+  virtual void Set1stUse(Value *v) {}
+  virtual void Set2ndUse(Value *v) {}
 
   virtual void Print() const { assert(!"Cannot print base class"); }
 
@@ -84,6 +101,12 @@ public:
   Value *GetLHS() { return LHS; }
   Value *GetRHS() { return RHS; }
 
+  Value *Get1stUse() override { return LHS; }
+  Value *Get2ndUse() override { return RHS; }
+
+  void Set1stUse(Value *v) override { LHS = v; }
+  void Set2ndUse(Value *v) override { RHS = v; }
+
   void Print() const override;
 
 private:
@@ -100,6 +123,10 @@ public:
       : Instruction(UO, P, std::move(ResultType)), Op(Operand) {}
 
   Value *GetOperand() { return Op; }
+
+  Value *Get1stUse() override { return Op; }
+
+  void Set1stUse(Value *v) override { Op = v; }
 
   void Print() const override;
 
@@ -125,6 +152,12 @@ public:
 
   void InvertRelation();
 
+  Value *Get1stUse() override { return LHS; }
+  Value *Get2ndUse() override { return RHS; }
+
+  void Set1stUse(Value *v) override { LHS = v; }
+  void Set2ndUse(Value *v) override { RHS = v; }
+
   void Print() const override;
 
 private:
@@ -147,6 +180,8 @@ public:
   std::vector<Value *> &GetArgs() { return Arguments; }
   int GetImplicitStructArgIndex() const { return ImplicitStructArgIndex; }
 
+  bool IsDef() const override { return !GetType().IsVoid(); }
+
   void Print() const override;
 
 private:
@@ -164,6 +199,8 @@ public:
   void SetTargetBB(BasicBlock *t) { Target = t; }
 
   std::string &GetTargetLabelName();
+
+  bool IsDef() const override { return false; }
 
   void Print() const override;
 
@@ -183,6 +220,11 @@ public:
   std::string &GetFalseLabelName();
 
   bool HasFalseLabel() { return FalseTarget != nullptr; }
+  bool IsDef() const override { return false; }
+
+  Value *Get1stUse() override { return Condition; }
+
+  void Set1stUse(Value *v) override { Condition = v; }
 
   void Print() const override;
 
@@ -202,6 +244,11 @@ public:
   }
 
   Value *GetRetVal() const { return RetVal; }
+  bool IsDef() const override { return false; }
+
+  Value *Get1stUse() override { return RetVal; }
+
+  void Set1stUse(Value *v) override { RetVal = v; }
 
   void Print() const override;
 
@@ -234,6 +281,12 @@ public:
   Value *GetSource() const { return Source; }
   Value *GetIndex() { return Index; }
 
+  Value *Get1stUse() override { return Source; }
+  Value *Get2ndUse() override { return Index; }
+
+  void Set1stUse(Value *v) override { Source = v; }
+  void Set2ndUse(Value *v) override { Index = v; }
+
   void Print() const override;
 
 private:
@@ -253,6 +306,12 @@ public:
 
   Value *GetMemoryLocation() { return Destination; }
   Value *GetSavedValue() { return Source; }
+
+  bool IsDef() const override { return false; }
+
+  Value *Get1stUse() override { return Source; }
+  Value *Get2ndUse() override { return Destination; }
+  void Set1stUse(Value *v) override { Source = v; }
 
 private:
   Value *Source;
@@ -284,6 +343,12 @@ public:
 
   Value *GetMemoryLocation() { return Source; }
 
+  Value *Get1stUse() override { return Source; }
+  Value *Get2ndUse() override { return Offset; }
+
+  void Set1stUse(Value *v) override { Source = v; }
+  void Set2ndUse(Value *v) override { Offset = v; }
+
 private:
   Value *Source;
   Value *Offset;
@@ -299,6 +364,13 @@ public:
   Value *GetDestination() { return Dest; }
   Value *GetSource() { return Src; }
   size_t GetSize() const { return N; }
+  bool IsDef() const override { return false; }
+
+  Value *Get1stUse() override { return Dest; }
+  Value *Get2ndUse() override { return Src; }
+
+  void Set1stUse(Value *v) override { Dest = v; }
+  void Set2ndUse(Value *v) override { Src = v; }
 
   void Print() const override;
 
