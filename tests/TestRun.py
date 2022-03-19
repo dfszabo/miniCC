@@ -89,7 +89,7 @@ def execute_tests(file_name, context):
     # create the full command to call the compiler
     command = ["../build/miniCC", file_name]
     if context.extra_compile_flags != "":
-      command.append(context.extra_compile_flags)
+      command.extend(context.extra_compile_flags.split())
 
     # call the compiler
     result = subprocess.run(command, capture_output=True, timeout=10)
