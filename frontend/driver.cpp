@@ -55,13 +55,25 @@ int main(int argc, char *argv[]) {
   bool DumpIR = false;
   bool PrintBeforePasses = false;
   bool Wall = false;
+  std::set<Optimization> RequestedOptimizations;
   std::string TargetArch = "aarch64";
 
   for (int i = 0; i < argc; i++)
     if (argv[i][0] != '-')
       FilePath = std::string(argv[i]);
     else {
-      if (!std::string(&argv[i][1]).compare("E")) {
+      if (!std::string(&argv[i][1]).compare("copy-propagation")) {
+        RequestedOptimizations.insert(Optimization::CopyPropagation);
+        continue;
+      } else if (!std::string(&argv[i][1]).compare("cse")) {
+        RequestedOptimizations.insert(Optimization::CopyPropagation);
+        RequestedOptimizations.insert(Optimization::CSE);
+        continue;
+      } else if (!std::string(&argv[i][1]).compare("O")) {
+        RequestedOptimizations.insert(Optimization::CopyPropagation);
+        RequestedOptimizations.insert(Optimization::CSE);
+        continue;
+      } else if (!std::string(&argv[i][1]).compare("E")) {
         DumpPreProcessedFile = true;
         continue;
       } else if (!std::string(&argv[i][1]).compare("Wall")) {
@@ -146,11 +158,15 @@ int main(int argc, char *argv[]) {
   }
 
   AST->IRCodegen(&IRF);
+
+  const bool Optimize = !RequestedOptimizations.empty();
+  if (Optimize) {
+    PassManager PM(&IRModule, RequestedOptimizations);
+    PM.RunAll();
+  }
+
   if (DumpIR)
     IRModule.Print();
-
-  PassManager PM(&IRModule);
-  PM.RunAll();
 
   MachineIRModule LLIRModule;
   IRtoLLIR I2LLIR(IRModule, &LLIRModule, TM.get());
