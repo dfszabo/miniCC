@@ -95,6 +95,7 @@ public:
   Token GetNameToken() const { return Name; }
 
   Type GetType() const { return AType; }
+  void SetType(const Type &t) { AType = t; }
 
   MemberDeclaration(const Token &Name, Type Ty, std::vector<unsigned> Dim)
       : Name(Name), AType(std::move(Ty), std::move(Dim)) {}
