@@ -169,6 +169,42 @@ public:
     return MO;
   }
 
+  bool operator==(const MachineOperand &RHS) {
+    if (Type != RHS.Type)
+      return false;
+
+    // TODO: maybe check equality of LLT, although for registers
+    // it most likely should not needed, but maybe for immediate it does
+
+    switch (Type) {
+    case REGISTER:
+      return (IntVal == RHS.IntVal && Virtual == RHS.Virtual &&
+              RegisterClass == RHS.RegisterClass);
+    case INT_IMMEDIATE:
+      return IntVal == RHS.IntVal;
+    case FP_IMMEDIATE:
+      return FloatVal == RHS.FloatVal;
+    case MEMORY_ADDRESS:
+    case STACK_ACCESS:
+      return (IntVal == RHS.IntVal && Virtual == RHS.Virtual &&
+              RegisterClass == RHS.RegisterClass && Offset == RHS.Offset);
+    case PARAMETER:
+      return false; // TODO
+    case LABEL:
+    case FUNCTION_NAME:
+      return std::string(Label) == std::string(RHS.Label);
+
+    case GLOBAL_SYMBOL:
+      return GlobalSymbol == RHS.GlobalSymbol;
+    default:
+      assert(!"Unreachable");
+    }
+  }
+
+  bool operator!=(const MachineOperand &RHS) {
+    return !(*this == RHS);
+  }
+
   void Print(TargetMachine *TM) const;
 
 private:

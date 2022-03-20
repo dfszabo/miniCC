@@ -319,6 +319,8 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
   //   ADD Dest, Dest, idx
   else if (auto I = dynamic_cast<GetElementPointerInstruction *>(Instr); I != nullptr) {
     MachineInstruction GoalInstr;
+    // Used for to look up GoalInstr if it was inserted
+    int GoalInstrIdx = -1;
 
     auto SourceID = GetIDFromValue(I->GetSource());
     const bool IsGlobal = I->GetSource()->IsGlobalVar();
@@ -366,8 +368,10 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     else {
       IndexIsInReg = true;
       if (!SourceType.IsStruct()) {
-        if (!GoalInstr.IsInvalid())
+        if (!GoalInstr.IsInvalid()) {
           BB->InsertInstr(GoalInstr);
+          GoalInstrIdx = (int)BB->GetInstructions().size() - 1;
+        }
 
         auto Multiplier = SourceType.CalcElemSize(0);
 
@@ -424,19 +428,35 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         //ConstantIndexPart = SourceType.GetElemByteOffset(Index);
     }
 
+    // Since the result of gep will be ADD's Def (Dest), therefore the GoalInstr
+    // definition must be renamed to make it unique (to still be in SSA).
+    // This only requires if the GoalInstr is a stack or global address instr
+    if (IsGlobal) {
+      if (!IndexIsInReg)
+        GoalInstr.GetDef()->SetReg(ParentFunction->GetNextAvailableVReg());
+      // In this case the instruction was already inserted, so find it in the BB
+      else
+        BB->GetInstructions()[GoalInstrIdx].GetDef()->SetReg(
+            ParentFunction->GetNextAvailableVReg());
+    }
+
     if (!GoalInstr.IsInvalid() && !IndexIsInReg)
       BB->InsertInstr(GoalInstr);
 
     auto ADD = MachineInstruction(MachineInstruction::ADD, BB);
+    // Set ADD's dest to the original destination of the GEP
     ADD.AddOperand(Dest);
     // In case if the source is from a register (let say from a previous load)
     // then the second operand is simply this source reg
     if (IsReg)
       ADD.AddOperand(GetMachineOperandFromValue(I->GetSource(), BB));
     else
-      // Otherwise (stack or global case) the base address is loaded in Dest by
-      // the preceding STACK_ADDRESS or GLOBAL_ADDRESS instruction
-      ADD.AddOperand(Dest);
+      // Otherwise (stack or global case) the base address is loaded in
+      // by the preceding STACK_ADDRESS or GLOBAL_ADDRESS instruction, use
+      // the Def of the GoalInstr to use the updated destination
+      ADD.AddOperand(GoalInstrIdx != -1
+                         ? *BB->GetInstructions()[GoalInstrIdx].GetDef()
+                         : *GoalInstr.GetDef());
 
     if (IndexIsInReg)
       ADD.AddVirtualRegister(MULResVReg, TM->GetPointerSize());

@@ -36,6 +36,7 @@ add_executable(miniCC
     middle_end/Transforms/ValueNumberingPass.cpp
     middle_end/Transforms/Util.cpp
     backend/AssemblyEmitter.cpp
+    backend/LLIROptimizer.cpp
     backend/IRtoLLIR.cpp
     backend/InstructionSelection.cpp
     backend/MachineBasicBlock.cpp
