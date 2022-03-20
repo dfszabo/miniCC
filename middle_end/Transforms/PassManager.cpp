@@ -10,22 +10,23 @@ bool PassManager::RunAll() {
   auto DCE = std::make_unique<DeadCodeEliminationPass>();
 
   for (auto &F : IRModule->GetFunctions()) {
-    if (Optimizations.count(Optimization::CopyPropagation) != 0) {
+    if (Optimizations.count(Optimization::CopyPropagation) != 0 &&
+        Optimizations.count(Optimization::CSE) == 0) {
       CopyProp->RunOnFunction(F);
       DCE->RunOnFunction(F);
     }
 
-    // CSE assumes copy propagation happened already
     if (Optimizations.count(Optimization::CopyPropagation) != 0 &&
         Optimizations.count(Optimization::CSE) != 0) {
       size_t InstNumAtStart;
 
-      // It is an iterative process, since after CSE and DCE
-      // now opportunities for CSE could arise, so running it until
+      // It is an iterative process, since after CopyProp, CSE and DCE
+      // new opportunities for CopyProp and CSE could arise, so running it until
       // there is no change in the instructions size between the
       // start and end of iteration.
       do {
         InstNumAtStart = F.GetNumberOfInstructions();
+        CopyProp->RunOnFunction(F);
         CSE->RunOnFunction(F);
         DCE->RunOnFunction(F);
       } while (InstNumAtStart != F.GetNumberOfInstructions());
