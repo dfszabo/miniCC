@@ -180,9 +180,11 @@ def execute_tests(file_name, context):
             return False
 
         # run the generated object file with qemu
-        ret_code = subprocess.run([run_command, "test"], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
+        ret = subprocess.run([run_command, "test"], capture_output=True)
 
-        if ret_code != 0 and not context.run_fail_test:
+        if ret.returncode != 0 and not context.run_fail_test:
+            print(ret.stdout.decode())
+            print(ret.stderr.decode())
             if not save_temps:
               clean_up()
             return False
