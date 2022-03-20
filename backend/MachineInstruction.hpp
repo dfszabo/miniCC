@@ -77,6 +77,8 @@ public:
     IS_STORE = 1 << 1,
     IS_EXPANDED = 1 << 2,
     IS_RETURN = 1 << 3,
+    IS_JUMP = 1 << 4,
+    IS_CALL = 1 << 5,
   };
 
   MachineInstruction() {}
@@ -89,6 +91,23 @@ public:
   void UpdateAttributes();
 
   unsigned GetOpcode() const { return Opcode; }
+
+  bool IsFallThroughBranch() const { return Operands.size() == 2; }
+  bool IsLoad() const { return Opcode == LOAD || (OtherAttributes & IS_LOAD); }
+  bool IsStore() const {
+    return Opcode == STORE || (OtherAttributes & IS_STORE);
+  }
+  bool IsAlreadyExpanded() const { return OtherAttributes & IS_EXPANDED; }
+  bool IsReturn() const { return OtherAttributes & IS_RETURN; }
+  bool IsJump() const { return OtherAttributes & IS_JUMP; }
+  bool IsCall() const { return OtherAttributes & IS_CALL; }
+  bool Is3AddrArith() const { return Opcode >= ADD && Opcode <= CMPF; }
+
+  /// flag the MI as expanded, so the legalizer can ignore it
+  void FlagAsExpanded() { OtherAttributes |= IS_EXPANDED; }
+  bool IsLoadOrStore() const { return IsLoad() || IsStore(); }
+  bool IsAlreadySelected() const { return Opcode < 65536; }
+  bool IsInvalid() const { return  Opcode == INVALID_OP; }
 
   void SetOpcode(unsigned Opcode) {
     this->Opcode = Opcode;
@@ -106,6 +125,43 @@ public:
     return &Operands[Index];
   }
   OperandList &GetOperands() { return Operands; }
+
+  MachineOperand *GetDef() {
+    // These do not define values just use them
+    if (Opcode == RET || Opcode == JUMP || Opcode == BRANCH || IsStore())
+      return nullptr;
+
+    assert(Operands.size() > 0);
+
+    return GetOperand(0);
+  }
+
+  bool IsDef() { return GetDef() != nullptr; }
+
+  MachineOperand *GetNthUse(size_t N) {
+    // Ret only has operands, no defs
+    if (Opcode != RET && Opcode != JUMP && Opcode != BRANCH && !IsStore())
+      N++; // Others first operand is usually a def, so skip it
+
+    // If trying to acces non existent use, then return nullptr as
+    // a sing of the absence
+    if (Operands.size() <= N)
+      return nullptr;
+
+    return GetOperand(N);
+  }
+
+  void SetNthUse(size_t N, MachineOperand *Use) {
+    // Ret only has operands, no defs
+    if (Opcode != RET && Opcode != JUMP && Opcode != BRANCH && !IsStore())
+      N++; // Others first operand is usually a def, so skip it
+
+    // If trying to acces non existent use, then just return
+    if (Operands.size() <= N)
+      return;
+
+    ReplaceOperand(*Use, N);
+  }
 
   void AddOperand(MachineOperand MO) { Operands.push_back(MO); }
   void ReplaceOperand(MachineOperand MO, size_t index) {
@@ -181,20 +237,6 @@ public:
   void AddAttribute(unsigned AttributeFlag) {
     OtherAttributes |= AttributeFlag;
   }
-
-  bool IsFallThroughBranch() const { return Operands.size() == 2; }
-  bool IsLoad() const { return Opcode == LOAD || (OtherAttributes & IS_LOAD); }
-  bool IsStore() const {
-    return Opcode == STORE || (OtherAttributes & IS_STORE);
-  }
-  bool IsAlreadyExpanded() const { return OtherAttributes & IS_EXPANDED; }
-  bool IsReturn() const { return OtherAttributes & IS_RETURN; }
-
-  /// flag the MI as expanded, so the legalizer can ignore it
-  void FlagAsExpanded() { OtherAttributes |= IS_EXPANDED; }
-  bool IsLoadOrStore() const { return IsLoad() || IsStore(); }
-  bool IsAlreadySelected() const { return Opcode < 65536; }
-  bool IsInvalid() const { return  Opcode == INVALID_OP; }
 
   void Print(TargetMachine *TM) const;
 

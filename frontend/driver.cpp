@@ -1,4 +1,5 @@
 #include "../backend/AssemblyEmitter.hpp"
+#include "../backend/LLIROptimizer.hpp"
 #include "../backend/IRtoLLIR.hpp"
 #include "../backend/InsturctionSelection.hpp"
 #include "../backend/MachineInstructionLegalizer.hpp"
@@ -56,13 +57,17 @@ int main(int argc, char *argv[]) {
   bool PrintBeforePasses = false;
   bool Wall = false;
   std::set<Optimization> RequestedOptimizations;
+  bool RunLLIROpt = false;
   std::string TargetArch = "aarch64";
 
   for (int i = 0; i < argc; i++)
     if (argv[i][0] != '-')
       FilePath = std::string(argv[i]);
     else {
-      if (!std::string(&argv[i][1]).compare("copy-propagation")) {
+      if (!std::string(&argv[i][1]).compare("llir-opt")) {
+        RunLLIROpt = true;
+        continue;
+      } else if (!std::string(&argv[i][1]).compare("copy-propagation")) {
         RequestedOptimizations.insert(Optimization::CopyPropagation);
         continue;
       } else if (!std::string(&argv[i][1]).compare("cse")) {
@@ -173,9 +178,24 @@ int main(int argc, char *argv[]) {
   I2LLIR.GenerateLLIRFromIR();
 
   if (PrintBeforePasses) {
-    std::cout << "<<<<< Before Legalizer >>>>>" << std::endl << std::endl;
+    if (RunLLIROpt)
+      std::cout << "<<<<< Before LLIR Optimizer >>>>>" << std::endl
+                << std::endl;
+    else
+      std::cout << "<<<<< Before Legalizer >>>>>" << std::endl << std::endl;
     LLIRModule.Print(TM.get());
     std::cout << std::endl;
+  }
+
+  if (RunLLIROpt) {
+    LLIROptimizer LLIROpt(&LLIRModule, TM.get());
+    LLIROpt.Run();
+
+    if (PrintBeforePasses) {
+      std::cout << "<<<<< Before Legalizer >>>>>" << std::endl << std::endl;
+      LLIRModule.Print(TM.get());
+      std::cout << std::endl;
+    }
   }
 
   MachineInstructionLegalizer Legalizer(&LLIRModule, TM.get());

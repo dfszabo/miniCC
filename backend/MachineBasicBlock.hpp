@@ -9,9 +9,9 @@ class MachineFunction;
 class TargetMachine;
 
 class MachineBasicBlock {
+public:
   using InstructionList = std::vector<MachineInstruction>;
 
-public:
   MachineBasicBlock() = default;
   MachineBasicBlock(std::string &Name) : Name(Name) {}
   MachineBasicBlock(std::string &Name, MachineFunction *Parent)

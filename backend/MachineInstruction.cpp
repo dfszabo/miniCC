@@ -14,6 +14,12 @@ void MachineInstruction::UpdateAttributes() {
   case RET:
     AddAttribute(IS_RETURN);
     break;
+  case JUMP:
+    AddAttribute(IS_JUMP);
+    break;
+  case CALL:
+    AddAttribute(IS_CALL);
+    break;
   default:
     break;
   }
