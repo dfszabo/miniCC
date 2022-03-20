@@ -31,9 +31,10 @@ static void ProcessBB(std::unique_ptr<BasicBlock> &BB) {
       if (!Source || InstrPtr->Get2ndUse())
         continue;
 
-      // Only checking global vars and stack allocations
+      // Only checking global vars, stack allocations and GEPs
       if (!Source->IsGlobalVar() &&
-          !dynamic_cast<StackAllocationInstruction *>(Source))
+          !dynamic_cast<StackAllocationInstruction *>(Source) &&
+          !dynamic_cast<GetElementPointerInstruction *>(Source))
         continue;
 
       // If the value is not known yet, then it is now
@@ -56,9 +57,10 @@ static void ProcessBB(std::unique_ptr<BasicBlock> &BB) {
       if (!Source || !InstrPtr->Get1stUse()->IsRegister())
         continue;
 
-      // Only checking global vars and stack allocations
+      // Only checking global vars, stack allocations and GEPs
       if (!Source->IsGlobalVar() &&
-          !dynamic_cast<StackAllocationInstruction *>(Source))
+          !dynamic_cast<StackAllocationInstruction *>(Source) &&
+          !dynamic_cast<GetElementPointerInstruction *>(Source))
         continue;
 
       KnownMemoryValues[Source] =
