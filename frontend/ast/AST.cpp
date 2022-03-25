@@ -443,6 +443,16 @@ Value *ReturnStatement::IRCodegen(IRFactory *IRF) {
 
   Value *RetVal = HasRetVal ? ReturnValue.value()->IRCodegen(IRF) : nullptr;
 
+  // Issue a load in this case
+  // TODO: This need to be reworked. ReferenceExpression should not have
+  // the struct handling and may the ImplicitCastExpression should be
+  // extended to be able to cast LValues to RValues and generate that when
+  // needed just like LLVM. So loads can be emitted there, not in
+  // ReferenceExpression. Now it is done here and not in ReferenceExpression,
+  // because otherwise GEPs would load the struct as well but they should not.
+  if (RetVal && IRF->GetCurrentFunction()->IsRetTypeStruct())
+    RetVal = IRF->CreateLD(IRF->GetCurrentFunction()->GetReturnType(), RetVal);
+
   if (IRF->GetCurrentFunction()->HasMultipleReturn()) {
     if (HasRetVal)
       IRF->CreateSTR(RetVal, IRF->GetCurrentFunction()->GetReturnValue());
