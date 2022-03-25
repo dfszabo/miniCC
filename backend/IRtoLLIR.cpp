@@ -655,31 +655,28 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
 
     const bool IsFP = I->GetRetVal()->GetTypeRef().IsFP();
 
-    // insert load to load in the return val to the return registers
+    // insert moves to move in the return val to the return registers
+    // TODO: Maybe make a backward search in the BB for the load instructions
+    // which defines these IDs and change them to the right physical registers
+    // this way the moves does not needed. Although if good enough copy
+    // propagation were implemented, then this would be handled by it
     auto &TargetRetRegs = TM->GetABI()->GetReturnRegisters();
-    if (I->GetRetVal()->GetTypeRef().IsStruct()) {
-      // how many register are used to pass this struct
-      unsigned StructBitSize =
-          (I->GetRetVal()->GetTypeRef().GetBaseTypeByteSize() * 8);
-      unsigned MaxRegSize = TM->GetPointerSize();
-      unsigned RegsCount =
-          GetNextAlignedValue(StructBitSize, MaxRegSize) / MaxRegSize;
+    if (I->GetRetVal()->GetTypeRef().IsStruct() &&
+        !I->GetRetVal()->GetTypeRef().IsPTR()) {
+      assert(StructByIDToRegMap[I->GetRetVal()->GetID()].size() <= 2);
 
-      for (size_t i = 0; i < RegsCount; i++) {
-        auto Instr = MachineInstruction(MachineInstruction::LOAD, BB);
-        auto idx = i;
+      size_t RetRegCounter = 0;
+      for (auto VReg : StructByIDToRegMap[I->GetRetVal()->GetID()]) {
+        auto Instr = MachineInstruction(MachineInstruction::MOV, BB);
 
-        if (IsFP)
-          idx += TM->GetABI()->GetFirstFPRetRegIdx();
+        Instr.AddRegister(TargetRetRegs[RetRegCounter]->GetID(),
+                          TargetRetRegs[RetRegCounter]->GetBitWidth());
 
-        Instr.AddRegister(TargetRetRegs[idx]->GetID(),
-                          TargetRetRegs[idx]->GetBitWidth());
-        auto RetId = GetIDFromValue(I->GetRetVal());
-        Instr.AddStackAccess(RetId, i * (TM->GetPointerSize() / 8));
+        Instr.AddVirtualRegister(VReg, TM->GetPointerSize());
         BB->InsertInstr(Instr);
+        RetRegCounter++;
       }
-    }
-    else if (I->GetRetVal()->IsConstant()) {
+    } else if (I->GetRetVal()->IsConstant()) {
       auto &RetRegs = TM->GetABI()->GetReturnRegisters();
       
       MachineInstruction LoadImm;

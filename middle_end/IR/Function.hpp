@@ -46,7 +46,11 @@ public:
   /// therefore it is also usable as a predicate
   bool HasMultipleReturn() const { return ReturnValue != nullptr; }
 
+  const IRType &GetReturnType() const { return ReturnType; }
   bool IsRetTypeVoid() { return ReturnType.IsVoid(); }
+  bool IsRetTypeStruct() const {
+    return ReturnType.IsStruct() && !ReturnType.IsPTR();
+  }
 
   size_t GetNumberOfInstructions() const;
 
