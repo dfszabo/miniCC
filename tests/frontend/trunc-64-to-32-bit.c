@@ -4,6 +4,6 @@
 
 
 int test() {
-  long long a = 111;
+  long long a = 111 + (1ll << 32);
   return a;
 }

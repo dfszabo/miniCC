@@ -38,11 +38,11 @@ public:
     CMPF,
 
     // Conversions
-    SEXT, // Sign extension
-    ZEXT, // Zero extension
+    SEXT,  // Sign extension
+    ZEXT,  // Zero extension
     TRUNC, // Truncating
-    FTOI, // Float TO Integer
-    ITOF, // Integer TO Float
+    FTOI,  // Float TO Integer
+    ITOF,  // Integer TO Float
     BITCAST,
 
     // Control flow operations
@@ -66,6 +66,13 @@ public:
     // combined load and sign/zero extension
     SEXT_LOAD,
     ZEXT_LOAD,
+
+    // Others
+    ADDS, // Add with carry set
+    ADDC, // Add with carry
+    MULHU, // Mul unsigned return upper part 
+    MERGE,
+    SPLIT,
 
     INVALID_OP,
   };
@@ -102,12 +109,14 @@ public:
   bool IsJump() const { return OtherAttributes & IS_JUMP; }
   bool IsCall() const { return OtherAttributes & IS_CALL; }
   bool Is3AddrArith() const { return Opcode >= ADD && Opcode <= CMPF; }
+  bool IsMerge() const { return Opcode == MERGE; }
+  bool IsSplit() const { return Opcode == SPLIT; }
 
   /// flag the MI as expanded, so the legalizer can ignore it
   void FlagAsExpanded() { OtherAttributes |= IS_EXPANDED; }
   bool IsLoadOrStore() const { return IsLoad() || IsStore(); }
   bool IsAlreadySelected() const { return Opcode < 65536; }
-  bool IsInvalid() const { return  Opcode == INVALID_OP; }
+  bool IsInvalid() const { return Opcode == INVALID_OP; }
 
   void SetOpcode(unsigned Opcode) {
     this->Opcode = Opcode;
@@ -176,6 +185,7 @@ public:
   void SetParent(MachineBasicBlock *BB) { Parent = BB; }
 
   void RemoveOperand(unsigned Index) {
+    assert(Index < GetOperandsNumber());
     Operands.erase(Operands.begin() + Index);
   }
 
@@ -186,6 +196,7 @@ public:
   void RemoveMemOperand() {
     for (size_t i = 0; i < Operands.size(); i++)
       if (Operands[i].IsStackAccess() || Operands[i].IsMemory()) {
+        assert(i < GetOperandsNumber());
         Operands.erase(Operands.begin() + i--);
         return;
       }
@@ -236,6 +247,24 @@ public:
 
   void AddAttribute(unsigned AttributeFlag) {
     OtherAttributes |= AttributeFlag;
+  }
+
+  const char *GetRelString() const {
+#define CASE(S)                                                                \
+  case S:                                                                      \
+    return #S
+
+    switch (Attributes) {
+      CASE(EQ);
+      CASE(NE);
+      CASE(LT);
+      CASE(GT);
+      CASE(LE);
+      CASE(GE);
+    default:
+      assert(!"Should not be INVALID");
+    }
+#undef CASE
   }
 
   void Print(TargetMachine *TM) const;

@@ -66,7 +66,8 @@ void MachineInstruction::Print(TargetMachine *TM) const {
     OpcodeStr = "MODU";
     break;
   case CMP:
-    OpcodeStr = "CMP";
+    OpcodeStr = "CMP.";
+    OpcodeStr += GetRelString();
     break;
   case ADDF:
     OpcodeStr = "ADDF";
@@ -81,7 +82,8 @@ void MachineInstruction::Print(TargetMachine *TM) const {
     OpcodeStr = "DIVF";
     break;
   case CMPF:
-    OpcodeStr = "CMPF";
+    OpcodeStr = "CMPF.";
+    OpcodeStr += GetRelString();
     break;
   case SEXT:
     OpcodeStr = "SEXT";
@@ -136,6 +138,21 @@ void MachineInstruction::Print(TargetMachine *TM) const {
     break;
   case RET:
     OpcodeStr = "RET";
+    break;
+  case ADDS:
+    OpcodeStr = "ADDS";
+    break;
+  case ADDC:
+    OpcodeStr = "ADDC";
+    break;
+  case MULHU:
+    OpcodeStr = "MULHU";
+    break;
+  case MERGE:
+    OpcodeStr = "MERGE";
+    break;
+  case SPLIT:
+    OpcodeStr = "SPLIT";
     break;
   case INVALID_OP:
     OpcodeStr = "INVALID_OP";

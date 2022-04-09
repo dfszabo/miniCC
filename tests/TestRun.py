@@ -87,12 +87,18 @@ def execute_tests(file_name, context):
       return False
 
     # create the full command to call the compiler
-    command = ["../build/miniCC", file_name]
+    command = ["../build/miniCC", "-arch=" + context.arch, file_name]
     if context.extra_compile_flags != "":
       command.extend(context.extra_compile_flags.split())
 
     # call the compiler
-    result = subprocess.run(command, capture_output=True, timeout=10)
+    try:
+      result = subprocess.run(command, capture_output=True, timeout=3)
+    except subprocess.TimeoutExpired:
+      print(f'Timeout for {command} (3s) expired')
+      if not save_temps:
+        clean_up()
+      return False
 
     # if the compilation failed
     if result.returncode != 0:
@@ -146,14 +152,18 @@ def execute_tests(file_name, context):
     text_file.close()
 
     # create the main C file which used for the testing
-    test_main_c_template = "#include <stdio.h>\n\n"
+    test_main_c_template = ""
+    if context.arch != "riscv32":
+      test_main_c_template += "#include <stdio.h>\n\n"
+
     for func_decl in context.function_declarations:
         test_main_c_template += func_decl + ";\n\n"
 
     test_main_c_template += "int main() {"
-    test_main_c_template += "  int res = $;"
+    test_main_c_template += "  long long res = $;"
     test_main_c_template += "  if (res != @) { "
-    test_main_c_template += r'   printf("\nExpected: %d, Actual: %d\n", @, res);'
+    if context.arch != "riscv32":
+      test_main_c_template += r'   printf("\nExpected: %lld, Actual: %lld\n", (long long) @, res);'
     test_main_c_template += "    return 1;"
     test_main_c_template += "  }"
     test_main_c_template += "  return 0;"
@@ -173,18 +183,36 @@ def execute_tests(file_name, context):
         text_file.close()
 
         # compile the C file with the generated assembly
-        compile_ret = subprocess.run([context.arch + "-linux-gnu-gcc", "test_main.c", "test.s", "-o", "test", "-static", "-lm"]).returncode
+        command = context.arch
+        if context.arch == "aarch64":
+          command += "-linux-gnu-gcc"
+        elif context.arch == "riscv32":
+          command += "-unknown-linux-gnu-gcc"
+        else:
+          print("Unknown architecture")
+          if not save_temps:
+            clean_up()
+          return False
+      
+        compile_ret = subprocess.run([command, "test_main.c", "test.s", "-o", "test", "-static", "-lm"]).returncode
         if compile_ret != 0:
             if not save_temps:
               clean_up()
             return False
 
         # run the generated object file with qemu
-        ret = subprocess.run([run_command, "test"], capture_output=True)
+        try:
+          ret = subprocess.run([run_command, "test"], capture_output=True, timeout=5)
+        except subprocess.TimeoutExpired:
+          print(f'Timeout for {run_command} (5s) expired')
+          if not save_temps:
+            clean_up()
+          return False
 
         if ret.returncode != 0 and not context.run_fail_test:
             print(ret.stdout.decode())
             print(ret.stderr.decode())
+            print("Case '", case, " -> ", expected_result, "' has failed")
             if not save_temps:
               clean_up()
             return False

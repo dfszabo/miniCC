@@ -249,6 +249,14 @@ public:
     Dimensions = std::move(D);
   }
 
+  void RemoveFirstDimension() {
+    assert(IsArray() && "Must be an Array type to access Dimensions.");
+    assert(!Dimensions.empty());
+    Dimensions.erase(Dimensions.begin());
+    if (Dimensions.empty())
+      Kind = Simple; // TODO: what if its an array of struct objects?
+  }
+
   std::vector<Type> &GetArgTypes() { return ParameterList; }
 
   friend bool operator==(const Type &lhs, const Type &rhs) {

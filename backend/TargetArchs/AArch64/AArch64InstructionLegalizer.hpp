@@ -8,7 +8,8 @@ namespace AArch64 {
 
 class AArch64InstructionLegalizer : public TargetInstructionLegalizer {
 public:
-  AArch64InstructionLegalizer(TargetMachine *TM) : TM(TM) {}
+  AArch64InstructionLegalizer(TargetMachine *TM)
+      : TargetInstructionLegalizer(TM) {}
   ~AArch64InstructionLegalizer() override {}
 
   bool Check(MachineInstruction *MI) override;
@@ -53,8 +54,6 @@ public:
   ///   adrp x0, global_var
   ///   add  x0, x0, :lo12:global_var
   bool ExpandGLOBAL_ADDRESS(MachineInstruction *MI) override;
-private:
-  TargetMachine *TM = nullptr;
 };
 
 } // namespace AArch64

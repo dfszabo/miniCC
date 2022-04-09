@@ -20,31 +20,37 @@ int test() {
 
   unsigned res = 0;
 
+  // 1 byte
   res = sizeof(unsigned char);
   res += sizeof(u8);
   res += sizeof(char);
   res += sizeof(i8);
 
+  // 2 byte
   res += sizeof(unsigned short);
   res += sizeof(u16);
   res += sizeof(short);
   res += sizeof(i16);
 
+  // 4 byte
   res += sizeof(unsigned int);
   res += sizeof(u32);
   res += sizeof(int);
   res += sizeof(i32);
 
+  // 8 byte
   res += sizeof(unsigned long);
   res += sizeof(u32l);
   res += sizeof(long);
   res += sizeof(i32l);
 
+  // 8 byte
   res += sizeof(unsigned long long);
   res += sizeof(u64);
   res += sizeof(long long);
   res += sizeof(i64);
 
+  // 8 byte
   res += sizeof(char*);
   res += sizeof(i8_ptr);
   res += sizeof(int*);

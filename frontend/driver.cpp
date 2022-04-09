@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
 
   std::unique_ptr<TargetMachine> TM;
 
-  if (TargetArch == "riscv")
+  if (TargetArch == "riscv32")
     TM = std::make_unique<RISCV::RISCVTargetMachine>();
   else
     TM = std::make_unique<AArch64::AArch64TargetMachine>();

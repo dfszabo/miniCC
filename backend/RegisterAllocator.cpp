@@ -40,9 +40,14 @@ void PreAllocateParameters(MachineFunction &Func, TargetMachine *TM,
     assert(CurrArgReg && "Cannot be null");
 
     // allocate the param to the CurrentParamReg -th param register
-    if (ParamLLT.GetBitWidth() <= 32)
-      AllocatedRegisters[ParamID] = CurrArgReg->GetSubRegs()[0];
-    else
+    // TODO: do more sophistaceted and target independent search for the right
+    // register
+    if (ParamLLT.GetBitWidth() <= 32) {
+      if (CurrArgReg->GetBitWidth() > 32 && !CurrArgReg->GetSubRegs().empty())
+        AllocatedRegisters[ParamID] = CurrArgReg->GetSubRegs()[0];
+      else
+        AllocatedRegisters[ParamID] = CurrArgReg->GetID();
+    } else
       AllocatedRegisters[ParamID] = CurrArgReg->GetID();
   }
 }

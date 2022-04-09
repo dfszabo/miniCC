@@ -23,8 +23,9 @@ public:
   void Reset() {
     StructToRegMap.clear();
     StructByIDToRegMap.clear();
+    ParamByIDToRegMap.clear();
     IRVregToLLIRVreg.clear();
-    SpilledReturnValuesStackIDs.clear();
+    SpilledReturnValuesIDToStackID.clear();
   }
 
 private:
@@ -46,6 +47,9 @@ private:
   /// to keep track in which registers the struct is currently living
   std::map<unsigned, std::vector<unsigned>> StructByIDToRegMap;
 
+  /// to keep track in which registers the parameter is currently in
+  std::map<unsigned, std::vector<unsigned>> ParamByIDToRegMap;
+
   /// Keep track what IR virtual registers were mapped to what LLIR virtual
   /// registers. This needed since while translating from IR to LLIR
   /// occasionally new instructions are added with possible new virtual
@@ -54,7 +58,7 @@ private:
 
   /// To keep track which stack slots are used for spilling the return values
   /// of functions calls.
-  std::set<unsigned> SpilledReturnValuesStackIDs;
+  std::map<unsigned, unsigned> SpilledReturnValuesIDToStackID;
 };
 
 #endif
