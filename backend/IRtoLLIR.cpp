@@ -29,8 +29,7 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
     // TODO: Investigate if this is the appropriate place and way to do this
     if (!IsDef && IRVregToLLIRVreg.count(Val->GetID()) == 0 &&
         MF->IsStackSlot(Val->GetID())) {
-      auto Instr = MachineInstruction(MachineInstruction::LOAD,
-                                      &MF->GetBasicBlocks().back());
+      auto Instr = MachineInstruction(MachineInstruction::LOAD, MBB);
       NextVReg = MF->GetNextAvailableVReg();
       Instr.AddVirtualRegister(NextVReg, BitWidth);
       Instr.AddStackAccess(Val->GetID());
@@ -39,14 +38,19 @@ MachineOperand IRtoLLIR::GetMachineOperandFromValue(Value *Val,
     // If the IR VReg is mapped already to an LLIR VReg then use that
     else if (IRVregToLLIRVreg.count(Val->GetID()) > 0) {
       if (!IsDef && MF->IsStackSlot(IRVregToLLIRVreg[Val->GetID()])) {
-        auto Instr = MachineInstruction(MachineInstruction::LOAD,
-                                        &MF->GetBasicBlocks().back());
+        auto Instr = MachineInstruction(MachineInstruction::LOAD, MBB);
         NextVReg = MF->GetNextAvailableVReg();
         Instr.AddVirtualRegister(NextVReg, BitWidth);
         Instr.AddStackAccess(IRVregToLLIRVreg[Val->GetID()]);
         MBB->InsertInstr(Instr);
       } else
         NextVReg = IRVregToLLIRVreg[Val->GetID()];
+    } else if (SpilledReturnValuesIDToStackID.count(Val->GetID())) {
+      auto Instr = MachineInstruction(MachineInstruction::LOAD, MBB);
+      NextVReg = MF->GetNextAvailableVReg();
+      Instr.AddVirtualRegister(NextVReg, BitWidth);
+      Instr.AddStackAccess(SpilledReturnValuesIDToStackID[Val->GetID()]);
+      MBB->InsertInstr(Instr);
     }
     // Otherwise get the next available LLIR VReg and create a mapping entry
     else {
@@ -137,7 +141,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
           I->GetTypeRef().GetPointerLevel() ==
               I->GetOperand()->GetTypeRef().GetPointerLevel() &&
           ParentFunction->IsStackSlot(I->GetOperand()->GetID())) {
-        if (SpilledReturnValuesStackIDs.count(I->GetOperand()->GetID()) == 0) {
+        if (SpilledReturnValuesIDToStackID.count(I->GetOperand()->GetID()) == 0) {
           ResultMI.SetOpcode(MachineInstruction::STACK_ADDRESS);
           Op = MachineOperand::CreateStackAccess(I->GetOperand()->GetID());
         }
@@ -165,7 +169,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
   }
   // Store instruction: STR [address], Src
   else if (auto I = dynamic_cast<StoreInstruction *>(Instr); I != nullptr) {
-    // FIXME: maybe it should be something else then a register since its
+    // TODO: maybe it should be something else then a register since its
     // an address, revisit this
     assert((I->GetMemoryLocation()->IsRegister() ||
            I->GetMemoryLocation()->IsGlobalVar()) && "Forbidden destination");
@@ -238,13 +242,33 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
           BB->InsertInstr(Store);
         }
       }
+    } else if (!ParamByIDToRegMap[I->GetSavedValue()->GetID()].empty()) {
+      assert(dynamic_cast<FunctionParameter *>(I->GetSavedValue()));
+      const unsigned RegSize = TM->GetPointerSize();
+
+      MachineInstruction CurrentStore;
+      unsigned Counter = 0;
+      // Create stores for the register which holds the struct parts
+      for (auto ParamID : ParamByIDToRegMap[I->GetSavedValue()->GetID()]) {
+        CurrentStore = MachineInstruction(MachineInstruction::STORE, BB);
+        CurrentStore.AddStackAccess(AddressReg, Counter * RegSize / 8);
+        CurrentStore.AddVirtualRegister(ParamID, RegSize);
+        Counter++;
+        // insert all the stores but the last one, that will be the return
+        // value
+        if (Counter < ParamByIDToRegMap[I->GetSavedValue()->GetID()].size())
+          BB->InsertInstr(CurrentStore);
+      }
+      return CurrentStore;
     } else if (I->GetSavedValue()->IsGlobalVar()) {
-        auto GlobalAddress = MachineInstruction(MachineInstruction::GLOBAL_ADDRESS, BB);
-        auto SourceReg = ParentFunction->GetNextAvailableVReg();
-        GlobalAddress.AddVirtualRegister(SourceReg, TM->GetPointerSize());
-        GlobalAddress.AddGlobalSymbol(((GlobalVariable*)I->GetSavedValue())->GetName());
-        BB->InsertInstr(GlobalAddress);
-        ResultMI.AddVirtualRegister(SourceReg, TM->GetPointerSize());
+      auto GlobalAddress =
+          MachineInstruction(MachineInstruction::GLOBAL_ADDRESS, BB);
+      auto SourceReg = ParentFunction->GetNextAvailableVReg();
+      GlobalAddress.AddVirtualRegister(SourceReg, TM->GetPointerSize());
+      GlobalAddress.AddGlobalSymbol(
+          ((GlobalVariable *)I->GetSavedValue())->GetName());
+      BB->InsertInstr(GlobalAddress);
+      ResultMI.AddVirtualRegister(SourceReg, TM->GetPointerSize());
     }
     // if the source is a SA instruction, then its address which needs to be
     // stored, therefore it has to be materialized by STACK_ADDRESS instruction
@@ -261,7 +285,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
   }
   // Load instruction: LD Dest, [address]
   else if (auto I = dynamic_cast<LoadInstruction *>(Instr); I != nullptr) {
-    // FIXME: same as with STORE
+    // TODO: same as with STORE
     assert((I->GetMemoryLocation()->IsRegister() ||
             I->GetMemoryLocation()->IsGlobalVar()) && "Forbidden source");
 
@@ -367,7 +391,7 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     // If the index resides in a register
     else {
       IndexIsInReg = true;
-      if (!SourceType.IsStruct()) {
+      if (!SourceType.IsStruct() || (SourceType.GetPointerLevel() > 2)) {
         if (!GoalInstr.IsInvalid()) {
           BB->InsertInstr(GoalInstr);
           GoalInstrIdx = (int)BB->GetInstructions().size() - 1;
@@ -520,7 +544,8 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       // In case if its a struct by value param, then it is already loaded
       // in into registers, so issue move instructions to move these into
       // the parameter registers
-      if (Param->GetTypeRef().IsStruct() && !Param->GetTypeRef().IsPTR()) {
+      if (Param->GetTypeRef().IsStruct() && !Param->GetTypeRef().IsPTR() &&
+          !Param->IsGlobalVar()) {
         assert(StructByIDToRegMap.count(Param->GetID()) > 0 &&
                "The map does not know about this struct param");
         for (auto VReg : StructByIDToRegMap[Param->GetID()]) {
@@ -578,13 +603,12 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
         auto ParamPhysReg = TargetArgRegs[ParamIdx]->GetID();
         auto ParamPhysRegSize = TargetArgRegs[ParamIdx]->GetBitWidth();
 
-        if (Src.GetSize() < ParamPhysRegSize) {
+        if (Src.GetSize() < ParamPhysRegSize &&
+            !TargetArgRegs[ParamIdx]->GetSubRegs().empty()) {
           ParamPhysReg = TargetArgRegs[ParamIdx]->GetSubRegs()[0];
+
           ParamPhysRegSize =
-              TM->GetRegInfo()
-                  ->GetRegisterByID(
-                      TargetArgRegs[ParamIdx]->GetSubRegs()[0])
-                  ->GetBitWidth();
+              TM->GetRegInfo()->GetRegisterByID(ParamPhysReg)->GetBitWidth();
         }
 
         Instr.AddRegister(ParamPhysReg, ParamPhysRegSize);
@@ -609,20 +633,21 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
     const unsigned MaxRegSize = TM->GetPointerSize();
     const unsigned RegsCount = GetNextAlignedValue(RetBitSize, MaxRegSize)
                                / MaxRegSize;
-    assert(RegsCount > 0);
+    assert(RegsCount > 0 && RegsCount <= 2);
     auto &RetRegs = TM->GetABI()->GetReturnRegisters();
 
+    auto StackSlot = ParentFunction->GetNextAvailableVReg();
+    SpilledReturnValuesIDToStackID[I->GetID()] = StackSlot;
+    ParentFunction->InsertStackSlot(StackSlot,
+                                    RetBitSize / 8,
+                                    RetBitSize / 8);
     for (size_t i = 0; i < RegsCount; i++) {
       // NOTE: Actual its not a vreg, but this make sure it will be a unique ID.
       // TODO: Maybe rename GetNextAvailableVReg to GetNextAvailableID
-      auto StackSlot = ParentFunction->GetNextAvailableVReg();
-      IRVregToLLIRVreg[I->GetID()] = StackSlot;
-      SpilledReturnValuesStackIDs.insert(StackSlot);
-      ParentFunction->InsertStackSlot(StackSlot,
-                                      std::min(RetBitSize, MaxRegSize) / 8,
-                                      std::min(RetBitSize, MaxRegSize) / 8);
       auto Store = MachineInstruction(MachineInstruction::STORE, BB);
-      Store.AddStackAccess(StackSlot);
+      auto StackSlotMO =
+          MachineOperand::CreateStackAccess(StackSlot, i * (MaxRegSize / 8));
+      Store.AddOperand(StackSlotMO);
 
       // find the appropriate return register for the size
       unsigned TargetRetReg;
@@ -678,31 +703,104 @@ MachineInstruction IRtoLLIR::ConvertToMachineInstr(Instruction *Instr,
       }
     } else if (I->GetRetVal()->IsConstant()) {
       auto &RetRegs = TM->GetABI()->GetReturnRegisters();
-      
-      MachineInstruction LoadImm;
 
-      if (IsFP)
-        LoadImm = MachineInstruction(MachineInstruction::MOVF, BB);
-      else
-        LoadImm = MachineInstruction(MachineInstruction::LOAD_IMM, BB);
+      if (I->GetRetVal()->GetTypeRef().GetBitSize() <= TM->GetPointerSize()) {
+        MachineInstruction LoadImm;
 
-      // TODO: this assumes aarch64, make it target independent by searching
-      // for the right sized register, like in the register allocator
-      unsigned RetRegIdx = IsFP ? TM->GetABI()->GetFirstFPRetRegIdx() : 0;
-      if (RetRegs[0]->GetBitWidth() == I->GetBitWidth())
-        LoadImm.AddRegister(RetRegs[RetRegIdx]->GetID(),
-                            RetRegs[RetRegIdx]->GetBitWidth());
-      else
-        LoadImm.AddRegister(
-            RetRegs[RetRegIdx]->GetSubRegs()[0],
-            TM->GetRegInfo()
-                ->GetRegisterByID(RetRegs[RetRegIdx]->GetSubRegs()[0])
-                ->GetBitWidth());
+        if (IsFP)
+          LoadImm = MachineInstruction(MachineInstruction::MOVF, BB);
+        else
+          LoadImm = MachineInstruction(MachineInstruction::LOAD_IMM, BB);
 
-      LoadImm.AddOperand(GetMachineOperandFromValue(I->GetRetVal(), BB));
-      // change ret operand to the destination register of the LOAD_IMM
-      ResultMI.AddOperand(*LoadImm.GetOperand(0));
-      BB->InsertInstr(LoadImm);
+        // TODO: this assumes aarch64, make it target independent by searching
+        // for the right sized register, like in the register allocator
+        unsigned RetRegIdx = IsFP ? TM->GetABI()->GetFirstFPRetRegIdx() : 0;
+        if (RetRegs[0]->GetBitWidth() == I->GetBitWidth())
+          LoadImm.AddRegister(RetRegs[RetRegIdx]->GetID(),
+                              RetRegs[RetRegIdx]->GetBitWidth());
+        else if (I->GetRetVal()->GetTypeRef().GetBitSize() <=
+                     TM->GetPointerSize() &&
+                 !RetRegs[RetRegIdx]->GetSubRegs().empty())
+          LoadImm.AddRegister(
+              RetRegs[RetRegIdx]->GetSubRegs()[0],
+              TM->GetRegInfo()
+                  ->GetRegisterByID(RetRegs[RetRegIdx]->GetSubRegs()[0])
+                  ->GetBitWidth());
+        else
+          assert(!"Cannot find return register candidate");
+
+        LoadImm.AddOperand(GetMachineOperandFromValue(I->GetRetVal(), BB));
+        // change ret operand to the destination register of the LOAD_IMM
+        ResultMI.AddOperand(*LoadImm.GetOperand(0));
+        BB->InsertInstr(LoadImm);
+
+        // If the target cannot return the immediate in one register then if
+        // the target allows return it in multiple registers
+        // TODO: actually it is not really checked if the target allows it or
+        //  not or how many register are there for this reason, it is assumed
+        //  here a riscv32 like case -> 2 32 bit register for returning the value
+      } else {
+        const unsigned RetBitSize = I->GetTypeRef().GetByteSize() * 8;
+        const unsigned MaxRegSize = TM->GetPointerSize();
+        const unsigned RegsCount =
+            GetNextAlignedValue(RetBitSize, MaxRegSize) / MaxRegSize;
+
+        assert(RegsCount == 2 && "Only supporting two return registers for now");
+        assert(!IsFP && "FP values cannot be divided into multiple registers");
+
+        auto Const = dynamic_cast<Constant*>(I->GetRetVal());
+        auto ImmMO = GetMachineOperandFromValue(I->GetRetVal(), BB);
+
+        for (size_t i = 0; i < RegsCount; i++) {
+          auto LI = MachineInstruction(MachineInstruction::LOAD_IMM, BB);
+
+          LI.AddRegister(TargetRetRegs[i]->GetID(),
+                         TargetRetRegs[i]->GetBitWidth());
+
+          LI.AddImmediate((Const->GetIntValue() >> (i * 32)) & 0xffffffff);
+
+          BB->InsertInstr(LI);
+        }
+      }
+    }
+    // If the return value must be put into multiple registers like s64 for
+    // RISCV32
+    else if (I->GetRetVal()->GetTypeRef().GetBitSize() > TM->GetPointerSize()) {
+      assert(I->GetRetVal()->GetTypeRef().GetBitSize() <= 64 &&
+             "TODO: for now expecting only max 64 bit types");
+
+      // First SPLIT the value into two 32 bit register
+      auto Split = MachineInstruction(MachineInstruction::SPLIT, BB);
+
+      auto Lo32 = MachineOperand::CreateVirtualRegister(
+          ParentFunction->GetNextAvailableVReg());
+      auto Hi32 = MachineOperand::CreateVirtualRegister(
+          ParentFunction->GetNextAvailableVReg());
+
+      std::vector<MachineOperand> SplittedVRegs = {Lo32, Hi32};
+
+      Split.AddOperand(Lo32);
+      Split.AddOperand(Hi32);
+      Split.AddOperand(GetMachineOperandFromValue(I->GetRetVal(), BB));
+      BB->InsertInstr(Split);
+
+      // Move the splitted registers into the physical return registers
+      const unsigned RetBitSize = I->GetTypeRef().GetByteSize() * 8;
+      const unsigned MaxRegSize = TM->GetPointerSize();
+      const unsigned RegsCount =
+          GetNextAlignedValue(RetBitSize, MaxRegSize) / MaxRegSize;
+
+      assert(RegsCount == 2 && "Only supporting two return registers for now");
+
+      for (size_t i = 0; i < RegsCount; i++) {
+        auto MOV = MachineInstruction(MachineInstruction::MOV, BB);
+
+        MOV.AddRegister(TargetRetRegs[i]->GetID(),
+                        TargetRetRegs[i]->GetBitWidth());
+
+        MOV.AddOperand(SplittedVRegs[i]);
+        BB->InsertInstr(MOV);
+      }
     } else {
       auto Result = GetMachineOperandFromValue(I->GetRetVal(), BB);
       ResultMI.AddOperand(Result);
@@ -754,10 +852,18 @@ void HandleStackAllocation(StackAllocationInstruction *Instr,
   auto ReferredType = Instr->GetType();
   assert(ReferredType.GetPointerLevel() > 0);
   ReferredType.DecrementPointerLevel();
-  auto IsPTR = ReferredType.GetPointerLevel() > 0;
-  Func->InsertStackSlot(Instr->GetID(), IsPTR ? TM->GetPointerSize() / 8 :
-                                              ReferredType.GetByteSize(),
-                        ReferredType.GetBaseTypeByteSize());
+  const auto IsPTR = ReferredType.GetPointerLevel() > 0;
+  const auto IsStruct = ReferredType.IsStruct();
+
+  const size_t Alignment = IsPTR ? TM->GetPointerSize() / 8
+                                 : IsStruct
+                                       ? ReferredType.GetStructMaxAlignment(TM)
+                                       : ReferredType.GetBaseTypeByteSize();
+
+  const size_t Size =
+      IsPTR ? TM->GetPointerSize() / 8 : ReferredType.GetByteSize();
+
+  Func->InsertStackSlot(Instr->GetID(), Size, Alignment);
 }
 
 void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
@@ -791,9 +897,19 @@ void IRtoLLIR::HandleFunctionParams(Function &F, MachineFunction *Func) {
     if (Param->GetTypeRef().IsPTR())
       Func->InsertParameter(
           ParamID, LowLevelType::CreatePTR(TM->GetPointerSize()), IsStructPtr);
-    else
+    else if (ParamSize <= TM->GetPointerSize()) // TODO: quick "hack" to use ptr size
       Func->InsertParameter(ParamID, LowLevelType::CreateScalar(ParamSize),
                             IsStructPtr, Param->GetTypeRef().IsFP());
+    else
+      // if the parameter does not fit into the parameter registers then it is passed
+      // in multiple registers like 64 bit integers in RISCV32 passed in 2 registers
+      for (size_t i = 0; i < ParamSize / TM->GetPointerSize(); i++) {
+        auto NextVReg = Func->GetNextAvailableVReg();
+        ParamByIDToRegMap[ParamID].push_back(NextVReg);
+        Func->InsertParameter(NextVReg,
+                              LowLevelType::CreateScalar(TM->GetPointerSize()),
+                              IsStructPtr, Param->GetTypeRef().IsFP());
+      }
   }
 }
 

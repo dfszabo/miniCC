@@ -8,10 +8,8 @@ unsigned MachineFunction::GetNextAvailableVReg() {
   // If this function was called the first time then here the highest virtual
   // register ID is searched and NextVReg is set to that.
   for (auto &[ParamID, ParamLLT, IsStructPtr, IsFP] : Parameters)
-    if (ParamID == NextVReg)
-      NextVReg++;
-    else if (ParamID > NextVReg)
-      NextVReg = ParamID;
+    if (ParamID >= NextVReg)
+      NextVReg = ParamID + 1;
 
   for (auto &BB : BasicBlocks)
     for (auto &Instr : BB.GetInstructions())

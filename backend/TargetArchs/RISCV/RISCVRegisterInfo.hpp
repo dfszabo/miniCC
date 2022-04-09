@@ -10,6 +10,7 @@ enum Registers : unsigned {
   INVALID,
 #define RISCV_REGISTER(ID, WIDTH, NAME, ALIAS) ID,
 #include "RISCVRegisters.def"
+  REGISTERS_END,
 };
 
 class RISCVRegisterInfo : public RegisterInfo {
@@ -20,10 +21,21 @@ public:
   TargetRegister *GetRegister(unsigned i) override;
   TargetRegister *GetRegisterByID(unsigned i) override;
   unsigned GetFrameRegister() override;
+  unsigned GetLinkRegister() override;
   unsigned GetStackRegister() override;
+  unsigned GetStructPtrRegister() override;
+  unsigned GetZeroRegister(const unsigned BitWidth) override;
+  TargetRegister *GetParentReg(unsigned ID) override {
+    return nullptr;
+  }
+  unsigned GetRegisterClass(const unsigned BitWidth, const bool IsFP) override;
+  virtual std::string GetRegClassString(const unsigned RegClass) override;
+  unsigned GetRegClassFromReg(const unsigned Reg) override;
+  unsigned GetRegClassRegsSize(const unsigned RegClass) override;
 
 private:
-  TargetRegister Registers[32];
+  TargetRegister Registers[REGISTERS_END - 1];
+  std::vector<std::string> RegClassEnumStrings;
 };
 
 } // namespace RISCV

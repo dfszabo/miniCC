@@ -59,5 +59,6 @@ add_executable(miniCC
     backend/TargetArchs/AArch64/AArch64XRegToWRegFixPass.cpp
     backend/TargetArchs/RISCV/RISCVRegisterInfo.cpp
     backend/TargetArchs/RISCV/RISCVInstructionDefinitions.cpp
+    backend/TargetArchs/RISCV/RISCVInstructionLegalizer.cpp
     backend/TargetArchs/RISCV/RISCVTargetABI.cpp
     backend/TargetArchs/RISCV/RISCVTargetMachine.cpp)

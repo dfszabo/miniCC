@@ -1,38 +1,36 @@
 #include "RISCVTargetABI.hpp"
+#include "RISCVRegisterInfo.hpp"
 
 using namespace RISCV;
 
 RISCVTargetABI::RISCVTargetABI(RegisterInfo *RI) {
   StackAlignment = 16;
+  MaxStructSize = 64;
 
   // aX registers
-  for (int i = 10; i <= 17; i++)
-    ArgumentRegisters.push_back(RI->GetRegister(i));
+  for (unsigned i = A0; i <= A7; i++)
+    ArgumentRegisters.push_back(RI->GetRegisterByID(i));
 
-  // sp
-  CalleeSavedRegisters.push_back(RI->GetRegister(2));
   // s0
-  CalleeSavedRegisters.push_back(RI->GetRegister(8));
+  CalleeSavedRegisters.push_back(RI->GetRegisterByID(S0));
   // s1
-  CalleeSavedRegisters.push_back(RI->GetRegister(9));
+  CalleeSavedRegisters.push_back(RI->GetRegisterByID(S1));
   // s2-s11
-  for (int i = 18; i <= 27; i++)
-    CalleeSavedRegisters.push_back(RI->GetRegister(i));
+  for (unsigned i = S2; i <= S11; i++)
+    CalleeSavedRegisters.push_back(RI->GetRegisterByID(i));
 
   // a0-a7
-  for (int i = 10; i <= 17; i++)
-    CallerSavedRegisters.push_back(RI->GetRegister(i));
+  for (unsigned i = A0; i <= A7; i++)
+    CallerSavedRegisters.push_back(RI->GetRegisterByID(i));
   // t0-t2
-  for (int i = 5; i <= 7; i++)
-    CallerSavedRegisters.push_back(RI->GetRegister(i));
+  for (unsigned i = T0; i <= T2; i++)
+    CallerSavedRegisters.push_back(RI->GetRegisterByID(i));
   // t3-t6
-  for (int i = 28; i <= 31; i++)
-    CallerSavedRegisters.push_back(RI->GetRegister(i));
-  // ra
-  CallerSavedRegisters.push_back(RI->GetRegister(1));
+  for (unsigned i = T3; i <= T6; i++)
+    CallerSavedRegisters.push_back(RI->GetRegisterByID(i));
 
   // a0
-  ReturnRegisters.push_back(RI->GetRegister(10));
+  ReturnRegisters.push_back(RI->GetRegisterByID(A0));
   // a1
-  ReturnRegisters.push_back(RI->GetRegister(11));
+  ReturnRegisters.push_back(RI->GetRegisterByID(A1));
 }

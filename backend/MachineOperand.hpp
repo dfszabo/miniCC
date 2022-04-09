@@ -77,6 +77,7 @@ public:
 
 
   unsigned GetSize() const { return LLT.GetBitWidth(); }
+  void SetSize(unsigned s) { return LLT.SetBitWidth(s); }
 
   /// To be able to use this class in a set
   bool operator<(const MachineOperand& rhs) const {

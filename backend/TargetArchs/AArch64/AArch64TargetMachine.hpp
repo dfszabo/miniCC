@@ -20,6 +20,8 @@ public:
   ~AArch64TargetMachine() override {}
 
   uint8_t GetPointerSize() override { return 64; }
+  uint8_t GetIntSize() override { return 32; }
+  uint8_t GetLongSize() override { return 64; }
 
   bool SelectAND(MachineInstruction *MI) override;
   bool SelectOR(MachineInstruction *MI) override;

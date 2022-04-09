@@ -18,10 +18,16 @@ bool TargetMachine::SelectInstruction(MachineInstruction *MI) {
     return SelectLSR(MI);
   case MachineInstruction::ADD:
     return SelectADD(MI);
+  case MachineInstruction::ADDS:
+    return SelectADDS(MI);
+  case MachineInstruction::ADDC:
+    return SelectADDC(MI);
   case MachineInstruction::SUB:
     return SelectSUB(MI);
   case MachineInstruction::MUL:
     return SelectMUL(MI);
+  case MachineInstruction::MULHU:
+    return SelectMULHU(MI);
   case MachineInstruction::DIV:
     return SelectDIV(MI);
   case MachineInstruction::DIVU:

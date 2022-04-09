@@ -299,6 +299,29 @@ void Parser::ParseArrayDimensions(Type &type) {
     type.SetDimensions(std::move(Dimensions));
 }
 
+/// Issues an implicit cast for the &Expr if it is needed and possible for
+/// the given @ExpectedType
+void DoImplicitCastIfNeeded(std::unique_ptr<Expression> &Expr,
+                            const Type &ExpectedType) {
+  if ((ExpectedType != Expr->GetResultType()) &&
+      !Type::OnlySigndnessDifference(ExpectedType.GetTypeVariant(),
+                                     Expr->GetResultType().GetTypeVariant())) {
+
+    bool IsImplicitlyCastable =
+        Type::IsImplicitlyCastable(Expr->GetResultType(), ExpectedType);
+
+    IsImplicitlyCastable |=
+        ExpectedType.IsPointerType() && Expr->GetResultType().IsIntegerType();
+
+    if (!IsImplicitlyCastable) {
+      assert(!"Invalid initialization");
+    } else {
+      Expr = std::make_unique<ImplicitCastExpression>(std::move(Expr),
+                                                      ExpectedType);
+    }
+  }
+}
+
 /// Helper function to try to figure out the unspecified dimension of the array
 /// type @type from its initializer expression @InitExpr
 /// example:
@@ -417,10 +440,23 @@ std::unique_ptr<Node> Parser::ParseExternalDeclaration() {
         std::unique_ptr<Expression> InitExpr = nullptr;
         if (lexer.Is(Token::Equal)) {
           Lex(); // eat '='
-          if (lexer.Is(Token::LeftCurly))
-            InitExpr = ParseInitializerListExpression();
+
+          auto ExpectedType = CurrentType;
+          // TODO: Investigate that the expected type should always be an array
+          // if so then make this an assertion.
+          if (ExpectedType.IsArray())
+            ExpectedType.RemoveFirstDimension();
+
+          const bool IsInitList = lexer.Is(Token::LeftCurly);
+          if (IsInitList)
+            InitExpr = ParseInitializerListExpression(CurrentType);
           else
             InitExpr = ParseExpression();
+
+          if (!IsInitList &&
+              !dynamic_cast<StringLiteralExpression *>(InitExpr.get()) &&
+              !ExpectedType.IsStruct())
+            DoImplicitCastIfNeeded(InitExpr, ExpectedType);
         }
 
         if (CurrentType.IsArray() && !CurrentType.GetDimensions().empty())
@@ -642,8 +678,16 @@ Parser::ParseVariableDeclaration(Type type) {
   std::unique_ptr<Expression> InitExpr = nullptr;
   if (lexer.Is(Token::Equal)) {
     Token T = Lex(); // eat '='
-    if (lexer.Is(Token::LeftCurly))
-      InitExpr = ParseInitializerListExpression();
+
+    auto ExpectedType = type;
+    // TODO: Investigate that the expected type should always be an array
+    // if so then make this an assertion.
+    if (ExpectedType.IsArray())
+      ExpectedType.RemoveFirstDimension();
+
+    const bool IsInitList = lexer.Is(Token::LeftCurly);
+    if (IsInitList)
+      InitExpr = ParseInitializerListExpression(ExpectedType);
     else {
       InitExpr = ParseExpression();
 
@@ -653,26 +697,10 @@ Parser::ParseVariableDeclaration(Type type) {
         return nullptr;
       }
 
-      // if the variable type not match the size of the initializer expression
-      // then also do an implicit cast
-      if ((type != InitExpr->GetResultType()) &&
-          !Type::OnlySigndnessDifference(
-              type.GetTypeVariant(),
-              InitExpr->GetResultType().GetTypeVariant())) {
-
-        bool IsImplicitlyCastable = Type::IsImplicitlyCastable(
-            InitExpr->GetResultType().GetTypeVariant(), type.GetTypeVariant());
-
-        IsImplicitlyCastable |=
-            type.IsPointerType() && InitExpr->GetResultType().IsIntegerType();
-
-        if (!IsImplicitlyCastable) {
-          assert(!"Invalid initialization");
-        } else {
-          InitExpr = std::make_unique<ImplicitCastExpression>(
-              std::move(InitExpr), type);
-        }
-      }
+      if (!IsInitList &&
+          !dynamic_cast<StringLiteralExpression *>(InitExpr.get()) &&
+          !ExpectedType.IsStruct())
+        DoImplicitCastIfNeeded(InitExpr, ExpectedType);
     }
   }
 
@@ -1755,24 +1783,49 @@ std::unique_ptr<Expression> Parser::ParseIdentifierExpression() {
 //                                      <InitializerListExpression>}
 //                                     {',' {<ConstantExpression> |
 //                                      <InitializerListExpression>} }* '}'
-std::unique_ptr<Expression> Parser::ParseInitializerListExpression() {
+std::unique_ptr<Expression>
+Parser::ParseInitializerListExpression(const Type &LHSType) {
   Expect(Token::LeftCurly);
+
   std::unique_ptr<Expression> E;
-  if (lexer.Is(Token::LeftCurly))
-    E = ParseInitializerListExpression();
-  else
+
+  auto ExpectedType = LHSType;
+  // TODO: Investigate that the expected type should always be an array
+  // if so then make this an assertion.
+  if (ExpectedType.IsArray()) 
+    ExpectedType.RemoveFirstDimension();
+
+  const bool IsInitList = lexer.Is(Token::LeftCurly);
+  if (IsInitList) {
+    E = ParseInitializerListExpression(ExpectedType);
+  } else
     E = ParseConstantExpression();
+
   assert(E && "Cannot be null");
+
+  // For now do not casting InitializerLists
+  // TODO: might be nice to do it in the future
+  if (!IsInitList && !dynamic_cast<StringLiteralExpression *>(E.get()) &&
+      !ExpectedType.IsStruct())
+    DoImplicitCastIfNeeded(E, ExpectedType);
 
   std::vector<std::unique_ptr<Expression>> ExprList;
   ExprList.push_back(std::move(E));
 
   while (lexer.Is(Token::Comma)) {
     Lex(); // eat ','
-    if (lexer.Is(Token::LeftCurly))
-      ExprList.push_back(ParseInitializerListExpression());
+
+    const bool IsInitList = lexer.Is(Token::LeftCurly);
+    if (IsInitList)
+      E = ParseInitializerListExpression(ExpectedType);
     else
-      ExprList.push_back(ParseConstantExpression());
+      E = ParseConstantExpression();
+
+    if (!IsInitList && !dynamic_cast<StringLiteralExpression *>(E.get())
+        && !ExpectedType.IsStruct())
+      DoImplicitCastIfNeeded(E, ExpectedType);
+
+    ExprList.push_back(std::move(E));
   }
 
   Expect(Token::RightCurly);

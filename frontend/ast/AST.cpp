@@ -6,7 +6,7 @@
 //=------------------------- IR Codegen functions ---------------------------=//
 //=--------------------------------------------------------------------------=//
 
-static IRType GetIRTypeFromVK(Type::VariantKind VK) {
+static IRType GetIRTypeFromVK(Type::VariantKind VK, TargetMachine *TM) {
   switch (VK) {
   case Type::Char:
   // the standard says this (6.2.5.27)
@@ -25,13 +25,13 @@ static IRType GetIRTypeFromVK(Type::VariantKind VK) {
   case Type::UnsignedShort:
     return IRType{IRType::UINT, 16};
   case Type::Int:
-    return IRType{IRType::SINT};
+    return IRType{IRType::SINT, TM->GetIntSize()};
   case Type::UnsignedInt:
-    return IRType{IRType::UINT};
+    return IRType{IRType::UINT, TM->GetIntSize()};
   case Type::Long:
-    return IRType{IRType::SINT, 64};
+    return IRType{IRType::SINT, TM->GetLongSize()};
   case Type::UnsignedLong:
-    return IRType{IRType::UINT, 64};
+    return IRType{IRType::UINT, TM->GetLongSize()};
   case Type::LongLong:
     return IRType{IRType::SINT, 64};
   case Type::UnsignedLongLong:
@@ -48,8 +48,8 @@ static IRType GetIRTypeFromVK(Type::VariantKind VK) {
   }
 }
 
-static IRType GetIRTypeFromASTType(Type &CT) {
-  IRType Result = GetIRTypeFromVK(CT.GetTypeVariant());
+static IRType GetIRTypeFromASTType(Type &CT, TargetMachine *TM) {
+  IRType Result = GetIRTypeFromVK(CT.GetTypeVariant(), TM);
   assert((CT.GetTypeVariant() != Type::Void || CT.GetPointerLevel() != 0) &&
          "void type is only allowed to be a pointer");
 
@@ -59,7 +59,8 @@ static IRType GetIRTypeFromASTType(Type &CT) {
 
     // convert each member's AST type to IRType (recursive)
     for (auto &MemberASTType : CT.GetTypeList())
-      Result.GetMemberTypes().push_back(GetIRTypeFromASTType(MemberASTType));
+      Result.GetMemberTypes().push_back(
+          GetIRTypeFromASTType(MemberASTType, TM));
   }
   if (CT.IsArray()) {
     Result.SetDimensions(CT.GetDimensions());
@@ -472,7 +473,7 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
   switch (T.GetReturnType()) {
   case Type::Composite:
     if (T.IsStruct()) {
-      RetType = GetIRTypeFromASTType(T);
+      RetType = GetIRTypeFromASTType(T, IRF->GetTargetMachine());
 
       // in case the struct is too big to pass by value
       if (!RetType.IsPTR() &&
@@ -508,16 +509,16 @@ Value *FunctionDeclaration::IRCodegen(IRFactory *IRF) {
     RetType = IRType(IRType::UINT, 16);
     break;
   case Type::Int:
-    RetType = IRType(IRType::SINT);
+    RetType = IRType(IRType::SINT, IRF->GetTargetMachine()->GetIntSize());
     break;
   case Type::UnsignedInt:
-    RetType = IRType(IRType::UINT);
+    RetType = IRType(IRType::UINT, IRF->GetTargetMachine()->GetIntSize());
     break;
   case Type::Long:
-    RetType = IRType(IRType::SINT, 64);
+    RetType = IRType(IRType::SINT, IRF->GetTargetMachine()->GetLongSize());
     break;
   case Type::UnsignedLong:
-    RetType = IRType(IRType::UINT, 64);
+    RetType = IRType(IRType::UINT, IRF->GetTargetMachine()->GetLongSize());
     break;
   case Type::LongLong:
     RetType = IRType(IRType::SINT, 64);
@@ -617,7 +618,7 @@ Value *BreakStatement::IRCodegen(IRFactory *IRF) {
 }
 
 Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {
-  auto ParamType = GetIRTypeFromASTType(Ty);
+  auto ParamType = GetIRTypeFromASTType(Ty, IRF->GetTargetMachine());
   auto ParamName = Name.GetString();
 
   // if the param is a struct and too big to passed by value then change it
@@ -638,7 +639,7 @@ Value *FunctionParameterDeclaration::IRCodegen(IRFactory *IRF) {
 }
 
 Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
-  auto Type = GetIRTypeFromASTType(AType);
+  auto Type = GetIRTypeFromASTType(AType, IRF->GetTargetMachine());
   auto VarName = Name.GetString();
 
   // If an array type, then change Type to reflect this
@@ -649,25 +650,66 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
   std::vector<uint64_t> InitList;
   if (IRF->IsGlobalScope()) {
     // if the initialization is done by an initializer
-    // FIXME: assuming max 2 dimensional init list like "{ { 1, 2 }, { 3, 4 } }"
+    // TODO: assuming max 2 dimensional init list like "{ { 1, 2 }, { 3, 4 } }"
     // add support for arbitrary dimension
+    // TODO: clean up this mess
     if (auto InitListExpr =
             dynamic_cast<InitializerListExpression *>(Init.get());
-        InitListExpr != nullptr) {
+        InitListExpr != nullptr ||
+        dynamic_cast<ImplicitCastExpression *>(Init.get())) {
+
+      if (!InitListExpr) {
+        auto CastedExpr = dynamic_cast<ImplicitCastExpression *>(Init.get())
+                              ->GetCastableExpression()
+                              .get();
+        InitListExpr = dynamic_cast<InitializerListExpression *>(CastedExpr);
+      }
+
       for (auto &Expr : InitListExpr->GetExprList())
         if (auto ConstExpr =
                 dynamic_cast<IntegerLiteralExpression *>(Expr.get());
-            ConstExpr != nullptr) {
+            ConstExpr != nullptr ||
+            dynamic_cast<ImplicitCastExpression *>(Expr.get())) {
+          if (!ConstExpr) {
+            auto CastedExpr = dynamic_cast<ImplicitCastExpression *>(Expr.get())
+                                  ->GetCastableExpression()
+                                  .get();
+            assert(dynamic_cast<IntegerLiteralExpression *>(CastedExpr) &&
+                   "Only support int literals for now");
+            ConstExpr = dynamic_cast<IntegerLiteralExpression *>(CastedExpr);
+          }
+
           InitList.push_back(ConstExpr->GetUIntValue());
         } else if (auto InitListExpr2nd =
                        dynamic_cast<InitializerListExpression *>(Expr.get());
-                   InitListExpr != nullptr) {
+                   InitListExpr2nd != nullptr ||
+                   dynamic_cast<ImplicitCastExpression *>(Expr.get())) {
+
+          if (!InitListExpr2nd) {
+            auto CastedExpr = dynamic_cast<ImplicitCastExpression *>(Expr.get())
+                                  ->GetCastableExpression()
+                                  .get();
+            InitListExpr2nd =
+                dynamic_cast<InitializerListExpression *>(CastedExpr);
+          }
+
           for (auto &Expr2nd : InitListExpr2nd->GetExprList())
             if (auto ConstExpr2nd =
                     dynamic_cast<IntegerLiteralExpression *>(Expr2nd.get());
-                ConstExpr2nd != nullptr)
+                ConstExpr2nd != nullptr ||
+                dynamic_cast<ImplicitCastExpression *>(Expr2nd.get())) {
+              if (!ConstExpr2nd) {
+                auto CastedExpr =
+                    dynamic_cast<ImplicitCastExpression *>(Expr2nd.get())
+                        ->GetCastableExpression()
+                        .get();
+                assert(dynamic_cast<IntegerLiteralExpression *>(CastedExpr) &&
+                       "Only support int literals for now");
+                ConstExpr2nd =
+                    dynamic_cast<IntegerLiteralExpression *>(CastedExpr);
+              }
               InitList.push_back(ConstExpr2nd->GetUIntValue());
-            else
+            } else
               assert(!"Other types unhandled yet");
         }
     }
@@ -709,7 +751,7 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
   // stack and update the local symbol table.
   auto SA = IRF->CreateSA(VarName, Type);
 
-  // TODO: revisit this
+  // TODO: This needs some serious clean up and upgrade
   if (Init) {
     // If initialized with initializer list then assuming its only 1 dimensional
     // and only contain integer literal expressions.
@@ -720,10 +762,20 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
       for (auto &Expr : InitListExpr->GetExprList()) {
         if (auto ConstExpr =
                 dynamic_cast<IntegerLiteralExpression *>(Expr.get());
-            ConstExpr != nullptr) {
+            ConstExpr != nullptr ||
+            dynamic_cast<ImplicitCastExpression *>(Expr.get())) {
           // basically storing each entry to the right stack area
           // TODO: problematic for big arrays, Clang and GCC create a global
           // array to store there the initial values and use memcopy
+          if (!ConstExpr) {
+            auto CastedExpr = dynamic_cast<ImplicitCastExpression *>(Expr.get())
+                                  ->GetCastableExpression()
+                                  .get();
+            assert(dynamic_cast<IntegerLiteralExpression *>(CastedExpr) &&
+                   "Only support int literals for now");
+            ConstExpr = dynamic_cast<IntegerLiteralExpression *>(CastedExpr);
+          }
+
           auto ResultType = SA->GetType();
           ResultType.ReduceDimension();
 
@@ -732,7 +784,14 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
 
           auto GEP = IRF->CreateGEP(ResultType, SA,
                                     IRF->GetConstant((uint64_t)LoopCounter));
-          IRF->CreateSTR(IRF->GetConstant((uint64_t)ConstExpr->GetUIntValue()),
+
+          const auto SizeOfConstExpr =
+              GetIRTypeFromASTType(ConstExpr->GetResultType(),
+                                   IRF->GetTargetMachine())
+                  .GetBaseTypeByteSize(IRF->GetTargetMachine()) *
+              8;
+          IRF->CreateSTR(IRF->GetConstant((uint64_t)ConstExpr->GetUIntValue(),
+                                          SizeOfConstExpr),
                          GEP);
         }
         LoopCounter++;
@@ -798,16 +857,16 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
 
   switch (RetType) {
   case Type::Int:
-    IRRetType = IRType(IRType::SINT);
+    IRRetType = IRType(IRType::SINT, IRF->GetTargetMachine()->GetIntSize());
     break;
   case Type::UnsignedInt:
-    IRRetType = IRType(IRType::UINT);
+    IRRetType = IRType(IRType::UINT, IRF->GetTargetMachine()->GetIntSize());
     break;
   case Type::Long:
-    IRRetType = IRType(IRType::SINT, 64);
+    IRRetType = IRType(IRType::SINT, IRF->GetTargetMachine()->GetLongSize());
     break;
   case Type::UnsignedLong:
-    IRRetType = IRType(IRType::UINT, 64);
+    IRRetType = IRType(IRType::UINT, IRF->GetTargetMachine()->GetLongSize());
     break;
   case Type::LongLong:
     IRRetType = IRType(IRType::SINT, 64);
@@ -825,10 +884,11 @@ Value *CallExpression::IRCodegen(IRFactory *IRF) {
     if (!GetResultType().IsPointerType())
       IRRetType = IRType(IRType::NONE, 0);
     else
-      IRRetType = GetIRTypeFromASTType(GetResultType());
+      IRRetType =
+          GetIRTypeFromASTType(GetResultType(), IRF->GetTargetMachine());
     break;
   case Type::Composite: {
-    IRRetType = GetIRTypeFromASTType(GetResultType());
+    IRRetType = GetIRTypeFromASTType(GetResultType(), IRF->GetTargetMachine());
 
     // If the return type is a struct, then also make a stack allocation
     // to use that as a temporary, where the result would be copied to after
@@ -949,8 +1009,8 @@ Value *ImplicitCastExpression::IRCodegen(IRFactory *IRF) {
   auto &DestType = GetResultType();
   auto DestTypeVariant = DestType.GetTypeVariant();
 
-  auto SourceIRType = GetIRTypeFromASTType(SourceType);
-  auto DestIRType = GetIRTypeFromASTType(DestType);
+  auto SourceIRType = GetIRTypeFromASTType(SourceType, IRF->GetTargetMachine());
+  auto DestIRType = GetIRTypeFromASTType(DestType, IRF->GetTargetMachine());
 
   auto TM = IRF->GetTargetMachine();
 
@@ -1132,7 +1192,7 @@ Value *StructMemberReference::IRCodegen(IRFactory *IRF) {
 
 Value *StructInitExpression::IRCodegen(IRFactory *IRF) {
   // allocate stack for the struct first
-  auto IRResultType = GetIRTypeFromASTType(ResultType);
+  auto IRResultType = GetIRTypeFromASTType(ResultType, IRF->GetTargetMachine());
   // TODO: make sure the name will be unique
   auto StructTemp = IRF->CreateSA(ResultType.GetName() + ".temp", IRResultType);
 
@@ -1291,7 +1351,7 @@ Value *UnaryExpression::IRCodegen(IRFactory *IRF) {
     else // else use the given type
       TypeToBeExamined = SizeOfType.value();
 
-    size = GetIRTypeFromASTType(TypeToBeExamined)
+    size = GetIRTypeFromASTType(TypeToBeExamined, IRF->GetTargetMachine())
                .GetByteSize(IRF->GetTargetMachine());
 
     assert(size != 0 && "sizeof should not result in 0");
@@ -1639,19 +1699,21 @@ Value *TernaryExpression::IRCodegen(IRFactory *IRF) {
 }
 
 Value *IntegerLiteralExpression::IRCodegen(IRFactory *IRF) {
-  const auto BW = GetIRTypeFromASTType(GetResultType()).GetBitSize();
+  const auto BW = GetIRTypeFromASTType(GetResultType(), IRF->GetTargetMachine())
+                      .GetBitSize();
   return IRF->GetConstant(IntValue, BW);
 }
 
 Value *FloatLiteralExpression::IRCodegen(IRFactory *IRF) {
-  const auto BW = GetIRTypeFromASTType(GetResultType()).GetBitSize();
+  const auto BW = GetIRTypeFromASTType(GetResultType(), IRF->GetTargetMachine())
+                      .GetBitSize();
   return IRF->GetConstant(FPValue, BW);
 }
 
 Value *StringLiteralExpression::IRCodegen(IRFactory *IRF) {
   static unsigned counter = 0; // used to create unique names
   std::string Name = ".L.str" + std::to_string(counter++);
-  auto Type = GetIRTypeFromASTType(ResultType);
+  auto Type = GetIRTypeFromASTType(ResultType, IRF->GetTargetMachine());
   // the global variable is now a pointer to the data
   Type.IncrementPointerLevel();
   // create a global variable for the string literal with the label Name

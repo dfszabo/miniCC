@@ -81,7 +81,8 @@ public:
   ParseArrayExpression(std::unique_ptr<Expression> Base);
   std::unique_ptr<Expression> ParseIdentifierExpression();
   std::unique_ptr<Expression> ParsePrimaryExpression();
-  std::unique_ptr<Expression> ParseInitializerListExpression();
+  std::unique_ptr<Expression>
+  ParseInitializerListExpression(const Type &ExpectedType);
   std::unique_ptr<WhileStatement> ParseWhileStatement();
   std::unique_ptr<DoWhileStatement> ParseDoWhileStatement();
   std::unique_ptr<ForStatement> ParseForStatement();

@@ -1,19 +1,7 @@
 // RUN: AArch64
 
-// FUNC-DECL: unsigned test_u()
-// TEST-CASE: test_u() -> 13
-
-// FUNC-DECL: long test_l()
-// TEST-CASE: test_l() -> 13
-
-// FUNC-DECL: unsigned long test_ul()
-// TEST-CASE: test_ul() -> 13
-
-// FUNC-DECL: long long test_ll()
-// TEST-CASE: test_ll() -> 13
-
-// FUNC-DECL: unsigned long long test_ull()
-// TEST-CASE: test_ull() -> 13
+// FUNC-DECL: int test()
+// TEST-CASE: test() -> 1
 
 
 unsigned test_u() {
@@ -34,4 +22,18 @@ long long test_ll() {
 
 unsigned long long test_ull() {
   return 13ull;
+}
+
+int test() {
+  if (test_u() != 13u)
+    return 0;
+  if (test_l() != 13l)
+    return 0;
+  if (test_ul() != 13ul)
+    return 0;
+  if (test_ll() != 13ll)
+    return 0;
+  if (test_ull() != 13ull)
+    return 0;
+  return 1;
 }

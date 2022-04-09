@@ -1,11 +1,11 @@
 // RUN: AArch64
 
-// FUNC-DECL: unsigned test(int, long long)
+// FUNC-DECL: int test(int, long long)
 // TEST-CASE: test(0, (1ll << 8) + 1) -> 1
 // TEST-CASE: test(1, (1ll << 8) - 1) -> -1
-// TEST-CASE: test(2, (1ll << 16) + 1) -> 1
+// TEST-CASE: test(2, (1ll << 16) + 256) -> 256
 // TEST-CASE: test(3, (1ll << 16) - 1) -> -1
-// TEST-CASE: test(4, (1ll << 32) + 1) -> 1
+// TEST-CASE: test(4, (1ll << 32) + 0x10000) -> 0x10000
 // TEST-CASE: test(5, (1ll << 32) - 1) -> -1
 
 
