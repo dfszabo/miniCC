@@ -23,6 +23,8 @@ public:
   virtual uint8_t GetIntSize() { return ~0; }
   virtual uint8_t GetLongSize() { return ~0; }
 
+  bool IsMemcpySupported() const { return ABI->HasCLib(); }
+
   bool SelectInstruction(MachineInstruction *MI);
 
   virtual bool SelectAND(MachineInstruction *MI) { assert(!"Unimplemented"); }

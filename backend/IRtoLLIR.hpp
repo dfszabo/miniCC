@@ -38,6 +38,15 @@ private:
   /// returning the mapped value
   unsigned GetIDFromValue(Value *Val);
 
+  /// Checks whether the Val is
+  ///     - on the stack
+  ///     - a global value
+  ///     - in a register
+  /// If it is on the stack or a global value then a STACK_ADDRESS or
+  /// GLOBAL_ADDRESS will be emitted to materialize the address. Otherwise
+  /// GetMachineOperandFromValue is called.
+  MachineOperand MaterializeAddress(Value *Val, MachineBasicBlock *MBB);
+
   Module &IRM;
   MachineIRModule *TU;
   TargetMachine *TM;

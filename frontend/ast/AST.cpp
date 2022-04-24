@@ -648,7 +648,7 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
 
   // If we are in global scope, then it is a global variable declaration
   std::vector<uint64_t> InitList;
-  if (IRF->IsGlobalScope()) {
+  if (IRF->IsGlobalScope() || AType.IsArray()) {
     // if the initialization is done by an initializer
     // TODO: assuming max 2 dimensional init list like "{ { 1, 2 }, { 3, 4 } }"
     // add support for arbitrary dimension
@@ -734,7 +734,28 @@ Value *VariableDeclaration::IRCodegen(IRFactory *IRF) {
         return IRF->CreateGlobalVar(VarName, Type, GVStr);
       }
     }
-    return IRF->CreateGlobalVar(VarName, Type, std::move(InitList));
+    if (IRF->IsGlobalScope())
+      return IRF->CreateGlobalVar(VarName, Type, std::move(InitList));
+    // Else it is a local array -> create an initializer global array and use
+    // memcopy with this initializer to initialize the array
+    else if (Init) {
+      assert(AType.IsArray());
+
+      auto InitializerName = "__const." + IRF->GetCurrentFunction()->GetName() +
+                             "." + Name.GetString();
+      auto InitializerGV =
+          IRF->CreateGlobalVar(InitializerName, Type, std::move(InitList));
+      IRF->AddGlobalVariable(InitializerGV);
+
+      auto SA = IRF->CreateSA(VarName, Type);
+
+      IRF->CreateMEMCOPY(
+          SA, InitializerGV,
+          InitializerGV->GetTypeRef().GetByteSize(IRF->GetTargetMachine()));
+
+      IRF->AddToSymbolTable(VarName, SA);
+      return SA;
+    }
   }
 
   if (IRF->GetCurrentFunction()->GetIgnorableStructVarName() == VarName) {
