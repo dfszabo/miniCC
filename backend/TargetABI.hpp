@@ -32,11 +32,14 @@ public:
   size_t GetFirstFPArgRegIdx() const { return FirstFPArgRegIdx; }
   size_t GetFirstFPRetRegIdx() const { return FirstFPRetRegIdx; }
 
+  bool HasCLib() const { return CLib; }
+
 protected:
   unsigned StackAlignment = ~0;
   unsigned MaxStructSize = ~0;
   unsigned FirstFPArgRegIdx = 0;
   unsigned FirstFPRetRegIdx = 0;
+  bool CLib = false;
 
   /// Targets should fill this by the general registers they use for passing
   /// integer values. Then fill it with the floating point registers.

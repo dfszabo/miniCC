@@ -96,7 +96,7 @@ void RegisterClassSelection::Run() {
           }
 
           // at this point only interested in virtual registers
-          if (!Op->IsVirtualReg())
+          if (!Op->IsVirtual())
             continue;
 
           auto Reg = Op->GetReg();
